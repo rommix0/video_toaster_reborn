@@ -8,6 +8,7 @@ add_library(vt_engine STATIC
     src/crouton.cpp
     src/ilbm.cpp
     src/sound.cpp
+    src/timing.cpp
 )
 target_include_directories(vt_engine PUBLIC include)
 if(MSVC)

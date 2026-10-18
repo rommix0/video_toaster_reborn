@@ -35,7 +35,7 @@ This document covers the shared foundation and the Switcher only.
   inputs and outputs are progressive. No rescaling of effects; output is shown at native
   size or whole-number zoom. Rescaling options may come later as an extra. (How the
   field-based effect data maps onto progressive frames: see 5.10.)
-* Effects follow each effect's own speed settings (most default to 29.97 fps; see 5.3).
+* Effects follow each effect's own speed settings (most animated effects default to Fast, 59.94 fps; some to Medium, 29.97 fps; see 5.3).
 * **Clean video**: no simulation of NTSC/composite artefacts or of the analog signal
   path (that would be a separate project). Effects themselves are reproduced faithfully.
 * **Audio passes through**: input audio goes to Program and recordings, mixed properly
@@ -122,7 +122,7 @@ the default.
 | 0x80000022 | effect mode: 4/5 soft matte, 7 colour roles, 0/2 DVE |
 | 0x80000023 | background colour 1 Black 2 White 3 Red 4 Green 5 Blue 6 Yellow 7 Magenta 8 Cyan 9 Snow; negative → use 0x80000024 |
 | 0x80000024 | custom background colour (12-bit) |
-| 0x80000055 | default speed button (ANIM default 1 = Medium) |
+| 0x80000055 | default speed button: 0 Medium, 1 Fast, 2 Variable, 3 Slow (table at 0xe660c); ANIM default 1 = Fast, ILBM default 0 = Medium |
 | 0x80000056–59 | Variable/Slow/Medium/Fast for 68020+ machines |
 | 0x8000005a–5d | the same for 68000 machines (vtoast_reborn uses the 68020 set) |
 | CRFX 0x80000080 | 1 Transition mode, 0 Filter mode |
@@ -143,8 +143,8 @@ and 20Off.aa decode identically only with this rule.) Writes past the bitmap are
 Every ANIM delta has reltime 1; the speed comes from tags. For ANIM croutons the
 Slow/Medium/Fast tags are **fields per animation frame** (defaults 3/2/1; 0 = that speed
 button disabled). Duration in video frames = (fields_per_frame × frame_count + 1) / 2
-(`switcher.main` 0xe6548). So Fast = 59.94 fps, Medium = 29.97 fps (the usual default),
-Slow = 19.98 fps. For ILBM/ALGO croutons the same tags are durations in frames
+(`switcher.main` 0xe6548). So Fast = 59.94 fps (the usual ANIM default), Medium = 29.97 fps,
+Slow = 19.98 fps; Variable uses tag 0x56. For ILBM/ALGO croutons the same tags are durations in frames
 (defaults 90/60/30). The T-bar range is 0–511.
 
 ### 5.4 Animated and gradient wipes
@@ -219,7 +219,7 @@ The Toaster's effect data is per field: a 241-line control frame drives one fiel
 * Each output frame uses one effect control frame for both line parities: control line
   *k* drives picture lines 2*k* and 2*k*+1, and the DVE reads source lines in the
   matching parity (2·src and 2·src+1).
-* At Medium speed (two fields per effect frame, the usual default) this equals the
+* At Medium speed (two fields per effect frame; Fast is the usual default) this equals the
   Toaster's two woven fields exactly. At Fast speed the Toaster's two fields came from
   consecutive effect frames; here each effect frame becomes one whole progressive frame.
   This is the only intended departure from the original, and it involves no blending

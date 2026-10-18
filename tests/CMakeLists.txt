@@ -8,6 +8,7 @@ add_executable(vt_tests
     test_crouton.cpp
     test_golden.cpp
     test_ilbm.cpp
+    test_timing.cpp
 )
 target_link_libraries(vt_tests PRIVATE vt_engine catch2_amalgamated)
 target_include_directories(vt_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

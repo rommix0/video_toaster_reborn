@@ -1,467 +1,467 @@
-{"source":"4.2/Effects/2000FX/Animals/Bear-L","frames":64,"speed_default":1,"fields":[0,2,1],"duration":[0,64,32]}
-{"source":"4.2/Effects/2000FX/Animals/Bear-R","frames":64,"speed_default":1,"fields":[0,2,1],"duration":[0,64,32]}
-{"source":"4.2/Effects/2000FX/Animals/Falling Sheep","frames":312,"speed_default":1,"fields":[3,2,1],"duration":[468,312,156]}
-{"source":"4.2/Effects/2000FX/Blinds/Split Corners In","frames":31,"speed_default":1,"fields":[0,0,1],"duration":[0,0,16]}
-{"source":"4.2/Effects/2000FX/Blinds/Split Corners Out","frames":31,"speed_default":1,"fields":[0,0,1],"duration":[0,0,16]}
-{"source":"4.2/Effects/2000FX/Border/Border BR-TL","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Diag In","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Diag In Slide Out","frames":46,"speed_default":1,"fields":[0,2,1],"duration":[0,46,23]}
-{"source":"4.2/Effects/2000FX/Border/Border Diag TL-BR","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Flip In","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Flip In Slide Off LR","frames":48,"speed_default":1,"fields":[0,2,1],"duration":[0,48,24]}
-{"source":"4.2/Effects/2000FX/Border/Border Flip2","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border In Flip L","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border In Rotate LR","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border In Slide LR","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Slide In Diag","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Slide In R","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Slide In R Split Up","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Slide In TL Out L-R","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Spin B-T","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Spin In-Out","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Border/Border Spin TR-TR","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Split Diag","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Split Diag Rotate In","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Split Hor","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Swing BL-TR","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Swing L-R","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Border Swing R-L","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border B To BL","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border B To R","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border B To T","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border R To L","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border R To TL","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border Slide In BR","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border Slide In TR","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Square Border T To B","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe 3Corner Swirl","frames":39,"speed_default":1,"fields":[3,2,1],"duration":[59,39,20]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Angled Border","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Border Diag TR-BL","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Border Diamonds","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Border Squares","frames":36,"speed_default":1,"fields":[3,2,1],"duration":[54,36,18]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Border Swing Left","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Diamond","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Points In","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Ragged Border","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Split Border","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Split Border2","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Split Border3","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Border/Wipe Wave Border","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Digital/Block In","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Block Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Cbars Explode","frames":157,"speed_default":1,"fields":[0,0,1],"duration":[0,0,79]}
-{"source":"4.2/Effects/2000FX/Digital/Cube Out Bottom","frames":91,"speed_default":1,"fields":[0,0,1],"duration":[0,0,46]}
-{"source":"4.2/Effects/2000FX/Digital/Cube Out Top","frames":91,"speed_default":1,"fields":[0,0,1],"duration":[0,0,46]}
-{"source":"4.2/Effects/2000FX/Digital/Diag In","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Diag Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Falling Blocks","frames":46,"speed_default":1,"fields":[3,2,1],"duration":[69,46,23]}
-{"source":"4.2/Effects/2000FX/Digital/Flying Blocks","frames":47,"speed_default":1,"fields":[3,2,1],"duration":[71,47,24]}
-{"source":"4.2/Effects/2000FX/Digital/Flying Puzzle","frames":117,"speed_default":1,"fields":[3,2,1],"duration":[176,117,59]}
-{"source":"4.2/Effects/2000FX/Digital/Peel Fly Away","frames":101,"speed_default":1,"fields":[0,2,1],"duration":[0,101,51]}
-{"source":"4.2/Effects/2000FX/Digital/Screen Falling Down","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Screen Falling Up","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Slats","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/2000FX/Digital/Slats In","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Slats Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Sphere In Left","frames":71,"speed_default":1,"fields":[0,2,1],"duration":[0,71,36]}
-{"source":"4.2/Effects/2000FX/Digital/Sphere In Right","frames":65,"speed_default":1,"fields":[0,2,1],"duration":[0,65,33]}
-{"source":"4.2/Effects/2000FX/Digital/Sphere Out Left","frames":71,"speed_default":1,"fields":[0,2,1],"duration":[0,71,36]}
-{"source":"4.2/Effects/2000FX/Digital/Sphere Out Right","frames":65,"speed_default":1,"fields":[0,2,1],"duration":[0,65,33]}
-{"source":"4.2/Effects/2000FX/Digital/Spheres Join Up","frames":201,"speed_default":1,"fields":[0,0,1],"duration":[0,0,101]}
-{"source":"4.2/Effects/2000FX/Digital/Spin Explode__","frames":211,"speed_default":1,"fields":[0,0,1],"duration":[0,0,106]}
-{"source":"4.2/Effects/2000FX/Digital/TV Shut Off","frames":31,"speed_default":1,"fields":[0,0,1],"duration":[0,0,16]}
-{"source":"4.2/Effects/2000FX/Digital/TetOut","frames":41,"speed_default":1,"fields":[3,2,1],"duration":[62,41,21]}
-{"source":"4.2/Effects/2000FX/Digital/TwoFall","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Grid Hor In","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Grid Hor Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Box In","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Box Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Hor In","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Hor Out","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Ver In","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Ver Out","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Dissolves/Border Fractal_","frames":22,"speed_default":1,"fields":[3,2,1],"duration":[33,22,11]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Angular Puzzle","frames":34,"speed_default":1,"fields":[3,2,1],"duration":[51,34,17]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Crumpled Foil","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Grainy","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade InkWhorl","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Large Weave","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Marble Grain","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Pattern","frames":38,"speed_default":1,"fields":[3,2,1],"duration":[57,38,19]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Ovals","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Random Blocks","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Weave","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Wavy","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/Dissolves/Fade Wood Grain","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/Dissolves/Soft Fractal","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Organic/Cloud Tunnel In","frames":85,"speed_default":1,"fields":[3,2,1],"duration":[128,85,43]}
-{"source":"4.2/Effects/2000FX/Organic/Cloud Tunnel Out","frames":86,"speed_default":1,"fields":[3,2,1],"duration":[129,86,43]}
-{"source":"4.2/Effects/2000FX/Organic/Clouds","frames":95,"speed_default":1,"fields":[3,2,1],"duration":[143,95,48]}
-{"source":"4.2/Effects/2000FX/Organic/Flare Center","frames":29,"speed_default":1,"fields":[3,2,1],"duration":[44,29,15]}
-{"source":"4.2/Effects/2000FX/Organic/Flare Corners","frames":37,"speed_default":1,"fields":[3,2,1],"duration":[56,37,19]}
-{"source":"4.2/Effects/2000FX/Organic/Forked Lightning","frames":25,"speed_default":1,"fields":[3,2,1],"duration":[38,25,13]}
-{"source":"4.2/Effects/2000FX/Organic/Jagged Lightning","frames":20,"speed_default":1,"fields":[0,2,1],"duration":[0,20,10]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Burble","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Burble 2","frames":30,"speed_default":1,"fields":[0,6,5],"duration":[0,90,75]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Drip","frames":105,"speed_default":1,"fields":[3,2,1],"duration":[158,105,53]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Fire","frames":41,"speed_default":1,"fields":[3,2,1],"duration":[62,41,21]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Pour","frames":90,"speed_default":1,"fields":[3,2,1],"duration":[135,90,45]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Smoke Down","frames":161,"speed_default":1,"fields":[3,2,1],"duration":[242,161,81]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Smoke Up","frames":160,"speed_default":1,"fields":[3,2,1],"duration":[240,160,80]}
-{"source":"4.2/Effects/2000FX/Organic/Organic SprayPaint","frames":64,"speed_default":1,"fields":[3,2,1],"duration":[96,64,32]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Van Gogh","frames":35,"speed_default":1,"fields":[3,2,1],"duration":[53,35,18]}
-{"source":"4.2/Effects/2000FX/Organic/Organic Wiper","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/Organic/Shatter","frames":63,"speed_default":1,"fields":[3,2,1],"duration":[95,63,32]}
-{"source":"4.2/Effects/2000FX/OverLays/DropOuts","frames":244,"speed_default":0,"fields":[3,2,1],"duration":[366,244,122]}
-{"source":"4.2/Effects/2000FX/OverLays/Glitch Bottom Skew","frames":63,"speed_default":1,"fields":[3,2,1],"duration":[95,63,32]}
-{"source":"4.2/Effects/2000FX/OverLays/Glitch RasterShift","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/2000FX/OverLays/Glitch Roll Screen","frames":46,"speed_default":0,"fields":[3,2,1],"duration":[69,46,23]}
-{"source":"4.2/Effects/2000FX/OverLays/Old Film Matte","frames":242,"speed_default":1,"fields":[3,2,1],"duration":[363,242,121]}
-{"source":"4.2/Effects/2000FX/OverLays/Snowfall Loop","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/2000FX/OverLays/Starfield Loop","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/2000FX/OverLays/ViewFinder","frames":6,"speed_default":1,"fields":[40,30,20],"duration":[120,90,60]}
-{"source":"4.2/Effects/2000FX/PagePeel/Page Peel","frames":54,"speed_default":1,"fields":[0,2,1],"duration":[0,54,27]}
-{"source":"4.2/Effects/2000FX/PagePeel/Page Peel BL-TR","frames":54,"speed_default":1,"fields":[0,2,1],"duration":[0,54,27]}
-{"source":"4.2/Effects/2000FX/PagePeel/Page Peel BR-TL","frames":54,"speed_default":1,"fields":[0,2,1],"duration":[0,54,27]}
-{"source":"4.2/Effects/2000FX/PagePeel/Page Peel TL-BR","frames":54,"speed_default":1,"fields":[0,2,1],"duration":[0,54,27]}
-{"source":"4.2/Effects/2000FX/PagePeel/Page Tear","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/2000FX/People/Chicks With Guns","frames":140,"speed_default":1,"fields":[0,2,1],"duration":[0,140,70]}
-{"source":"4.2/Effects/2000FX/People/Dance Party-L","frames":314,"speed_default":1,"fields":[0,2,1],"duration":[0,314,157]}
-{"source":"4.2/Effects/2000FX/People/Dance Party-R","frames":314,"speed_default":1,"fields":[0,2,1],"duration":[0,314,157]}
-{"source":"4.2/Effects/2000FX/People/HandGun L-R","frames":224,"speed_default":1,"fields":[0,2,1],"duration":[0,224,112]}
-{"source":"4.2/Effects/2000FX/People/HandGun R-L","frames":224,"speed_default":1,"fields":[0,2,1],"duration":[0,224,112]}
-{"source":"4.2/Effects/2000FX/People/KiKi Twirl","frames":187,"speed_default":1,"fields":[0,2,1],"duration":[0,187,94]}
-{"source":"4.2/Effects/2000FX/People/KiKi Twirl-L","frames":187,"speed_default":1,"fields":[0,2,1],"duration":[0,187,94]}
-{"source":"4.2/Effects/2000FX/People/Kiki Legs","frames":109,"speed_default":1,"fields":[0,2,1],"duration":[0,109,55]}
-{"source":"4.2/Effects/2000FX/People/Kiki Legs-R","frames":109,"speed_default":1,"fields":[0,2,1],"duration":[0,109,55]}
-{"source":"4.2/Effects/2000FX/People/Kiki Peep","frames":117,"speed_default":0,"fields":[3,2,2],"duration":[176,117,117]}
-{"source":"4.2/Effects/2000FX/People/Kiki Wave","frames":105,"speed_default":1,"fields":[0,2,1],"duration":[0,105,53]}
-{"source":"4.2/Effects/2000FX/People/Ms.Peel-L","frames":91,"speed_default":0,"fields":[3,2,1],"duration":[137,91,46]}
-{"source":"4.2/Effects/2000FX/People/Ms.Peel-R","frames":91,"speed_default":0,"fields":[3,2,1],"duration":[137,91,46]}
-{"source":"4.2/Effects/2000FX/People/Toddler-L","frames":84,"speed_default":1,"fields":[0,2,1],"duration":[0,84,42]}
-{"source":"4.2/Effects/2000FX/People/Toddler-R","frames":84,"speed_default":1,"fields":[0,2,1],"duration":[0,84,42]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow","frames":30,"speed_default":1,"fields":[0,0,1],"duration":[0,0,15]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow BL-TR","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow BR-TL","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow Down","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow Left","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow Right","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow TL-BR","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow TR-BL","frames":61,"speed_default":1,"fields":[0,2,1],"duration":[0,61,31]}
-{"source":"4.2/Effects/2000FX/Shapes/Arrow Up","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Star Down","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Star L-R","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Star R-L","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Shapes/Star Up","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft B-T","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft BL-TR","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft BR-TL","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Circle In","frames":59,"speed_default":1,"fields":[3,2,1],"duration":[89,59,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Circle Out","frames":59,"speed_default":1,"fields":[3,2,1],"duration":[89,59,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft L-R","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft R-L","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split In H","frames":33,"speed_default":1,"fields":[3,2,1],"duration":[50,33,17]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split In V","frames":59,"speed_default":1,"fields":[3,2,1],"duration":[89,59,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split Out H","frames":33,"speed_default":1,"fields":[3,2,1],"duration":[50,33,17]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split Out V","frames":59,"speed_default":1,"fields":[3,2,1],"duration":[89,59,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft T-B","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft TL-BR","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft TR-BL","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Wavy L-R","frames":55,"speed_default":1,"fields":[3,2,1],"duration":[83,55,28]}
-{"source":"4.2/Effects/2000FX/Special/Camera Iris","frames":42,"speed_default":1,"fields":[3,2,1],"duration":[63,42,21]}
-{"source":"4.2/Effects/2000FX/Special/Clapboard Matte","frames":71,"speed_default":1,"fields":[3,2,1],"duration":[107,71,36]}
-{"source":"4.2/Effects/2000FX/Special/Count Down","frames":182,"speed_default":1,"fields":[3,2,1],"duration":[273,182,91]}
-{"source":"4.2/Effects/2000FX/Special/Curtain Matte","frames":95,"speed_default":1,"fields":[3,2,1],"duration":[143,95,48]}
-{"source":"4.2/Effects/2000FX/Special/FingerWalk","frames":152,"speed_default":1,"fields":[0,2,1],"duration":[0,152,76]}
-{"source":"4.2/Effects/2000FX/Special/Flying Ace Matte","frames":47,"speed_default":1,"fields":[0,2,1],"duration":[0,47,24]}
-{"source":"4.2/Effects/2000FX/Special/Flying Notes","frames":61,"speed_default":1,"fields":[3,2,1],"duration":[92,61,31]}
-{"source":"4.2/Effects/2000FX/Special/Gears Up Matte","frames":90,"speed_default":1,"fields":[0,2,1],"duration":[0,90,45]}
-{"source":"4.2/Effects/2000FX/Special/HandShadow L-R","frames":116,"speed_default":1,"fields":[0,2,1],"duration":[0,116,58]}
-{"source":"4.2/Effects/2000FX/Special/HandShadow R-L","frames":116,"speed_default":1,"fields":[0,2,1],"duration":[0,116,58]}
-{"source":"4.2/Effects/2000FX/Special/No Parking","frames":119,"speed_default":1,"fields":[3,2,1],"duration":[179,119,60]}
-{"source":"4.2/Effects/2000FX/Special/Paint Brush Across","frames":120,"speed_default":1,"fields":[3,2,1],"duration":[180,120,60]}
-{"source":"4.2/Effects/2000FX/Special/PaintRoller","frames":159,"speed_default":0,"fields":[3,2,1],"duration":[239,159,80]}
-{"source":"4.2/Effects/2000FX/Special/Phone","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/2000FX/Special/SkyLine","frames":91,"speed_default":1,"fields":[3,2,1],"duration":[137,91,46]}
-{"source":"4.2/Effects/2000FX/Sports/Aerobics-L","frames":223,"speed_default":1,"fields":[0,2,1],"duration":[0,223,112]}
-{"source":"4.2/Effects/2000FX/Sports/Aerobics-R","frames":223,"speed_default":1,"fields":[0,2,1],"duration":[0,223,112]}
-{"source":"4.2/Effects/2000FX/Sports/BasketBall Pass","frames":107,"speed_default":1,"fields":[3,2,1],"duration":[161,107,54]}
-{"source":"4.2/Effects/2000FX/Sports/BlindSide","frames":95,"speed_default":0,"fields":[3,2,1],"duration":[143,95,48]}
-{"source":"4.2/Effects/2000FX/Sports/BlindSide-R","frames":95,"speed_default":0,"fields":[3,2,1],"duration":[143,95,48]}
-{"source":"4.2/Effects/2000FX/Sports/Fat Slob","frames":124,"speed_default":0,"fields":[3,2,1],"duration":[186,124,62]}
-{"source":"4.2/Effects/2000FX/Sports/Fat Slob-R","frames":124,"speed_default":0,"fields":[3,2,1],"duration":[186,124,62]}
-{"source":"4.2/Effects/2000FX/Sports/FootBall Smash","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/2000FX/Sports/Golf Swing","frames":144,"speed_default":1,"fields":[0,2,1],"duration":[0,144,72]}
-{"source":"4.2/Effects/2000FX/Sports/Golf Swing-l","frames":144,"speed_default":1,"fields":[0,2,1],"duration":[0,144,72]}
-{"source":"4.2/Effects/2000FX/Sports/Jogging L-R","frames":43,"speed_default":1,"fields":[0,2,1],"duration":[0,43,22]}
-{"source":"4.2/Effects/2000FX/Sports/Jogging R-L","frames":43,"speed_default":1,"fields":[0,2,1],"duration":[0,43,22]}
-{"source":"4.2/Effects/2000FX/Sports/Kiki CartWheel","frames":119,"speed_default":1,"fields":[0,2,1],"duration":[0,119,60]}
-{"source":"4.2/Effects/2000FX/Sports/Kiki CartWheel-R","frames":119,"speed_default":1,"fields":[0,2,1],"duration":[0,119,60]}
-{"source":"4.2/Effects/2000FX/Sports/Mr.Clean","frames":113,"speed_default":1,"fields":[0,2,1],"duration":[0,113,57]}
-{"source":"4.2/Effects/2000FX/Sports/Pitcher","frames":123,"speed_default":1,"fields":[3,2,1],"duration":[185,123,62]}
-{"source":"4.2/Effects/2000FX/Sports/QuarterBack Pass","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/2000FX/Sports/QuarterBack Pass-R","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/2000FX/Sports/Tennis Serve","frames":110,"speed_default":1,"fields":[3,2,1],"duration":[165,110,55]}
-{"source":"4.2/Effects/2000FX/Sports/Tennis Serve-R","frames":110,"speed_default":1,"fields":[3,2,1],"duration":[165,110,55]}
-{"source":"4.2/Effects/2000FX/Sports/WeightLifter","frames":216,"speed_default":1,"fields":[3,2,1],"duration":[324,216,108]}
-{"source":"4.2/Effects/2000FX/Trajectory/Flip In Bottom","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/2000FX/Trajectory/Flip In Top","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/2000FX/Trajectory/Flip Out Bottom","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/2000FX/Trajectory/Flip Out Top","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly In Bottom","frames":50,"speed_default":1,"fields":[0,0,1],"duration":[0,0,25]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly In Left","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly In Right","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly In Top Left","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly In Top Right","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Bottom","frames":50,"speed_default":1,"fields":[0,0,1],"duration":[0,0,25]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Left","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Right","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top Left","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top Right","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/2000FX/Trajectory/Screech","frames":97,"speed_default":1,"fields":[3,2,1],"duration":[146,97,49]}
-{"source":"4.2/Effects/2000FX/Trajectory/Snap Off R","frames":75,"speed_default":1,"fields":[3,2,1],"duration":[113,75,38]}
-{"source":"4.2/Effects/2000FX/Weddings/Dance Across","frames":254,"speed_default":1,"fields":[0,2,1],"duration":[0,254,127]}
-{"source":"4.2/Effects/2000FX/Weddings/Dance Across-L","frames":254,"speed_default":1,"fields":[0,2,1],"duration":[0,254,127]}
-{"source":"4.2/Effects/2000FX/Weddings/Wipe Heart Soft In","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Weddings/Wipe Heart Soft Out","frames":32,"speed_default":1,"fields":[3,2,1],"duration":[48,32,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Nova Ring","frames":82,"speed_default":1,"fields":[3,2,1],"duration":[123,82,41]}
-{"source":"4.2/Effects/2000FX/Wipes/Seismic Wave","frames":66,"speed_default":1,"fields":[3,2,1],"duration":[99,66,33]}
-{"source":"4.2/Effects/2000FX/Wipes/Sliding Tiles","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Square B To Bl","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Wipes/Square B-T","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Blocks Down","frames":82,"speed_default":1,"fields":[3,2,1],"duration":[123,82,41]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Circle In","frames":28,"speed_default":1,"fields":[3,2,1],"duration":[42,28,14]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Circle Out","frames":28,"speed_default":1,"fields":[3,2,1],"duration":[42,28,14]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Clock","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Diagonal Blinds","frames":47,"speed_default":1,"fields":[3,2,1],"duration":[71,47,24]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Explode","frames":40,"speed_default":1,"fields":[3,2,1],"duration":[60,40,20]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Fly In","frames":64,"speed_default":1,"fields":[3,2,1],"duration":[96,64,32]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Fly Out","frames":64,"speed_default":1,"fields":[3,2,1],"duration":[96,64,32]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Implode","frames":40,"speed_default":1,"fields":[3,2,1],"duration":[60,40,20]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Large Random Blocks","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Matte Slats","frames":32,"speed_default":1,"fields":[3,2,1],"duration":[48,32,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Nautilus","frames":84,"speed_default":1,"fields":[3,2,1],"duration":[126,84,42]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Plasma","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Ragged Fold In","frames":57,"speed_default":1,"fields":[3,2,1],"duration":[86,57,29]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Ragged Fold Out","frames":57,"speed_default":1,"fields":[3,2,1],"duration":[86,57,29]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Raster","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Scanner","frames":56,"speed_default":1,"fields":[3,2,1],"duration":[84,56,28]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Slabs Fall","frames":69,"speed_default":1,"fields":[3,2,1],"duration":[104,69,35]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Slabs Shuffle","frames":66,"speed_default":1,"fields":[3,2,1],"duration":[99,66,33]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Slicer","frames":48,"speed_default":1,"fields":[3,2,1],"duration":[72,48,24]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Spiral","frames":32,"speed_default":1,"fields":[3,2,1],"duration":[48,32,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Squares","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Star Spin In","frames":61,"speed_default":1,"fields":[3,2,1],"duration":[92,61,31]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Star Spin Out","frames":61,"speed_default":1,"fields":[3,2,1],"duration":[92,61,31]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Swirl","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Veg-O-Matic","frames":48,"speed_default":1,"fields":[3,2,1],"duration":[72,48,24]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Vertical Slats","frames":30,"speed_default":1,"fields":[3,2,1],"duration":[45,30,15]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe Wedge Blinds","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/2000FX/Wipes/Wipe ZigZag Blinds","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/4000FX/Animals/GiraffeL-R !","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/4000FX/Animals/GiraffeR-L !","frames":120,"speed_default":1,"fields":[0,2,1],"duration":[0,120,60]}
-{"source":"4.2/Effects/4000FX/Border/Bar Crome Balls BR-TL !","frames":1,"speed_default":2,"fields":[],"duration":[180,100,70]}
-{"source":"4.2/Effects/4000FX/Border/Bar Glass BL-TR !","frames":77,"speed_default":1,"fields":[3,2,1],"duration":[116,77,39]}
-{"source":"4.2/Effects/4000FX/Border/Bar Glass BR-TL !","frames":77,"speed_default":1,"fields":[3,2,1],"duration":[116,77,39]}
-{"source":"4.2/Effects/4000FX/Border/Bar Glass TL-BR !","frames":77,"speed_default":1,"fields":[3,2,1],"duration":[116,77,39]}
-{"source":"4.2/Effects/4000FX/Border/Bar Glass TR-BL !","frames":77,"speed_default":1,"fields":[3,2,1],"duration":[116,77,39]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Bevel BR-TL","frames":1,"speed_default":2,"fields":[],"duration":[180,100,70]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Thin B-T !","frames":1,"speed_default":2,"fields":[],"duration":[180,100,70]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide BL-TR !","frames":59,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide BR-TL !","frames":59,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide TL-BR !","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide TR-BL !","frames":59,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Rusted L-R !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Rusted R-L !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Sword BR-TL !","frames":1,"speed_default":2,"fields":[],"duration":[180,100,70]}
-{"source":"4.2/Effects/4000FX/Border/Bar White Marble B-T !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar White Marble T-B !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Blue Chrome L-R !","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Blue Chrome R-L !","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Jade L-R !","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Jade R-L !","frames":51,"speed_default":1,"fields":[0,0,1],"duration":[0,0,26]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Steel Bolts L-R !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Bar Wide Steel Bolts R-L !","frames":60,"speed_default":1,"fields":[0,0,1],"duration":[0,0,30]}
-{"source":"4.2/Effects/4000FX/Border/Wipe 3Corner Swirl !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border 2Corner Swirl !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border BL-TR !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border BR-TL !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Center !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Center Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle In Top !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamond !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamond In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamonds !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border L-R !","frames":1,"speed_default":2,"fields":[],"duration":[102,51,25]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border R-L !","frames":1,"speed_default":2,"fields":[],"duration":[102,51,25]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border T-B !","frames":1,"speed_default":2,"fields":[],"duration":[128,64,32]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border TL-BR !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border TR-BL !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Border Up !","frames":1,"speed_default":2,"fields":[],"duration":[128,64,32]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Moving Wave !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Border/Wipe Spikes In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Digital/Flip Chrome Edge !","frames":81,"speed_default":1,"fields":[3,2,1],"duration":[122,81,41]}
-{"source":"4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !","frames":81,"speed_default":1,"fields":[0,2,1],"duration":[0,81,41]}
-{"source":"4.2/Effects/4000FX/Digital/Hand Pull !","frames":72,"speed_default":1,"fields":[0,2,1],"duration":[0,72,36]}
-{"source":"4.2/Effects/4000FX/Digital/Warp To Globe !","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Crumpled Foil !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Fan Swirls !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Grainy !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade InkWhorl !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Large Weave !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Marble Grain !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade No !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Pattern !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Rad !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Random Small Blocks !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Recycle !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Small Ovals !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Small Weave !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Trees !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Wavy !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Wood Grain !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Fade Yin-Yang !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Kiki Fade !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Dissolves/Soft Fractal !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Organic/Flare BL-TR !","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/4000FX/Organic/Flare BR-TL !","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/4000FX/Organic/Flare TL-BR !","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/4000FX/Organic/Flare TR-BL !","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/4000FX/Organic/FlareSpin","frames":84,"speed_default":1,"fields":[0,2,2],"duration":[0,84,84]}
-{"source":"4.2/Effects/4000FX/Organic/Sparks !","frames":31,"speed_default":1,"fields":[0,2,2],"duration":[0,31,31]}
-{"source":"4.2/Effects/4000FX/Organic/Sparks Out !","frames":31,"speed_default":1,"fields":[0,2,2],"duration":[0,31,31]}
-{"source":"4.2/Effects/4000FX/Overlays/20 OFF !","frames":91,"speed_default":1,"fields":[0,2,1],"duration":[0,91,46]}
-{"source":"4.2/Effects/4000FX/Overlays/30 OFF !","frames":101,"speed_default":1,"fields":[0,2,1],"duration":[0,101,51]}
-{"source":"4.2/Effects/4000FX/Overlays/40 OFF !","frames":121,"speed_default":1,"fields":[0,2,1],"duration":[0,121,61]}
-{"source":"4.2/Effects/4000FX/Overlays/Atom !","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/4000FX/Overlays/Binoculars !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Overlays/Chase Lights !","frames":24,"speed_default":0,"fields":[3,2,1],"duration":[36,24,12]}
-{"source":"4.2/Effects/4000FX/Overlays/Checkers !","frames":34,"speed_default":1,"fields":[3,2,1],"duration":[51,34,17]}
-{"source":"4.2/Effects/4000FX/Overlays/Columns !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Crystal Bars !","frames":66,"speed_default":1,"fields":[3,2,1],"duration":[99,66,33]}
-{"source":"4.2/Effects/4000FX/Overlays/Fireworks !","frames":231,"speed_default":1,"fields":[0,0,1],"duration":[0,0,116]}
-{"source":"4.2/Effects/4000FX/Overlays/Funky !","frames":12,"speed_default":1,"fields":[20,15,10],"duration":[120,90,60]}
-{"source":"4.2/Effects/4000FX/Overlays/Gold Frame Jiggle !","frames":6,"speed_default":0,"fields":[3,2,1],"duration":[9,6,3]}
-{"source":"4.2/Effects/4000FX/Overlays/Jiggly Edge !","frames":64,"speed_default":0,"fields":[3,2,1],"duration":[96,64,32]}
-{"source":"4.2/Effects/4000FX/Overlays/Kinescope !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Leaves Vignette !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Next Ball !","frames":62,"speed_default":1,"fields":[3,2,1],"duration":[93,62,31]}
-{"source":"4.2/Effects/4000FX/Overlays/Old Film Color !","frames":244,"speed_default":1,"fields":[3,2,1],"duration":[366,244,122]}
-{"source":"4.2/Effects/4000FX/Overlays/Ornate Gold Frame !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/SAVE Spin In !","frames":75,"speed_default":1,"fields":[3,2,1],"duration":[113,75,38]}
-{"source":"4.2/Effects/4000FX/Overlays/Sale Fly In !","frames":101,"speed_default":1,"fields":[3,2,1],"duration":[152,101,51]}
-{"source":"4.2/Effects/4000FX/Overlays/Sketching !","frames":22,"speed_default":0,"fields":[5,4,3],"duration":[55,44,33]}
-{"source":"4.2/Effects/4000FX/Overlays/Snow","frames":46,"speed_default":1,"fields":[0,2,2],"duration":[0,46,46]}
-{"source":"4.2/Effects/4000FX/Overlays/Space View Screen !","frames":42,"speed_default":0,"fields":[3,2,1],"duration":[63,42,21]}
-{"source":"4.2/Effects/4000FX/Overlays/Spinning Globe Loop !","frames":122,"speed_default":1,"fields":[0,0,1],"duration":[0,0,61]}
-{"source":"4.2/Effects/4000FX/Overlays/Split1 !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Split2 !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Split3 !","frames":1,"speed_default":1,"fields":[],"duration":[0,0,1]}
-{"source":"4.2/Effects/4000FX/Overlays/Tonight Bar !","frames":28,"speed_default":1,"fields":[0,2,1],"duration":[0,28,14]}
-{"source":"4.2/Effects/4000FX/Overlays/Wedding Bells !","frames":122,"speed_default":1,"fields":[0,0,1],"duration":[0,0,61]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Peel !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Peel BL-TR !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Peel BR-TL !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Peel TL-BR !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Tear !","frames":65,"speed_default":1,"fields":[0,2,1],"duration":[0,65,33]}
-{"source":"4.2/Effects/4000FX/PagePeel/Page Tear Blank !","frames":61,"speed_default":1,"fields":[3,2,1],"duration":[92,61,31]}
-{"source":"4.2/Effects/4000FX/People/Kikibell !","frames":139,"speed_default":1,"fields":[0,0,1],"duration":[0,0,70]}
-{"source":"4.2/Effects/4000FX/People/Running Man L-R !","frames":41,"speed_default":1,"fields":[0,0,1],"duration":[0,0,21]}
-{"source":"4.2/Effects/4000FX/People/Running Man R-L !","frames":41,"speed_default":1,"fields":[0,0,1],"duration":[0,0,21]}
-{"source":"4.2/Effects/4000FX/Shapes/Star Up","frames":60,"speed_default":1,"fields":[0,2,1],"duration":[0,60,30]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Fade Sex !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Star Wipe !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Curved Star Out !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft B-T !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft BL-TR !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft BR-TL !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Circle In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Circle Out!","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Flower Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft L-R !","frames":1,"speed_default":2,"fields":[],"duration":[102,51,25]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Oval In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Oval Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft R-L !","frames":1,"speed_default":2,"fields":[],"duration":[102,51,25]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Ring In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Ring Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Scallop In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split In H !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split In V !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split Out H !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split Out V !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Star Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft T-B !","frames":1,"speed_default":2,"fields":[],"duration":[128,64,32]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft TL-BR !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft TR-BL !","frames":1,"speed_default":2,"fields":[],"duration":[108,54,27]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Twist In !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Twist Out !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Space/Infinite Video Space !","frames":150,"speed_default":0,"fields":[0,2,1],"duration":[0,150,75]}
-{"source":"4.2/Effects/4000FX/Space/Space Fighter !","frames":101,"speed_default":1,"fields":[3,2,1],"duration":[152,101,51]}
-{"source":"4.2/Effects/4000FX/Space/Warp Drive !","frames":160,"speed_default":1,"fields":[3,2,1],"duration":[240,160,80]}
-{"source":"4.2/Effects/4000FX/Special/50 Off !","frames":91,"speed_default":1,"fields":[0,2,1],"duration":[0,91,46]}
-{"source":"4.2/Effects/4000FX/Special/Blendo !","frames":88,"speed_default":0,"fields":[3,2,1],"duration":[132,88,44]}
-{"source":"4.2/Effects/4000FX/Special/Channel Change Noise !","frames":14,"speed_default":1,"fields":[3,2,1],"duration":[21,14,7]}
-{"source":"4.2/Effects/4000FX/Special/Clapboard Color !","frames":37,"speed_default":1,"fields":[3,2,1],"duration":[56,37,19]}
-{"source":"4.2/Effects/4000FX/Special/Dollars Fall !","frames":70,"speed_default":0,"fields":[3,2,1],"duration":[105,70,35]}
-{"source":"4.2/Effects/4000FX/Special/Ferrari L-R !","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/4000FX/Special/Ferrari R-L !","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/4000FX/Special/Floppy Disk L-R !","frames":45,"speed_default":1,"fields":[3,2,1],"duration":[68,45,23]}
-{"source":"4.2/Effects/4000FX/Special/Floppy Disk R-L !","frames":45,"speed_default":1,"fields":[3,2,1],"duration":[68,45,23]}
-{"source":"4.2/Effects/4000FX/Special/Flying Ace Color !","frames":92,"speed_default":1,"fields":[0,2,1],"duration":[0,92,46]}
-{"source":"4.2/Effects/4000FX/Special/Gears Down Color !","frames":90,"speed_default":1,"fields":[3,2,1],"duration":[135,90,45]}
-{"source":"4.2/Effects/4000FX/Special/Gears Up Color !","frames":91,"speed_default":1,"fields":[3,2,1],"duration":[137,91,46]}
-{"source":"4.2/Effects/4000FX/Special/Heli Fly L-R !","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/4000FX/Special/Heli Fly R-L !","frames":61,"speed_default":1,"fields":[0,0,1],"duration":[0,0,31]}
-{"source":"4.2/Effects/4000FX/Special/One Way !","frames":72,"speed_default":1,"fields":[3,2,1],"duration":[108,72,36]}
-{"source":"4.2/Effects/4000FX/Special/Stars Flying In !","frames":109,"speed_default":1,"fields":[0,2,1],"duration":[0,109,55]}
-{"source":"4.2/Effects/4000FX/Special/SuperHero !","frames":40,"speed_default":1,"fields":[3,2,1],"duration":[60,40,20]}
-{"source":"4.2/Effects/4000FX/Special/Sword Swing !","frames":65,"speed_default":1,"fields":[3,2,1],"duration":[98,65,33]}
-{"source":"4.2/Effects/4000FX/Special/Sword Swing 2 !","frames":65,"speed_default":1,"fields":[3,2,1],"duration":[98,65,33]}
-{"source":"4.2/Effects/4000FX/Special/US Flag Wave L-R !","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/4000FX/Special/US Flag Wave R-L !","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/4000FX/Special/Watch L-R !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Special/Watch R-L !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Special/Wow !","frames":87,"speed_default":1,"fields":[3,2,1],"duration":[131,87,44]}
-{"source":"4.2/Effects/4000FX/Sports/BaseBall !","frames":35,"speed_default":1,"fields":[3,2,1],"duration":[53,35,18]}
-{"source":"4.2/Effects/4000FX/Sports/Bat Roll T-B !","frames":60,"speed_default":1,"fields":[3,2,1],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Sports/Checker Flag !","frames":54,"speed_default":1,"fields":[3,2,1],"duration":[81,54,27]}
-{"source":"4.2/Effects/4000FX/Sports/Whistle !","frames":90,"speed_default":1,"fields":[0,2,1],"duration":[0,90,45]}
-{"source":"4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !","frames":61,"speed_default":1,"fields":[3,2,1],"duration":[92,61,31]}
-{"source":"4.2/Effects/4000FX/Trajectory/Photo Fly Out !","frames":57,"speed_default":1,"fields":[3,2,1],"duration":[86,57,29]}
-{"source":"4.2/Effects/4000FX/Weddings/Wedding Book In !","frames":135,"speed_default":1,"fields":[3,2,1],"duration":[203,135,68]}
-{"source":"4.2/Effects/4000FX/Weddings/Wedding Book Out !","frames":135,"speed_default":1,"fields":[3,2,1],"duration":[203,135,68]}
-{"source":"4.2/Effects/4000FX/Weddings/Wipe Heart Soft In","frames":31,"speed_default":1,"fields":[3,2,1],"duration":[47,31,16]}
-{"source":"4.2/Effects/4000FX/Wipes/Jagged Spin !","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Blocks Down !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Blocks Right !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Circle In TR !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Clock Var !","frames":1,"speed_default":2,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Large Random Blocks !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Plasma !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Plasma Border !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Soft Tie !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Spiral !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Teeth !","frames":1,"speed_default":2,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Triangles !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Twisting B&W Band !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Twisting Neon Band !","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"4.2/Effects/4000FX/Wipes/Wipe Vertical Slats !","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"4.2/3rdparty/vgem/effects/VGems_FX4K/Spiral","frames":1,"speed_default":2,"fields":[],"duration":[80,40,20]}
-{"source":"3.1/Toaster4k/effects/20Off.aa","frames":91,"speed_default":1,"fields":[3,2,1],"duration":[137,91,46]}
-{"source":"3.1/Toaster4k/effects/CircleOut.aa","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/Toaster4k/effects/HSplit.aa","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/Toaster4k/effects/HSplitIn.aa","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/Toaster4k/effects/VSplit.aa","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/Toaster4k/effects/VSplitIn.aa","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/Toaster2k/effects/PeelWhtBkg.3.0","frames":56,"speed_default":1,"fields":[3,2,1],"duration":[84,56,28]}
-{"source":"3.1/Toaster2k/effects/Plasma_A.3.0","frames":1,"speed_default":1,"fields":[],"duration":[90,60,30]}
-{"source":"3.1/ToasterAll/EFFECTS/BrimStone","frames":67,"speed_default":1,"fields":[3,2,1],"duration":[101,67,34]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyIn","frames":66,"speed_default":1,"fields":[3,2,1],"duration":[99,66,33]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyInTop","frames":51,"speed_default":1,"fields":[3,2,1],"duration":[77,51,26]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyOut","frames":66,"speed_default":1,"fields":[3,2,1],"duration":[99,66,33]}
-{"source":"3.1/ToasterAll/EFFECTS/MatteSine","frames":49,"speed_default":1,"fields":[3,2,1],"duration":[74,49,25]}
-{"source":"3.1/ToasterAll/EFFECTS/SpinExplode","frames":211,"speed_default":1,"fields":[3,2,1],"duration":[317,211,106]}
-{"source":"3.1/ToasterAll/EFFECTS/Tennis","frames":32,"speed_default":1,"fields":[3,2,1],"duration":[48,32,16]}
+{"source":"4.2/Effects/2000FX/Animals/Bear-L","frames":64,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,64,32,0]}
+{"source":"4.2/Effects/2000FX/Animals/Bear-R","frames":64,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,64,32,0]}
+{"source":"4.2/Effects/2000FX/Animals/Falling Sheep","frames":312,"speed_default":"fast","fields":[3,2,1,0],"duration":[468,312,156,0]}
+{"source":"4.2/Effects/2000FX/Blinds/Split Corners In","frames":31,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,16,0]}
+{"source":"4.2/Effects/2000FX/Blinds/Split Corners Out","frames":31,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,16,0]}
+{"source":"4.2/Effects/2000FX/Border/Border BR-TL","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Diag In","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Diag In Slide Out","frames":46,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,46,23,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Diag TL-BR","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Flip In","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Flip In Slide Off LR","frames":48,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,48,24,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Flip2","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border In Flip L","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border In Rotate LR","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border In Slide LR","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Slide In Diag","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Slide In R","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Slide In R Split Up","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Slide In TL Out L-R","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Spin B-T","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Spin In-Out","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Spin TR-TR","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Split Diag","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Split Diag Rotate In","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Split Hor","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Swing BL-TR","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Swing L-R","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Border Swing R-L","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border B To BL","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border B To R","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border B To T","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border R To L","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border R To TL","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border Slide In BR","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border Slide In TR","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Square Border T To B","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe 3Corner Swirl","frames":39,"speed_default":"fast","fields":[3,2,1,0],"duration":[59,39,20,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Angled Border","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Border Diag TR-BL","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Border Diamonds","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Border Squares","frames":36,"speed_default":"fast","fields":[3,2,1,0],"duration":[54,36,18,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Border Swing Left","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Diamond","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Points In","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Ragged Border","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Split Border","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Split Border2","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Split Border3","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Border/Wipe Wave Border","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Digital/Block In","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Block Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Cbars Explode","frames":157,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,79,0]}
+{"source":"4.2/Effects/2000FX/Digital/Cube Out Bottom","frames":91,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,46,0]}
+{"source":"4.2/Effects/2000FX/Digital/Cube Out Top","frames":91,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,46,0]}
+{"source":"4.2/Effects/2000FX/Digital/Diag In","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Diag Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Falling Blocks","frames":46,"speed_default":"fast","fields":[3,2,1,0],"duration":[69,46,23,0]}
+{"source":"4.2/Effects/2000FX/Digital/Flying Blocks","frames":47,"speed_default":"fast","fields":[3,2,1,0],"duration":[71,47,24,0]}
+{"source":"4.2/Effects/2000FX/Digital/Flying Puzzle","frames":117,"speed_default":"fast","fields":[3,2,1,0],"duration":[176,117,59,0]}
+{"source":"4.2/Effects/2000FX/Digital/Peel Fly Away","frames":101,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,101,51,0]}
+{"source":"4.2/Effects/2000FX/Digital/Screen Falling Down","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Screen Falling Up","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Slats","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/2000FX/Digital/Slats In","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Slats Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Sphere In Left","frames":71,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,71,36,0]}
+{"source":"4.2/Effects/2000FX/Digital/Sphere In Right","frames":65,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,65,33,0]}
+{"source":"4.2/Effects/2000FX/Digital/Sphere Out Left","frames":71,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,71,36,0]}
+{"source":"4.2/Effects/2000FX/Digital/Sphere Out Right","frames":65,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,65,33,0]}
+{"source":"4.2/Effects/2000FX/Digital/Spheres Join Up","frames":201,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,101,0]}
+{"source":"4.2/Effects/2000FX/Digital/Spin Explode__","frames":211,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,106,0]}
+{"source":"4.2/Effects/2000FX/Digital/TV Shut Off","frames":31,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/TetOut","frames":41,"speed_default":"fast","fields":[3,2,1,0],"duration":[62,41,21,0]}
+{"source":"4.2/Effects/2000FX/Digital/TwoFall","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Grid Hor In","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Grid Hor Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Box In","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Box Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Hor In","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Hor Out","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Ver In","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Digital/Wipe Raster Ver Out","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Dissolves/Border Fractal_","frames":22,"speed_default":"fast","fields":[3,2,1,0],"duration":[33,22,11,0]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Angular Puzzle","frames":34,"speed_default":"fast","fields":[3,2,1,0],"duration":[51,34,17,0]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Crumpled Foil","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Grainy","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade InkWhorl","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Large Weave","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Marble Grain","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Pattern","frames":38,"speed_default":"fast","fields":[3,2,1,0],"duration":[57,38,19,0]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Ovals","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Random Blocks","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Small Weave","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Wavy","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/2000FX/Dissolves/Fade Wood Grain","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/2000FX/Dissolves/Soft Fractal","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Organic/Cloud Tunnel In","frames":85,"speed_default":"fast","fields":[3,2,1,0],"duration":[128,85,43,0]}
+{"source":"4.2/Effects/2000FX/Organic/Cloud Tunnel Out","frames":86,"speed_default":"fast","fields":[3,2,1,0],"duration":[129,86,43,0]}
+{"source":"4.2/Effects/2000FX/Organic/Clouds","frames":95,"speed_default":"fast","fields":[3,2,1,0],"duration":[143,95,48,0]}
+{"source":"4.2/Effects/2000FX/Organic/Flare Center","frames":29,"speed_default":"fast","fields":[3,2,1,0],"duration":[44,29,15,0]}
+{"source":"4.2/Effects/2000FX/Organic/Flare Corners","frames":37,"speed_default":"fast","fields":[3,2,1,0],"duration":[56,37,19,0]}
+{"source":"4.2/Effects/2000FX/Organic/Forked Lightning","frames":25,"speed_default":"fast","fields":[3,2,1,0],"duration":[38,25,13,0]}
+{"source":"4.2/Effects/2000FX/Organic/Jagged Lightning","frames":20,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,20,10,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Burble","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Burble 2","frames":30,"speed_default":"fast","fields":[0,6,5,0],"duration":[0,90,75,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Drip","frames":105,"speed_default":"fast","fields":[3,2,1,0],"duration":[158,105,53,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Fire","frames":41,"speed_default":"fast","fields":[3,2,1,0],"duration":[62,41,21,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Pour","frames":90,"speed_default":"fast","fields":[3,2,1,0],"duration":[135,90,45,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Smoke Down","frames":161,"speed_default":"fast","fields":[3,2,1,0],"duration":[242,161,81,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Smoke Up","frames":160,"speed_default":"fast","fields":[3,2,1,0],"duration":[240,160,80,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic SprayPaint","frames":64,"speed_default":"fast","fields":[3,2,1,0],"duration":[96,64,32,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Van Gogh","frames":35,"speed_default":"fast","fields":[3,2,1,0],"duration":[53,35,18,0]}
+{"source":"4.2/Effects/2000FX/Organic/Organic Wiper","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/Organic/Shatter","frames":63,"speed_default":"fast","fields":[3,2,1,0],"duration":[95,63,32,0]}
+{"source":"4.2/Effects/2000FX/OverLays/DropOuts","frames":244,"speed_default":"medium","fields":[3,2,1,0],"duration":[366,244,122,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Glitch Bottom Skew","frames":63,"speed_default":"fast","fields":[3,2,1,0],"duration":[95,63,32,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Glitch RasterShift","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Glitch Roll Screen","frames":46,"speed_default":"medium","fields":[3,2,1,0],"duration":[69,46,23,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Old Film Matte","frames":242,"speed_default":"fast","fields":[3,2,1,0],"duration":[363,242,121,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Snowfall Loop","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/2000FX/OverLays/Starfield Loop","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/2000FX/OverLays/ViewFinder","frames":6,"speed_default":"fast","fields":[40,30,20,0],"duration":[120,90,60,0]}
+{"source":"4.2/Effects/2000FX/PagePeel/Page Peel","frames":54,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,54,27,0]}
+{"source":"4.2/Effects/2000FX/PagePeel/Page Peel BL-TR","frames":54,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,54,27,0]}
+{"source":"4.2/Effects/2000FX/PagePeel/Page Peel BR-TL","frames":54,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,54,27,0]}
+{"source":"4.2/Effects/2000FX/PagePeel/Page Peel TL-BR","frames":54,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,54,27,0]}
+{"source":"4.2/Effects/2000FX/PagePeel/Page Tear","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/2000FX/People/Chicks With Guns","frames":140,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,140,70,0]}
+{"source":"4.2/Effects/2000FX/People/Dance Party-L","frames":314,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,314,157,0]}
+{"source":"4.2/Effects/2000FX/People/Dance Party-R","frames":314,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,314,157,0]}
+{"source":"4.2/Effects/2000FX/People/HandGun L-R","frames":224,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,224,112,0]}
+{"source":"4.2/Effects/2000FX/People/HandGun R-L","frames":224,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,224,112,0]}
+{"source":"4.2/Effects/2000FX/People/KiKi Twirl","frames":187,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,187,94,0]}
+{"source":"4.2/Effects/2000FX/People/KiKi Twirl-L","frames":187,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,187,94,0]}
+{"source":"4.2/Effects/2000FX/People/Kiki Legs","frames":109,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,109,55,0]}
+{"source":"4.2/Effects/2000FX/People/Kiki Legs-R","frames":109,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,109,55,0]}
+{"source":"4.2/Effects/2000FX/People/Kiki Peep","frames":117,"speed_default":"medium","fields":[3,2,2,0],"duration":[176,117,117,0]}
+{"source":"4.2/Effects/2000FX/People/Kiki Wave","frames":105,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,105,53,0]}
+{"source":"4.2/Effects/2000FX/People/Ms.Peel-L","frames":91,"speed_default":"medium","fields":[3,2,1,0],"duration":[137,91,46,0]}
+{"source":"4.2/Effects/2000FX/People/Ms.Peel-R","frames":91,"speed_default":"medium","fields":[3,2,1,0],"duration":[137,91,46,0]}
+{"source":"4.2/Effects/2000FX/People/Toddler-L","frames":84,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,84,42,0]}
+{"source":"4.2/Effects/2000FX/People/Toddler-R","frames":84,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,84,42,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow","frames":30,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,15,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow BL-TR","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow BR-TL","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow Down","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow Left","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow Right","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow TL-BR","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow TR-BL","frames":61,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,61,31,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Arrow Up","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Star Down","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Star L-R","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Star R-L","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Shapes/Star Up","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft B-T","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft BL-TR","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft BR-TL","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Circle In","frames":59,"speed_default":"fast","fields":[3,2,1,0],"duration":[89,59,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Circle Out","frames":59,"speed_default":"fast","fields":[3,2,1,0],"duration":[89,59,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft L-R","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft R-L","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split In H","frames":33,"speed_default":"fast","fields":[3,2,1,0],"duration":[50,33,17,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split In V","frames":59,"speed_default":"fast","fields":[3,2,1,0],"duration":[89,59,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split Out H","frames":33,"speed_default":"fast","fields":[3,2,1,0],"duration":[50,33,17,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Split Out V","frames":59,"speed_default":"fast","fields":[3,2,1,0],"duration":[89,59,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft T-B","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft TL-BR","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft TR-BL","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/SoftEdge/Wipe Soft Wavy L-R","frames":55,"speed_default":"fast","fields":[3,2,1,0],"duration":[83,55,28,0]}
+{"source":"4.2/Effects/2000FX/Special/Camera Iris","frames":42,"speed_default":"fast","fields":[3,2,1,0],"duration":[63,42,21,0]}
+{"source":"4.2/Effects/2000FX/Special/Clapboard Matte","frames":71,"speed_default":"fast","fields":[3,2,1,0],"duration":[107,71,36,0]}
+{"source":"4.2/Effects/2000FX/Special/Count Down","frames":182,"speed_default":"fast","fields":[3,2,1,0],"duration":[273,182,91,0]}
+{"source":"4.2/Effects/2000FX/Special/Curtain Matte","frames":95,"speed_default":"fast","fields":[3,2,1,0],"duration":[143,95,48,0]}
+{"source":"4.2/Effects/2000FX/Special/FingerWalk","frames":152,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,152,76,0]}
+{"source":"4.2/Effects/2000FX/Special/Flying Ace Matte","frames":47,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,47,24,0]}
+{"source":"4.2/Effects/2000FX/Special/Flying Notes","frames":61,"speed_default":"fast","fields":[3,2,1,0],"duration":[92,61,31,0]}
+{"source":"4.2/Effects/2000FX/Special/Gears Up Matte","frames":90,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,90,45,0]}
+{"source":"4.2/Effects/2000FX/Special/HandShadow L-R","frames":116,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,116,58,0]}
+{"source":"4.2/Effects/2000FX/Special/HandShadow R-L","frames":116,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,116,58,0]}
+{"source":"4.2/Effects/2000FX/Special/No Parking","frames":119,"speed_default":"fast","fields":[3,2,1,0],"duration":[179,119,60,0]}
+{"source":"4.2/Effects/2000FX/Special/Paint Brush Across","frames":120,"speed_default":"fast","fields":[3,2,1,0],"duration":[180,120,60,0]}
+{"source":"4.2/Effects/2000FX/Special/PaintRoller","frames":159,"speed_default":"medium","fields":[3,2,1,0],"duration":[239,159,80,0]}
+{"source":"4.2/Effects/2000FX/Special/Phone","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/2000FX/Special/SkyLine","frames":91,"speed_default":"fast","fields":[3,2,1,0],"duration":[137,91,46,0]}
+{"source":"4.2/Effects/2000FX/Sports/Aerobics-L","frames":223,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,223,112,0]}
+{"source":"4.2/Effects/2000FX/Sports/Aerobics-R","frames":223,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,223,112,0]}
+{"source":"4.2/Effects/2000FX/Sports/BasketBall Pass","frames":107,"speed_default":"fast","fields":[3,2,1,0],"duration":[161,107,54,0]}
+{"source":"4.2/Effects/2000FX/Sports/BlindSide","frames":95,"speed_default":"medium","fields":[3,2,1,0],"duration":[143,95,48,0]}
+{"source":"4.2/Effects/2000FX/Sports/BlindSide-R","frames":95,"speed_default":"medium","fields":[3,2,1,0],"duration":[143,95,48,0]}
+{"source":"4.2/Effects/2000FX/Sports/Fat Slob","frames":124,"speed_default":"medium","fields":[3,2,1,0],"duration":[186,124,62,0]}
+{"source":"4.2/Effects/2000FX/Sports/Fat Slob-R","frames":124,"speed_default":"medium","fields":[3,2,1,0],"duration":[186,124,62,0]}
+{"source":"4.2/Effects/2000FX/Sports/FootBall Smash","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/2000FX/Sports/Golf Swing","frames":144,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,144,72,0]}
+{"source":"4.2/Effects/2000FX/Sports/Golf Swing-l","frames":144,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,144,72,0]}
+{"source":"4.2/Effects/2000FX/Sports/Jogging L-R","frames":43,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,43,22,0]}
+{"source":"4.2/Effects/2000FX/Sports/Jogging R-L","frames":43,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,43,22,0]}
+{"source":"4.2/Effects/2000FX/Sports/Kiki CartWheel","frames":119,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,119,60,0]}
+{"source":"4.2/Effects/2000FX/Sports/Kiki CartWheel-R","frames":119,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,119,60,0]}
+{"source":"4.2/Effects/2000FX/Sports/Mr.Clean","frames":113,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,113,57,0]}
+{"source":"4.2/Effects/2000FX/Sports/Pitcher","frames":123,"speed_default":"fast","fields":[3,2,1,0],"duration":[185,123,62,0]}
+{"source":"4.2/Effects/2000FX/Sports/QuarterBack Pass","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/2000FX/Sports/QuarterBack Pass-R","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/2000FX/Sports/Tennis Serve","frames":110,"speed_default":"fast","fields":[3,2,1,0],"duration":[165,110,55,0]}
+{"source":"4.2/Effects/2000FX/Sports/Tennis Serve-R","frames":110,"speed_default":"fast","fields":[3,2,1,0],"duration":[165,110,55,0]}
+{"source":"4.2/Effects/2000FX/Sports/WeightLifter","frames":216,"speed_default":"fast","fields":[3,2,1,0],"duration":[324,216,108,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Flip In Bottom","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Flip In Top","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Flip Out Bottom","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Flip Out Top","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly In Bottom","frames":50,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,25,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly In Left","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly In Right","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly In Top Left","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly In Top Right","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Bottom","frames":50,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,25,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Left","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Right","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top Left","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Fly Out Top Right","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Screech","frames":97,"speed_default":"fast","fields":[3,2,1,0],"duration":[146,97,49,0]}
+{"source":"4.2/Effects/2000FX/Trajectory/Snap Off R","frames":75,"speed_default":"fast","fields":[3,2,1,0],"duration":[113,75,38,0]}
+{"source":"4.2/Effects/2000FX/Weddings/Dance Across","frames":254,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,254,127,0]}
+{"source":"4.2/Effects/2000FX/Weddings/Dance Across-L","frames":254,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,254,127,0]}
+{"source":"4.2/Effects/2000FX/Weddings/Wipe Heart Soft In","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Weddings/Wipe Heart Soft Out","frames":32,"speed_default":"fast","fields":[3,2,1,0],"duration":[48,32,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Nova Ring","frames":82,"speed_default":"fast","fields":[3,2,1,0],"duration":[123,82,41,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Seismic Wave","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Sliding Tiles","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Square B To Bl","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Square B-T","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Blocks Down","frames":82,"speed_default":"fast","fields":[3,2,1,0],"duration":[123,82,41,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Circle In","frames":28,"speed_default":"fast","fields":[3,2,1,0],"duration":[42,28,14,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Circle Out","frames":28,"speed_default":"fast","fields":[3,2,1,0],"duration":[42,28,14,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Clock","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Diagonal Blinds","frames":47,"speed_default":"fast","fields":[3,2,1,0],"duration":[71,47,24,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Explode","frames":40,"speed_default":"fast","fields":[3,2,1,0],"duration":[60,40,20,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Fly In","frames":64,"speed_default":"fast","fields":[3,2,1,0],"duration":[96,64,32,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Fly Out","frames":64,"speed_default":"fast","fields":[3,2,1,0],"duration":[96,64,32,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Implode","frames":40,"speed_default":"fast","fields":[3,2,1,0],"duration":[60,40,20,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Large Random Blocks","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Matte Slats","frames":32,"speed_default":"fast","fields":[3,2,1,0],"duration":[48,32,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Nautilus","frames":84,"speed_default":"fast","fields":[3,2,1,0],"duration":[126,84,42,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Plasma","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Ragged Fold In","frames":57,"speed_default":"fast","fields":[3,2,1,0],"duration":[86,57,29,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Ragged Fold Out","frames":57,"speed_default":"fast","fields":[3,2,1,0],"duration":[86,57,29,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Raster","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Scanner","frames":56,"speed_default":"fast","fields":[3,2,1,0],"duration":[84,56,28,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Slabs Fall","frames":69,"speed_default":"fast","fields":[3,2,1,0],"duration":[104,69,35,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Slabs Shuffle","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Slicer","frames":48,"speed_default":"fast","fields":[3,2,1,0],"duration":[72,48,24,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Spiral","frames":32,"speed_default":"fast","fields":[3,2,1,0],"duration":[48,32,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Squares","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Star Spin In","frames":61,"speed_default":"fast","fields":[3,2,1,0],"duration":[92,61,31,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Star Spin Out","frames":61,"speed_default":"fast","fields":[3,2,1,0],"duration":[92,61,31,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Swirl","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Veg-O-Matic","frames":48,"speed_default":"fast","fields":[3,2,1,0],"duration":[72,48,24,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Vertical Slats","frames":30,"speed_default":"fast","fields":[3,2,1,0],"duration":[45,30,15,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe Wedge Blinds","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/2000FX/Wipes/Wipe ZigZag Blinds","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/4000FX/Animals/GiraffeL-R !","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/4000FX/Animals/GiraffeR-L !","frames":120,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,120,60,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Crome Balls BR-TL !","frames":1,"speed_default":"variable","fields":[],"duration":[180,100,70,60]}
+{"source":"4.2/Effects/4000FX/Border/Bar Glass BL-TR !","frames":77,"speed_default":"fast","fields":[3,2,1,0],"duration":[116,77,39,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Glass BR-TL !","frames":77,"speed_default":"fast","fields":[3,2,1,0],"duration":[116,77,39,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Glass TL-BR !","frames":77,"speed_default":"fast","fields":[3,2,1,0],"duration":[116,77,39,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Glass TR-BL !","frames":77,"speed_default":"fast","fields":[3,2,1,0],"duration":[116,77,39,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Bevel BR-TL","frames":1,"speed_default":"variable","fields":[],"duration":[180,100,70,60]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Thin B-T !","frames":1,"speed_default":"variable","fields":[],"duration":[180,100,70,60]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide BL-TR !","frames":59,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide BR-TL !","frames":59,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide TL-BR !","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Gold Wide TR-BL !","frames":59,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Rusted L-R !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Rusted R-L !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Sword BR-TL !","frames":1,"speed_default":"variable","fields":[],"duration":[180,100,70,60]}
+{"source":"4.2/Effects/4000FX/Border/Bar White Marble B-T !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar White Marble T-B !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Blue Chrome L-R !","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Blue Chrome R-L !","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Jade L-R !","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Jade R-L !","frames":51,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,26,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Steel Bolts L-R !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Bar Wide Steel Bolts R-L !","frames":60,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,30,0]}
+{"source":"4.2/Effects/4000FX/Border/Wipe 3Corner Swirl !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border 2Corner Swirl !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border BL-TR !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border BR-TL !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Center !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Center Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle In Top !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Circle Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamond !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamond In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Diamonds !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border L-R !","frames":1,"speed_default":"variable","fields":[],"duration":[102,51,25,52]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border R-L !","frames":1,"speed_default":"variable","fields":[],"duration":[102,51,25,52]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border T-B !","frames":1,"speed_default":"variable","fields":[],"duration":[128,64,32,64]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border TL-BR !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border TR-BL !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Border Up !","frames":1,"speed_default":"variable","fields":[],"duration":[128,64,32,64]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Moving Wave !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Border/Wipe Spikes In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Digital/Flip Chrome Edge !","frames":81,"speed_default":"fast","fields":[3,2,1,0],"duration":[122,81,41,0]}
+{"source":"4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !","frames":81,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,81,41,0]}
+{"source":"4.2/Effects/4000FX/Digital/Hand Pull !","frames":72,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,72,36,0]}
+{"source":"4.2/Effects/4000FX/Digital/Warp To Globe !","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Crumpled Foil !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Fan Swirls !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Grainy !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade InkWhorl !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Large Weave !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Marble Grain !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade No !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Pattern !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Rad !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Random Small Blocks !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Recycle !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Small Ovals !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,20]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Small Weave !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Trees !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Wavy !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Wood Grain !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Fade Yin-Yang !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Kiki Fade !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Dissolves/Soft Fractal !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Organic/Flare BL-TR !","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/4000FX/Organic/Flare BR-TL !","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/4000FX/Organic/Flare TL-BR !","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/4000FX/Organic/Flare TR-BL !","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/4000FX/Organic/FlareSpin","frames":84,"speed_default":"fast","fields":[0,2,2,0],"duration":[0,84,84,0]}
+{"source":"4.2/Effects/4000FX/Organic/Sparks !","frames":31,"speed_default":"fast","fields":[0,2,2,0],"duration":[0,31,31,0]}
+{"source":"4.2/Effects/4000FX/Organic/Sparks Out !","frames":31,"speed_default":"fast","fields":[0,2,2,0],"duration":[0,31,31,0]}
+{"source":"4.2/Effects/4000FX/Overlays/20 OFF !","frames":91,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,91,46,0]}
+{"source":"4.2/Effects/4000FX/Overlays/30 OFF !","frames":101,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,101,51,0]}
+{"source":"4.2/Effects/4000FX/Overlays/40 OFF !","frames":121,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,121,61,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Atom !","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Binoculars !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Overlays/Chase Lights !","frames":24,"speed_default":"medium","fields":[3,2,1,0],"duration":[36,24,12,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Checkers !","frames":34,"speed_default":"fast","fields":[3,2,1,0],"duration":[51,34,17,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Columns !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Crystal Bars !","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Fireworks !","frames":231,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,116,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Funky !","frames":12,"speed_default":"fast","fields":[20,15,10,0],"duration":[120,90,60,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Gold Frame Jiggle !","frames":6,"speed_default":"medium","fields":[3,2,1,0],"duration":[9,6,3,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Jiggly Edge !","frames":64,"speed_default":"medium","fields":[3,2,1,0],"duration":[96,64,32,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Kinescope !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Leaves Vignette !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Next Ball !","frames":62,"speed_default":"fast","fields":[3,2,1,0],"duration":[93,62,31,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Old Film Color !","frames":244,"speed_default":"fast","fields":[3,2,1,0],"duration":[366,244,122,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Ornate Gold Frame !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/SAVE Spin In !","frames":75,"speed_default":"fast","fields":[3,2,1,0],"duration":[113,75,38,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Sale Fly In !","frames":101,"speed_default":"fast","fields":[3,2,1,0],"duration":[152,101,51,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Sketching !","frames":22,"speed_default":"medium","fields":[5,4,3,0],"duration":[55,44,33,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Snow","frames":46,"speed_default":"fast","fields":[0,2,2,0],"duration":[0,46,46,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Space View Screen !","frames":42,"speed_default":"medium","fields":[3,2,1,0],"duration":[63,42,21,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Spinning Globe Loop !","frames":122,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,61,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Split1 !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Split2 !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Split3 !","frames":1,"speed_default":"fast","fields":[],"duration":[0,0,1,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Tonight Bar !","frames":28,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,28,14,0]}
+{"source":"4.2/Effects/4000FX/Overlays/Wedding Bells !","frames":122,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,61,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Peel !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Peel BL-TR !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Peel BR-TL !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Peel TL-BR !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Tear !","frames":65,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,65,33,0]}
+{"source":"4.2/Effects/4000FX/PagePeel/Page Tear Blank !","frames":61,"speed_default":"fast","fields":[3,2,1,0],"duration":[92,61,31,0]}
+{"source":"4.2/Effects/4000FX/People/Kikibell !","frames":139,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,70,0]}
+{"source":"4.2/Effects/4000FX/People/Running Man L-R !","frames":41,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,21,0]}
+{"source":"4.2/Effects/4000FX/People/Running Man R-L !","frames":41,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,21,0]}
+{"source":"4.2/Effects/4000FX/Shapes/Star Up","frames":60,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,60,30,0]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Fade Sex !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Star Wipe !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Curved Star Out !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft B-T !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft BL-TR !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft BR-TL !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Circle In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Circle Out!","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Flower Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft L-R !","frames":1,"speed_default":"variable","fields":[],"duration":[102,51,25,52]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Oval In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Oval Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft R-L !","frames":1,"speed_default":"variable","fields":[],"duration":[102,51,25,52]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Ring In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Ring Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Scallop In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split In H !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split In V !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split Out H !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Split Out V !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Star Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft T-B !","frames":1,"speed_default":"variable","fields":[],"duration":[128,64,32,64]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft TL-BR !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft TR-BL !","frames":1,"speed_default":"variable","fields":[],"duration":[108,54,27,54]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Twist In !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/SoftEdge/Wipe Soft Twist Out !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Space/Infinite Video Space !","frames":150,"speed_default":"medium","fields":[0,2,1,0],"duration":[0,150,75,0]}
+{"source":"4.2/Effects/4000FX/Space/Space Fighter !","frames":101,"speed_default":"fast","fields":[3,2,1,0],"duration":[152,101,51,0]}
+{"source":"4.2/Effects/4000FX/Space/Warp Drive !","frames":160,"speed_default":"fast","fields":[3,2,1,0],"duration":[240,160,80,0]}
+{"source":"4.2/Effects/4000FX/Special/50 Off !","frames":91,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,91,46,0]}
+{"source":"4.2/Effects/4000FX/Special/Blendo !","frames":88,"speed_default":"medium","fields":[3,2,1,0],"duration":[132,88,44,0]}
+{"source":"4.2/Effects/4000FX/Special/Channel Change Noise !","frames":14,"speed_default":"fast","fields":[3,2,1,0],"duration":[21,14,7,0]}
+{"source":"4.2/Effects/4000FX/Special/Clapboard Color !","frames":37,"speed_default":"fast","fields":[3,2,1,0],"duration":[56,37,19,0]}
+{"source":"4.2/Effects/4000FX/Special/Dollars Fall !","frames":70,"speed_default":"medium","fields":[3,2,1,0],"duration":[105,70,35,0]}
+{"source":"4.2/Effects/4000FX/Special/Ferrari L-R !","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/4000FX/Special/Ferrari R-L !","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/4000FX/Special/Floppy Disk L-R !","frames":45,"speed_default":"fast","fields":[3,2,1,0],"duration":[68,45,23,0]}
+{"source":"4.2/Effects/4000FX/Special/Floppy Disk R-L !","frames":45,"speed_default":"fast","fields":[3,2,1,0],"duration":[68,45,23,0]}
+{"source":"4.2/Effects/4000FX/Special/Flying Ace Color !","frames":92,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,92,46,0]}
+{"source":"4.2/Effects/4000FX/Special/Gears Down Color !","frames":90,"speed_default":"fast","fields":[3,2,1,0],"duration":[135,90,45,0]}
+{"source":"4.2/Effects/4000FX/Special/Gears Up Color !","frames":91,"speed_default":"fast","fields":[3,2,1,0],"duration":[137,91,46,0]}
+{"source":"4.2/Effects/4000FX/Special/Heli Fly L-R !","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/4000FX/Special/Heli Fly R-L !","frames":61,"speed_default":"fast","fields":[0,0,1,0],"duration":[0,0,31,0]}
+{"source":"4.2/Effects/4000FX/Special/One Way !","frames":72,"speed_default":"fast","fields":[3,2,1,0],"duration":[108,72,36,0]}
+{"source":"4.2/Effects/4000FX/Special/Stars Flying In !","frames":109,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,109,55,0]}
+{"source":"4.2/Effects/4000FX/Special/SuperHero !","frames":40,"speed_default":"fast","fields":[3,2,1,0],"duration":[60,40,20,0]}
+{"source":"4.2/Effects/4000FX/Special/Sword Swing !","frames":65,"speed_default":"fast","fields":[3,2,1,0],"duration":[98,65,33,0]}
+{"source":"4.2/Effects/4000FX/Special/Sword Swing 2 !","frames":65,"speed_default":"fast","fields":[3,2,1,0],"duration":[98,65,33,0]}
+{"source":"4.2/Effects/4000FX/Special/US Flag Wave L-R !","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/4000FX/Special/US Flag Wave R-L !","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/4000FX/Special/Watch L-R !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/Special/Watch R-L !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/Special/Wow !","frames":87,"speed_default":"fast","fields":[3,2,1,0],"duration":[131,87,44,0]}
+{"source":"4.2/Effects/4000FX/Sports/BaseBall !","frames":35,"speed_default":"fast","fields":[3,2,1,0],"duration":[53,35,18,0]}
+{"source":"4.2/Effects/4000FX/Sports/Bat Roll T-B !","frames":60,"speed_default":"fast","fields":[3,2,1,0],"duration":[90,60,30,0]}
+{"source":"4.2/Effects/4000FX/Sports/Checker Flag !","frames":54,"speed_default":"fast","fields":[3,2,1,0],"duration":[81,54,27,0]}
+{"source":"4.2/Effects/4000FX/Sports/Whistle !","frames":90,"speed_default":"fast","fields":[0,2,1,0],"duration":[0,90,45,0]}
+{"source":"4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !","frames":61,"speed_default":"fast","fields":[3,2,1,0],"duration":[92,61,31,0]}
+{"source":"4.2/Effects/4000FX/Trajectory/Photo Fly Out !","frames":57,"speed_default":"fast","fields":[3,2,1,0],"duration":[86,57,29,0]}
+{"source":"4.2/Effects/4000FX/Weddings/Wedding Book In !","frames":135,"speed_default":"fast","fields":[3,2,1,0],"duration":[203,135,68,0]}
+{"source":"4.2/Effects/4000FX/Weddings/Wedding Book Out !","frames":135,"speed_default":"fast","fields":[3,2,1,0],"duration":[203,135,68,0]}
+{"source":"4.2/Effects/4000FX/Weddings/Wipe Heart Soft In","frames":31,"speed_default":"fast","fields":[3,2,1,0],"duration":[47,31,16,0]}
+{"source":"4.2/Effects/4000FX/Wipes/Jagged Spin !","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Blocks Down !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Blocks Right !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Circle In TR !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Clock Var !","frames":1,"speed_default":"variable","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Large Random Blocks !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Plasma !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Plasma Border !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Soft Tie !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Spiral !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,20]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Teeth !","frames":1,"speed_default":"variable","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Triangles !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Twisting B&W Band !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Twisting Neon Band !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"4.2/Effects/4000FX/Wipes/Wipe Vertical Slats !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"4.2/3rdparty/vgem/effects/VGems_FX4K/Spiral","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
+{"source":"3.1/Toaster4k/effects/20Off.aa","frames":91,"speed_default":"fast","fields":[3,2,1,0],"duration":[137,91,46,0]}
+{"source":"3.1/Toaster4k/effects/CircleOut.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/Toaster4k/effects/HSplit.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/Toaster4k/effects/HSplitIn.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/Toaster4k/effects/VSplit.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/Toaster4k/effects/VSplitIn.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/Toaster2k/effects/PeelWhtBkg.3.0","frames":56,"speed_default":"fast","fields":[3,2,1,0],"duration":[84,56,28,0]}
+{"source":"3.1/Toaster2k/effects/Plasma_A.3.0","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
+{"source":"3.1/ToasterAll/EFFECTS/BrimStone","frames":67,"speed_default":"fast","fields":[3,2,1,0],"duration":[101,67,34,0]}
+{"source":"3.1/ToasterAll/EFFECTS/FlyIn","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
+{"source":"3.1/ToasterAll/EFFECTS/FlyInTop","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
+{"source":"3.1/ToasterAll/EFFECTS/FlyOut","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
+{"source":"3.1/ToasterAll/EFFECTS/MatteSine","frames":49,"speed_default":"fast","fields":[3,2,1,0],"duration":[74,49,25,0]}
+{"source":"3.1/ToasterAll/EFFECTS/SpinExplode","frames":211,"speed_default":"fast","fields":[3,2,1,0],"duration":[317,211,106,0]}
+{"source":"3.1/ToasterAll/EFFECTS/Tennis","frames":32,"speed_default":"fast","fields":[3,2,1,0],"duration":[48,32,16,0]}

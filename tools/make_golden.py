@@ -31,7 +31,9 @@ import toaster_fx_convert as C
 import chromafx_to_cube as X
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
-TAG_SLOW, TAG_MED, TAG_FAST = 0x80000057, 0x80000058, 0x80000059
+TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
+# Tag 0x55 is decoded through switcher.main's table at 0xe660c (Ruling 8):
+SPEED_BY_TAG55 = ('medium', 'fast', 'variable', 'slow')
 HUNK_MAGIC = b'\0\0\x03\xf3'
 
 
@@ -68,15 +70,15 @@ def tag_int(tags, k, default):
 
 
 def timing(tags, frames, anim):
-    sp = tag_int(tags, TAG_SPEED, 1) & 3
-    if sp >= 3:
-        sp = 1
+    """Per-speed timing, arrays ordered [slow, medium, fast, variable] (tags 0x57/58/59/56)."""
+    order = (TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR)
+    sp = SPEED_BY_TAG55[tag_int(tags, TAG_SPEED, 1 if anim else 0) & 3]
     if anim:
-        fields = [tag_int(tags, k, dflt) for k, dflt in ((TAG_SLOW, 3), (TAG_MED, 2), (TAG_FAST, 1))]
+        fields = [tag_int(tags, k, d) for k, d in zip(order, (3, 2, 1, 0))]
         duration = [(f * frames + 1) // 2 for f in fields]
     else:
         fields = []
-        duration = [tag_int(tags, k, dflt) for k, dflt in ((TAG_SLOW, 0x5a), (TAG_MED, 0x3c), (TAG_FAST, 0x1e))]
+        duration = [tag_int(tags, k, d) for k, d in zip(order, (0x5a, 0x3c, 0x1e, 0x3c))]
     return dict(frames=frames, speed_default=sp, fields=fields, duration=duration)
 
 

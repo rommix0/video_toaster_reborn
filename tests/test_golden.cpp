@@ -49,9 +49,12 @@ TEST_CASE("golden timing matches the crouton defaults") {
     for (const auto& r : golden::readLines("timing.jsonl")) {
         const auto& fields = arr(r, "fields");
         const auto& dur = arr(r, "duration");
-        REQUIRE(dur.size() == 3);
-        REQUIRE((num(r, "speed_default") >= 0 && num(r, "speed_default") <= 2));
-        if (!fields.empty())
-            for (size_t i = 0; i < 3; ++i) REQUIRE(dur[i] == (fields[i] * num(r, "frames") + 1) / 2);
+        REQUIRE(dur.size() == 4);  // slow, medium, fast, variable
+        const auto& sp = str(r, "speed_default");
+        REQUIRE((sp == "slow" || sp == "medium" || sp == "fast" || sp == "variable"));
+        if (!fields.empty()) {
+            REQUIRE(fields.size() == 4);
+            for (size_t i = 0; i < 4; ++i) REQUIRE(dur[i] == (fields[i] * num(r, "frames") + 1) / 2);
+        }
     }
 }
