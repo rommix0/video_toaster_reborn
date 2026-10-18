@@ -3,6 +3,12 @@
 // they select, the effect, the T-bar, Auto and Take. It drives the effects of vt/effect.h and
 // produces the Program picture; the Qt app sits on top of it.
 //
+// Clock (Ruling 25): one tick() is one 59.94 fps output frame, i.e. one Toaster field. For every
+// output frame the caller renders first and ticks after:
+//     sw.render(sources, program);  /* show or record program */  sw.tick();
+// so the first frame after autoTransition() shows the T-bar at 0 (animation frame 0), and the last
+// frame of a transition is rendered before the tick that finishes it (and swaps Main and Preview).
+//
 // Threading: single-threaded. Every call must be serialised by the caller, including render():
 // it is const but works in member scratch frames, so two renders must not overlap either.
 #include <array>
@@ -61,9 +67,13 @@ public:
     void setTBar(int pos);
     int tbar() const { return tbar_; }
     // Runs the T-bar from where it is to 511 at the constant rate of
-    // effect().timing().durationFrames[resolve(speed)] ticks for the full 0..511 trip (the
+    // effect().timing().durationTicks[resolve(speed)] ticks for the full 0..511 trip (the
     // trip from 0 takes exactly that many tick()s; from further along it takes the remaining
     // fraction, rounded up). Does nothing if the T-bar already is at 511 (ChromaFX).
+    // While it runs the T-bar reads round(511 * elapsed / total) (never 511 before the end), and
+    // an effect with animation frames is rendered at its exact frame elapsed / fieldsPerFrame
+    // (RenderCtx::animFrame), so each frame is shown for exactly fieldsPerFrame ticks and none
+    // is skipped or repeated. A hand-driven T-bar maps to frames by animFrameForTBar instead.
     void autoTransition(Speed);
     bool autoRunning() const { return auto_; }
     // True from the moment the T-bar leaves 0 or Auto starts until the transition finishes (or,
@@ -79,8 +89,8 @@ public:
     // Tag 0x80000024 hardware word (customBkgColour); bit 15 set selects Snow.
     void setCustomBackground(uint32_t word);
 
-    // One 59.94 fps frame. Advances the clock, a running Auto and (while engaged) the ChromaFX
-    // frame counter.
+    // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
+    // Auto and (while engaged) the ChromaFX frame counter.
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
@@ -106,8 +116,9 @@ private:
     std::shared_ptr<const Effect> effect_;
     int tbar_ = 0;
     bool auto_ = false;
-    int64_t autoAcc_ = 0;  // T-bar position * autoDur_ (Auto's exact position)
-    int autoDur_ = 1;
+    int64_t autoAcc_ = 0;  // T-bar position * autoDur_ (Auto's exact position; 511 per tick)
+    int autoDur_ = 1;      // ticks for the full 0..511 trip
+    int autoFpf_ = 0;      // fields (ticks) per animation frame at Auto's speed; 0 = no frames
     bool chromaEngaged_ = false;
     uint32_t chromaFrames_ = 0;  // ticks since engagement
     bool soundPending_ = false;

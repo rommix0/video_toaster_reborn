@@ -142,10 +142,12 @@ and 20Off.aa decode identically only with this rule.) Writes past the bitmap are
 
 Every ANIM delta has reltime 1; the speed comes from tags. For ANIM croutons the
 Slow/Medium/Fast tags are **fields per animation frame** (defaults 3/2/1; 0 = that speed
-button disabled). Duration in video frames = (fields_per_frame × frame_count + 1) / 2
-(`switcher.main` 0xe6548). So Fast = 59.94 fps (the usual ANIM default), Medium = 29.97 fps,
-Slow = 19.98 fps; Variable uses tag 0x56. For ILBM/ALGO croutons the same tags are durations in frames
-(defaults 90/60/30). The T-bar range is 0–511.
+button disabled). Duration in video frames (29.97 fps, what the manual's Length shows) =
+(fields_per_frame × frame_count + 1) / 2 (`switcher.main` 0xe6548). So Fast = 59.94 fps (the
+usual ANIM default), Medium = 29.97 fps, Slow = 19.98 fps; Variable uses tag 0x56. For ILBM/ALGO
+croutons the same tags are durations in frames (defaults 90/60/30). The T-bar range is 0–511.
+Manual anchors: Page Peel at Fast lasts 1 s; Toddler-R at Fast shows Length 00:00:01:12
+(42 frames).
 
 ### 5.4 Animated and gradient wipes
 
@@ -224,8 +226,11 @@ The Toaster's effect data is per field: a 241-line control frame drives one fiel
   consecutive effect frames; here each effect frame becomes one whole progressive frame.
   This is the only intended departure from the original, and it involves no blending
   or resampling.
-* Effect timing (5.3) is counted in 59.94 fps frames instead of fields; the numbers
-  are unchanged.
+* Effect timing (5.3) is counted in 59.94 fps frames (Switcher ticks) instead of fields;
+  the field counts are unchanged. An ANIM effect lasts fields_per_frame × frame_count ticks
+  and shows each animation frame for exactly fields_per_frame ticks (Page Peel ! at Fast:
+  60 ticks); durations given in 29.97 fps frames (gradient wipes, dissolve, cut, ChromaFX)
+  last twice as many ticks.
 
 ### 5.11 Audio
 

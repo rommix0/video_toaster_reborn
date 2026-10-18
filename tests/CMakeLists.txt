@@ -26,7 +26,7 @@ if(MSVC)
 endif()
 add_test(NAME vt_tests COMMAND vt_tests)
 
-# vt_render: a CTest script test (the CLI renders Page Peel ! at fast speed; 30 frames).
+# vt_render: a CTest script test (the CLI renders Page Peel ! at fast speed; 60 frames).
 add_test(NAME vt_render_cli COMMAND ${CMAKE_COMMAND}
     -DVT_RENDER=$<TARGET_FILE:vt_render>
     -DVT_DATA_ROOT=${CMAKE_SOURCE_DIR}/..

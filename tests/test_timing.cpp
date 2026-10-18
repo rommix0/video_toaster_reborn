@@ -45,15 +45,27 @@ TEST_CASE("timing matches golden for every effect") {
             REQUIRE(t.durationFrames[i] == dur[i]);
             if (!fields.empty()) REQUIRE(t.fieldsPerFrame[i] == fields[i]);
             else REQUIRE(t.fieldsPerFrame[i] == 0);
+            // ticks are fields: one per field of every frame, or two per 29.97 fps frame
+            REQUIRE(t.durationTicks[i] == (fields.empty() ? 2 * dur[i] : fields[i] * frames));
         }
         REQUIRE(t.defaultSpeed == speedByName(std::get<std::string>(r.at("speed_default").v)));
     }
 }
 
-TEST_CASE("Page Peel ! fast is one second") {
+// Manual anchors (tools/re/manual_notes.md 1): a tick is one 59.94 fps frame (one field), the
+// manual's lengths are 29.97 fps frames.
+TEST_CASE("Page Peel ! fast is one second (manual, Tutorials p24)") {
     auto t = timingOf("4.2/Effects/4000FX/PagePeel/Page Peel !", 60);
-    REQUIRE(t.durationFrames[static_cast<size_t>(vt::Speed::Fast)] == 30);
     REQUIRE(t.defaultSpeed == vt::Speed::Fast);  // tag 0x55 absent: ANIM default 1 = Fast
+    REQUIRE(t.durationTicks[static_cast<size_t>(vt::Speed::Fast)] == 60);  // 1 s at 59.94 fps
+    REQUIRE(t.durationFrames[static_cast<size_t>(vt::Speed::Fast)] == 30);  // 1 s at 29.97 fps
+}
+
+TEST_CASE("Toddler-R fast is the manual's Length 00:00:01:12 (PDF 178)") {
+    auto t = timingOf("4.2/Effects/2000FX/People/Toddler-R", 84);
+    REQUIRE(t.defaultSpeed == vt::Speed::Fast);
+    REQUIRE(t.durationFrames[static_cast<size_t>(vt::Speed::Fast)] == 30 + 12);  // 1 s 12 frames at 30 fps
+    REQUIRE(t.durationTicks[static_cast<size_t>(vt::Speed::Fast)] == 84);
 }
 
 TEST_CASE("disabled speed falls back") {  // Review Focus 2
@@ -87,6 +99,7 @@ TEST_CASE("gradient with speed tag 2 is Variable") {
     auto t = vt::fixedTiming(*c);
     REQUIRE(t.defaultSpeed == vt::Speed::Variable);
     REQUIRE(t.durationFrames[static_cast<size_t>(vt::Speed::Variable)] == 40);
+    REQUIRE(t.durationTicks[static_cast<size_t>(vt::Speed::Variable)] == 80);
     REQUIRE(t.available(vt::Speed::Variable));
     REQUIRE(t.resolve(vt::Speed::Slow) == vt::Speed::Slow);
 }
@@ -112,6 +125,7 @@ TEST_CASE("3.1 hunk effect gets the ANIM defaults") {
     auto t = vt::animTiming(*c, 30);
     REQUIRE(t.fieldsPerFrame == std::array{3, 2, 1, 0});
     REQUIRE(t.durationFrames == std::array{45, 30, 15, 0});
+    REQUIRE(t.durationTicks == std::array{90, 60, 30, 0});
     REQUIRE(t.defaultSpeed == vt::Speed::Fast);
 }
 

@@ -11,6 +11,7 @@
 #include "vt/ilbm.h"
 #include "vt/mix.h"
 #include "vt/raster.h"
+#include "vt/timing.h"
 
 namespace vt::detail {
 
@@ -45,6 +46,13 @@ inline Rgba8 mixPixel(const Rgba8& a, const Rgba8& b, int l) {
 }
 
 inline int clampTBar(int t) { return t < 0 ? 0 : (t > 511 ? 511 : t); }
+
+// The animation frame (0..n-1) an effect with n frames shows: ctx.animFrame if set, else the
+// T-bar's frame.
+inline int animFrameFor(int tbar, int n, const RenderCtx& ctx) {
+    if (ctx.animFrame >= 0) return ctx.animFrame < n ? ctx.animFrame : n - 1;
+    return animFrameForTBar(clampTBar(tbar), n);
+}
 
 // The crouton's 8SVX sound; nullopt if absent or undecodable (the reason is logged once).
 std::optional<Sound> loadSound(const Crouton&, const std::string& effectName);

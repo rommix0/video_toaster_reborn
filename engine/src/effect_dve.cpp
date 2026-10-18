@@ -1,4 +1,4 @@
-// DVE moves as an Effect: the T-bar picks a control frame (animFrameForTBar) and renderDve reads
+// DVE moves as an Effect: the T-bar (or RenderCtx::animFrame) picks a control frame and renderDve reads
 // the moving clip through it, bit-exact. Which clip moves comes from dveInfo:
 //   MovingA  A moves over B ("Out" moves)      MovingB  B moves over A ("In" moves)
 //   DistortA A moved over A (Glitch effects)   Flip     A until switchFrame, then B, over black
@@ -41,7 +41,7 @@ public:
     bool usesDvMemory() const override { return true; }
 
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
-        const int k = animFrameForTBar(clampTBar(tbar), frameCount());
+        const int k = animFrameFor(tbar, frameCount(), ctx);
         const Frame* moving = &a;
         const Frame* background = &b;
         switch (info_.role) {

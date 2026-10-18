@@ -1,6 +1,7 @@
 #include "vt/switcher.h"
 
 #include <algorithm>
+#include <climits>
 #include <utility>
 
 namespace vt {
@@ -89,9 +90,12 @@ void Switcher::autoTransition(Speed speed) {
         chromaEngaged_ = true;
         chromaFrames_ = 0;
     }
-    autoDur_ = std::max(1, t.durationFrames[static_cast<size_t>(t.resolve(speed))]);
+    const auto s = static_cast<size_t>(t.resolve(speed));
+    autoDur_ = std::max(1, t.durationTicks[s]);
+    autoFpf_ = std::max(0, t.fieldsPerFrame[s]);
     // Exact fixed point: the T-bar is autoAcc_ / autoDur_ rounded, and every tick adds 511, so
-    // the full 0..511 trip takes exactly autoDur_ ticks and the last one lands on 511.
+    // the full 0..511 trip takes exactly autoDur_ ticks and the last one lands on 511. The
+    // elapsed tick count (from T-bar 0) is autoAcc_ / 511.
     autoAcc_ = static_cast<int64_t>(tbar_) * autoDur_;
     auto_ = true;
 }
@@ -122,7 +126,8 @@ void Switcher::tick() {
         tbar_ = kTBarEnd;
         finishAt511();
     } else {
-        tbar_ = static_cast<int>((autoAcc_ + autoDur_ / 2) / autoDur_);
+        // 511 means finished: a long Auto (over 1022 ticks) must not round up to it early.
+        tbar_ = std::min(kTBarEnd - 1, static_cast<int>((autoAcc_ + autoDur_ / 2) / autoDur_));
     }
 }
 
@@ -179,6 +184,9 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         // Only ChromaFX uses the frame counter (cycling). Other effects are rendered from the
         // T-bar position alone, so a T-bar moved back looks like a fresh render there.
         ctx.frameNumber = chromaEngaged_ ? chromaFrames_ : 0;
+        // Auto: the exact animation frame for the elapsed ticks (Ruling 25).
+        if (auto_ && autoFpf_ > 0)
+            ctx.animFrame = static_cast<int>(std::min<int64_t>(autoAcc_ / kTBarEnd / autoFpf_, INT_MAX));
         effect_->render(tbar_, a, b, out, ctx);
     }
     program.px.swap(out.px);

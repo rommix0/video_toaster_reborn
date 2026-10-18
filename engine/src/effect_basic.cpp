@@ -12,6 +12,7 @@ public:
     Timing timing() const override {
         Timing t;  // GUESS: instantaneous, one frame at every speed
         t.durationFrames = {1, 1, 1, 1};
+        t.durationTicks = {2, 2, 2, 2};
         t.defaultSpeed = Speed::Fast;
         return t;
     }
@@ -29,6 +30,7 @@ public:
     Timing timing() const override {
         Timing t;
         t.durationFrames = {90, 60, 30, 60};
+        t.durationTicks = {180, 120, 60, 120};
         t.defaultSpeed = Speed::Medium;
         return t;
     }

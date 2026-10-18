@@ -18,6 +18,11 @@ namespace vt {
 struct RenderCtx {
     Rgba8 background{0, 0, 0, 255};  // the BKG/matte colour (black palettes in colour effects use it)
     uint32_t frameNumber = 0;        // output frame counter (snow noise etc.)
+    // The animation frame to show, or -1: derive it from the T-bar (animFrameForTBar). The
+    // Switcher sets it during Auto, where the T-bar's 0..511 steps cannot say which frame is
+    // due (Ruling 25). Values past the last frame show the last frame. Effects with one frame
+    // ignore it.
+    int animFrame = -1;
     HardwareGuesses guesses;
 };
 
@@ -27,7 +32,8 @@ public:
     virtual std::string name() const = 0;
     virtual Timing timing() const = 0;
     // Number of animation frames in the effect's own data. 1 for effects driven only by the T-bar
-    // value (cut, dissolve, gradient wipes). The T-bar maps to a frame by animFrameForTBar.
+    // value (cut, dissolve, gradient wipes). The T-bar maps to a frame by animFrameForTBar,
+    // unless RenderCtx::animFrame names the frame.
     virtual int frameCount() const = 0;
     // tbar is 0..511 (values outside are clamped). `a` is the outgoing picture, `b` the incoming
     // one; the result goes to `out` (all kRasterW x kRasterH pixels are written).

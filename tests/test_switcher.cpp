@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
@@ -55,13 +57,34 @@ struct Rig {
 };
 
 // What the effect itself gives for these inputs.
-vt::Frame direct(const vt::Effect& e, int tbar, const vt::Frame& a, const vt::Frame& b, uint32_t frameNumber = 0) {
+vt::Frame direct(const vt::Effect& e, int tbar, const vt::Frame& a, const vt::Frame& b, uint32_t frameNumber = 0,
+                 int animFrame = -1) {
     vt::Frame out;
     vt::RenderCtx ctx;
     ctx.frameNumber = frameNumber;
+    ctx.animFrame = animFrame;
     e.render(tbar, a, b, out, ctx);
     return out;
 }
+
+// Forwards to a real effect and records what the Switcher asked for.
+class Recorder final : public vt::Effect {
+public:
+    explicit Recorder(std::shared_ptr<const vt::Effect> e) : e_(std::move(e)) {}
+    std::string name() const override { return e_->name(); }
+    vt::Timing timing() const override { return e_->timing(); }
+    int frameCount() const override { return e_->frameCount(); }
+    void render(int t, const vt::Frame& a, const vt::Frame& b, vt::Frame& o, const vt::RenderCtx& c) const override {
+        lastTBar = t;
+        lastCtx = c;
+        e_->render(t, a, b, o, c);
+    }
+    mutable int lastTBar = -1;
+    mutable vt::RenderCtx lastCtx;
+
+private:
+    std::shared_ptr<const vt::Effect> e_;
+};
 
 // A dissolve that has a sound, for pendingSound.
 class Beep final : public vt::Effect {
@@ -123,48 +146,101 @@ TEST_CASE("take ends a transition in progress", "[switcher]") {
     REQUIRE(r.render().px == r.in2.px);
 }
 
-TEST_CASE("Auto Fast on Page Peel completes in exactly 30 ticks", "[switcher]") {
+TEST_CASE("Auto Fast on Page Peel ! is one second: 60 ticks, every frame once (manual anchor)", "[switcher]") {
+    // Manual, Tutorials p24: Page Peel at Fast lasts 1 second; a tick is one 59.94 fps frame.
     Rig r;
-    REQUIRE(r.sw.setEffect(pagePeel()));
-    REQUIRE(r.sw.effect().timing().durationFrames[size_t(vt::Speed::Fast)] == 30);
-    r.sw.select(Bus::Main, Source::In1);
-    r.sw.select(Bus::Preview, Source::In2);
+    const auto peel = pagePeel();
+    REQUIRE(peel->frameCount() == 60);
+    REQUIRE(r.sw.setEffect(peel));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
     r.sw.autoTransition(vt::Speed::Fast);
-    REQUIRE(r.sw.autoRunning());
-    int last = 0;
-    for (int i = 1; i <= 29; ++i) {
-        r.sw.tick();
+    int last = -1;
+    for (int i = 0; i < 60; ++i) {  // render, then tick (switcher.h)
         INFO("tick " << i);
-        REQUIRE(r.sw.tbar() > last);  // constant rate: strictly rising
-        REQUIRE(r.sw.tbar() < 511);
-        last = r.sw.tbar();
-        REQUIRE(r.sw.selected(Bus::Main) == Source::In1);
         REQUIRE(r.sw.autoRunning());
+        REQUIRE(r.sw.tbar() > last);  // constant rate: strictly rising, from 0
+        REQUIRE(r.sw.tbar() < 511);
+        if (i == 0) REQUIRE(r.sw.tbar() == 0);
+        last = r.sw.tbar();
+        // animation frame i, exactly: none dropped, none repeated
+        REQUIRE(r.render().px == direct(*peel, r.sw.tbar(), r.in3, r.in4, 0, i).px);
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+        r.sw.tick();
     }
-    r.sw.tick();  // the 30th
     REQUIRE_FALSE(r.sw.autoRunning());
     REQUIRE(r.sw.tbar() == 0);
-    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
-    REQUIRE(r.sw.selected(Bus::Preview) == Source::In1);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
+    REQUIRE(r.sw.selected(Bus::Preview) == Source::In3);
     REQUIRE_FALSE(r.sw.transitionActive());
-    REQUIRE(r.render().px == r.in2.px);  // the new Main, plainly
+    REQUIRE(r.render().px == r.in4.px);  // the new Main, plainly
     r.sw.tick();                         // idle ticks change nothing
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
+}
+
+TEST_CASE("Auto Fast on Toddler-R takes 84 ticks: Length 00:00:01:12 (manual PDF 178)", "[switcher]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(load("4.2/Effects/2000FX/People/Toddler-R")));
+    r.sw.autoTransition(vt::Speed::Fast);
+    int n = 0;
+    while (r.sw.autoRunning()) {
+        r.sw.tick();
+        REQUIRE(++n <= 84);
+    }
+    REQUIRE(n == 84);  // 42 frames at 30 fps
     REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
 }
 
+TEST_CASE("during Auto every animation frame is shown for exactly fieldsPerFrame ticks", "[switcher]") {
+    // Forked Lightning: 25 frames, 3/2/1 fields per frame at Slow/Medium/Fast.
+    const auto inner = load("4.2/Effects/2000FX/Organic/Forked Lightning");
+    const int n = inner->frameCount();
+    for (vt::Speed s : {vt::Speed::Slow, vt::Speed::Medium, vt::Speed::Fast}) {
+        const int fpf = inner->timing().fieldsPerFrame[size_t(s)];
+        INFO("speed " << int(s) << ", " << fpf << " fields per frame");
+        REQUIRE(fpf == 3 - int(s));
+        Rig r;
+        const auto rec = std::make_shared<Recorder>(inner);
+        REQUIRE(r.sw.setEffect(rec));
+        r.sw.autoTransition(s);
+        std::vector<int> shown;
+        while (r.sw.autoRunning()) {
+            (void)r.render();
+            shown.push_back(rec->lastCtx.animFrame);
+            r.sw.tick();
+            REQUIRE(shown.size() <= size_t(n * fpf));
+        }
+        REQUIRE(shown.size() == size_t(n * fpf));
+        for (size_t i = 0; i < shown.size(); ++i) {
+            INFO("tick " << i);
+            REQUIRE(shown[i] == int(i) / fpf);
+        }
+    }
+    // a hand-driven T-bar leaves the frame to the T-bar (animFrameForTBar)
+    Rig h;
+    const auto rec = std::make_shared<Recorder>(inner);
+    REQUIRE(h.sw.setEffect(rec));
+    h.sw.setTBar(300);
+    (void)h.render();
+    REQUIRE(rec->lastCtx.animFrame == -1);
+    REQUIRE(rec->lastTBar == 300);
+}
+
 TEST_CASE("Auto duration follows the speed and the constant rate", "[switcher]") {
-    Rig r;  // dissolve: Slow 90, Medium 60, Fast 30, Variable 60
+    Rig r;  // dissolve: Slow 90, Medium 60, Fast 30, Variable 60 frames at 29.97 fps -> twice in ticks
+    REQUIRE(r.sw.effect().timing().durationTicks == std::array{180, 120, 60, 120});
     int n = 0;
     r.sw.autoTransition(vt::Speed::Slow);
+    REQUIRE(r.render().px == r.in1.px);  // the first frame is the T-bar at 0: all A
     while (r.sw.autoRunning()) {
         r.sw.tick();
         ++n;
-        REQUIRE(n <= 90);
+        REQUIRE(n <= 180);
     }
-    REQUIRE(n == 90);
+    REQUIRE(n == 180);
     REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
 
-    // from halfway: about half the trip
+    // from halfway: the remaining half of the trip
     Rig h;
     h.sw.setTBar(256);
     h.sw.autoTransition(vt::Speed::Fast);
@@ -172,16 +248,21 @@ TEST_CASE("Auto duration follows the speed and the constant rate", "[switcher]")
     while (h.sw.autoRunning()) {
         h.sw.tick();
         ++n;
-        REQUIRE(n <= 30);
+        REQUIRE(n <= 60);
     }
-    REQUIRE(n == 15);
+    REQUIRE(n == 30);
     REQUIRE(h.sw.selected(Bus::Main) == Source::In2);
 
-    // Cut is one frame at every speed
+    // Cut is one 29.97 fps frame (two ticks) at every speed: A, then B, then the swap
     Rig c;
     REQUIRE(c.sw.setEffect(std::shared_ptr<const vt::Effect>(vt::makeCut())));
     c.sw.autoTransition(vt::Speed::Slow);
+    REQUIRE(c.render().px == c.in1.px);
     c.sw.tick();
+    REQUIRE(c.sw.autoRunning());
+    REQUIRE(c.render().px == c.in2.px);
+    c.sw.tick();
+    REQUIRE_FALSE(c.sw.autoRunning());
     REQUIRE(c.sw.selected(Bus::Main) == Source::In2);
     REQUIRE(c.sw.tbar() == 0);
 }
@@ -336,7 +417,8 @@ TEST_CASE("ChromaFX stays engaged after Auto, without a swap (Ruling 21)", "[swi
     REQUIRE(r.render().px == r.in3.px);  // not engaged: plain Main
     r.sw.autoTransition(vt::Speed::Fast);
     REQUIRE(r.sw.chromaEngaged());
-    const int d = fx->timing().durationFrames[size_t(fx->timing().resolve(vt::Speed::Fast))];
+    const int d = fx->timing().durationTicks[size_t(fx->timing().resolve(vt::Speed::Fast))];
+    REQUIRE(d == 2 * fx->timing().durationFrames[size_t(fx->timing().resolve(vt::Speed::Fast))]);
     for (int i = 0; i < d; ++i) {
         REQUIRE(r.sw.autoRunning());
         r.sw.tick();

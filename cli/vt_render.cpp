@@ -36,9 +36,10 @@ void usage(std::ostream& o) {
          "                bars   75% colour bars\n"
          "  --underscan write the full 768x482 raster; default is the 640x432 visible area\n"
          "\n"
-         "Frame count: an ordinary effect renders until its transition ends, which is\n"
-         "durationFrames[speed] ticks. A ChromaFX effect (and a cycling crouton) never ends by\n"
-         "itself - it stays engaged - so exactly durationFrames[speed] frames are rendered.\n";
+         "Frames are 59.94 fps, one per Switcher tick; 0001 shows the T-bar at 0. An ordinary\n"
+         "effect renders until its transition ends, which is durationTicks[speed] frames (Page\n"
+         "Peel ! at fast: 60). A ChromaFX effect never ends by itself - it stays engaged - so\n"
+         "exactly durationTicks[speed] frames are rendered.\n";
 }
 
 vt::Frame makePicture(const std::string& kind, bool isB) {
@@ -143,7 +144,7 @@ int main(int argc, char** argv) {
 
     const vt::Timing timing = effect->timing();
     const vt::Speed sp = timing.resolve(speed.value_or(timing.defaultSpeed));
-    const int duration = timing.durationFrames[size_t(sp)];
+    const int duration = timing.durationTicks[size_t(sp)];
     const bool fixedCount = effect->isChromaFx();
 
     const vt::Frame picA = makePicture(a, false), picB = makePicture(b, true);
@@ -169,12 +170,13 @@ int main(int argc, char** argv) {
     int n = 0;
     // Cap: an ordinary transition must end at `duration` ticks; never loop forever if it does not.
     const int cap = std::max(duration, 1) + 2;
+    // The Switcher's contract (switcher.h): render the frame, then tick.
     do {
-        sw.tick();
         sw.render(src, program);
         char name[32];
         std::snprintf(name, sizeof name, "%04d.ppm", ++n);
         if (!writePpm(fs::path(outDir) / name, program, area)) { std::cerr << "vt_render: cannot write " << name << "\n"; return 1; }
+        sw.tick();
     } while (fixedCount ? n < duration : (sw.transitionActive() && n < cap));
 
     std::cout << "rendered " << n << " frames (" << area.w << "x" << area.h << ") of " << effect->name() << " to " << outDir << "\n";

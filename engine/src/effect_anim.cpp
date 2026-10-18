@@ -57,7 +57,7 @@ public:
     // A raster line with no control line is black.
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         const int t = clampTBar(tbar);
-        const int frame = animFrameForTBar(t, frameCount());
+        const int frame = animFrameFor(t, frameCount(), ctx);
         const auto set = tables(ctx.background);
         const Table& table = set->t[size_t(segOf_[size_t(frame)])];
         const IndexImage& f = an_.frames[size_t(frame)];

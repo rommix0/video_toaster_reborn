@@ -14,8 +14,14 @@ struct Timing {
     // ANIM content: video fields per animation frame (tags 0x57/0x58/0x59/0x56). Zero for
     // gradient content.
     std::array<int, 4> fieldsPerFrame{};
-    // Effect length in frames at each speed. 0 means the speed is unavailable.
+    // Effect length in Toaster frames (29.97 fps, what the manual's Length shows) at each
+    // speed. 0 means the speed is unavailable.
     std::array<int, 4> durationFrames{};
+    // Effect length in Switcher ticks (one tick = one 59.94 fps output frame = one Toaster
+    // field) at each speed: what Auto takes (Ruling 25). ANIM content: fieldsPerFrame x frame
+    // count, so every animation frame is shown for exactly fieldsPerFrame ticks; everything
+    // else: 2 x durationFrames. Positive exactly when durationFrames is.
+    std::array<int, 4> durationTicks{};
     Speed defaultSpeed = Speed::Medium;
 
     bool available(Speed s) const { return durationFrames[static_cast<size_t>(s)] > 0; }
@@ -28,14 +34,18 @@ struct Timing {
 Speed decodeSpeedTag(uint32_t v);
 
 // ANIM content. Missing tags take the ANIM defaults (fields 3/2/1/0, speed tag 1 = Fast)
-// whatever the crouton TYPE says. durationFrames[s] = (fields * frameCount + 1) / 2.
+// whatever the crouton TYPE says. durationFrames[s] = (fields * frameCount + 1) / 2
+// (switcher.main 0xe6548), durationTicks[s] = fields * frameCount.
 Timing animTiming(const Crouton&, int frameCount);
 
-// Gradient (ILBM/ALGO) content. Durations are tags 0x57/0x58/0x59/0x56 directly; missing tags
-// take the ILBM defaults (0x5a, 0x3c, 0x1e, 0x3c; speed tag 0 = Medium).
+// Gradient (ILBM/ALGO) content. durationFrames are tags 0x57/0x58/0x59/0x56 directly (missing
+// tags take the ILBM defaults 0x5a, 0x3c, 0x1e, 0x3c; speed tag 0 = Medium); durationTicks are
+// twice those.
 Timing fixedTiming(const Crouton&);
 
-// T-bar position (0..511) -> animation frame: min(N - 1, tbar * N / 512).
+// T-bar position (0..511) -> animation frame: min(N - 1, tbar * N / 512). The Switcher uses it
+// for a hand-driven T-bar; during Auto it gives the effect the exact frame instead
+// (RenderCtx::animFrame).
 int animFrameForTBar(int tbar, int frameCount);
 
 }  // namespace vt

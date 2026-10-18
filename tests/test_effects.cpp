@@ -530,6 +530,26 @@ TEST_CASE("Bear-L equals A at its first frame and B at its last, except overlay 
     REQUIRE(sawOverlay);
 }
 
+TEST_CASE("RenderCtx::animFrame picks the frame instead of the T-bar", "[effect][anim]") {
+    // an animated wipe and a DVE move; neither depends on the T-bar except through the frame
+    for (const char* src : {"4.2/Effects/2000FX/Animals/Bear-L", "4.2/Effects/2000FX/Blinds/Split Corners In"}) {
+        INFO(src);
+        auto e = load(src);
+        REQUIRE(e);
+        const int n = e->frameCount();
+        REQUIRE(n > 2);
+        const vt::Frame a = pattern(1), b = pattern(2);
+        for (int k : {0, n / 3, n - 1}) {
+            vt::RenderCtx c = ctxWith();
+            c.animFrame = k;
+            REQUIRE(renderAt(*e, 0, a, b, c).px == renderAt(*e, tbarForFrame(k, n), a, b).px);
+        }
+        vt::RenderCtx c = ctxWith();
+        c.animFrame = n + 5;  // past the end: the last frame
+        REQUIRE(renderAt(*e, 0, a, b, c).px == renderAt(*e, 511, a, b).px);
+    }
+}
+
 TEST_CASE("a 384-wide effect maps control pixel (10, 5) to raster (20..21, 10..11)", "[effect][anim]") {
     const std::string src = "4.2/Effects/2000FX/Special/Clapboard Matte";
     const auto& rec = mixRecords().byName.at(src);
