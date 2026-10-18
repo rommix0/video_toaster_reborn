@@ -10,7 +10,7 @@ class Cut final : public Effect {
 public:
     std::string name() const override { return "Cut"; }
     Timing timing() const override {
-        Timing t;  // instantaneous: one frame at every speed
+        Timing t;  // GUESS: instantaneous, one frame at every speed
         t.durationFrames = {1, 1, 1, 1};
         t.defaultSpeed = Speed::Fast;
         return t;

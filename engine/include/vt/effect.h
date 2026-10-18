@@ -49,6 +49,11 @@ std::unique_ptr<Effect> makeDissolve();
 // code), bar pictures, unsupported control image sizes, undecodable files.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);
 
+// The gradient wipe's decision for one pixel: B's share (0..255) for a pixel of the given gray at
+// T-bar position tbar (clamped to 0..511) with the given edge softness (gray levels, clamped to
+// 0..255; 0 = hard edge). Pure; see effect_gradient.cpp for the rule.
+uint8_t gradientLevel(uint8_t gray, int tbar, int softness);
+
 // Index -> gray of a gradient's ILBM (port of toaster_fx_convert.gray_lut): 1 << planes entries.
 // A palette that is a plain gray ramp (r == g == b, brightest value above 0x40) gives the gray
 // directly; anything else is index * 255 / (n - 1).

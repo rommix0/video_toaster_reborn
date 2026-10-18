@@ -242,30 +242,100 @@ Gradient openGradient(const std::string& source) {
     return {std::move(bm), std::move(img), std::move(g)};
 }
 
-// Gradient model: B where gray >= 255 - tbar * 255 / 511; black where the raster line has no
-// control line.
+// Ends of every gradient wipe, stated without the threshold rule: tbar 0 is exactly A and tbar 511
+// exactly B (non-solid frames, so a wrong source-pixel read shows), except raster lines with no
+// control line, which are black.
+void requireGradientEnds(const vt::Effect& e, const Gradient& g, int softness = 0) {
+    const Ctl ctl{g.img.w, g.img.h};
+    const vt::Frame a = pattern(5), b = pattern(6);
+    vt::RenderCtx c = ctxWith();
+    c.guesses.gradientSoftness = softness;
+    requireFrame(renderAt(e, 0, a, b, c), [&](int x, int y) { return ctl.line(y) < 0 ? kBlack : a.at(x, y); });
+    requireFrame(renderAt(e, 511, a, b, c), [&](int x, int y) { return ctl.line(y) < 0 ? kBlack : b.at(x, y); });
+}
+
+// In between: each pixel is the A/B mix at the level gradientLevel (tested on its own) gives for the
+// pixel's control gray; with softness 0 that is A or B. Control mapping and source reads are
+// checked here, the threshold rule is not restated.
 void requireGradient(const vt::Effect& e, const Gradient& g, int tbar, int softness = 0) {
     const Ctl ctl{g.img.w, g.img.h};
-    const vt::Frame a = solid(kA), b = solid(kB);
+    const vt::Frame a = pattern(7), b = pattern(8);
     vt::RenderCtx c = ctxWith();
     c.guesses.gradientSoftness = softness;
     const vt::Frame out = renderAt(e, tbar, a, b, c);
-    const int s = softness;
-    const int thr = (255 + s) - tbar * (255 + s) / 511;
     requireFrame(out, [&](int x, int y) {
         const int line = ctl.line(y);
         if (line < 0) return kBlack;
         const int gray = g.gray[g.img.px[size_t(line) * size_t(g.img.w) + size_t(ctl.x(x))]];
-        int level;
-        if (s == 0) level = gray >= thr ? 255 : 0;
-        else level = std::clamp(255 * (gray - (thr - s)) / s, 0, 255);
-        // a negative numerator must not round toward zero into a partial level
-        if (s > 0 && gray - (thr - s) < 0) level = 0;
-        return lerpPx(kA, kB, level);
+        const int level = vt::gradientLevel(uint8_t(gray), tbar, softness);
+        if (softness == 0) REQUIRE((level == 0 || level == 255));
+        return lerpPx(a.at(x, y), b.at(x, y), level);
     });
 }
 
 }  // namespace
+
+TEST_CASE("gradientLevel: never B at tbar 0, always B at 511, monotone in tbar and gray", "[effect][gradient]") {
+    for (int softness : {0, 1, 4, 16, 64}) {
+        INFO("softness " << softness);
+        for (int gray = 0; gray < 256; ++gray) {
+            INFO("gray " << gray);
+            REQUIRE(vt::gradientLevel(uint8_t(gray), 0, softness) == 0);
+            REQUIRE(vt::gradientLevel(uint8_t(gray), 511, softness) == 255);
+            int prev = 0;
+            for (int t = 0; t < 512; ++t) {
+                const int l = vt::gradientLevel(uint8_t(gray), t, softness);
+                if (softness == 0) REQUIRE((l == 0 || l == 255));
+                if (l < prev) FAIL("level fell with tbar at gray " << gray << " tbar " << t);
+                prev = l;
+            }
+        }
+        for (int t = 0; t < 512; ++t) {
+            int prev = 255;  // brighter grays are revealed no later than darker ones
+            for (int gray = 255; gray >= 0; --gray) {
+                const int l = vt::gradientLevel(uint8_t(gray), t, softness);
+                if (l > prev) FAIL("level rose with darker gray at tbar " << t << " gray " << gray);
+                prev = l;
+            }
+        }
+    }
+}
+
+TEST_CASE("gradientLevel hard edge: B iff (gray + 1) * 511 > (511 - tbar) * 256", "[effect][gradient]") {
+    for (int gray = 0; gray < 256; ++gray)
+        for (int t = 0; t < 512; ++t)
+            REQUIRE((vt::gradientLevel(uint8_t(gray), t, 0) == 255) == ((gray + 1) * 511 > (511 - t) * 256));
+    // spot values
+    REQUIRE(vt::gradientLevel(255, 0, 0) == 0);
+    REQUIRE(vt::gradientLevel(255, 1, 0) == 255);
+    REQUIRE(vt::gradientLevel(127, 255, 0) == 0);
+    REQUIRE(vt::gradientLevel(127, 256, 0) == 255);
+    REQUIRE(vt::gradientLevel(0, 509, 0) == 0);
+    REQUIRE(vt::gradientLevel(0, 510, 0) == 255);
+    REQUIRE(vt::gradientLevel(0, 511, 0) == 255);
+    // out-of-range inputs are clamped
+    REQUIRE(vt::gradientLevel(255, -5, 0) == 0);
+    REQUIRE(vt::gradientLevel(0, 900, 0) == 255);
+}
+
+TEST_CASE("gradientLevel softness ramps through partial levels and agrees with the hard edge as it shrinks", "[effect][gradient]") {
+    // some partial level exists for softness > 0 and none for 0
+    for (int softness : {1, 4, 16, 64}) {
+        bool partial = false;
+        for (int gray = 0; gray < 256 && !partial; ++gray)
+            for (int t = 0; t < 512; ++t) {
+                const int l = vt::gradientLevel(uint8_t(gray), t, softness);
+                if (l > 0 && l < 255) { partial = true; break; }
+            }
+        REQUIRE(partial);
+    }
+    // a wider ramp never reveals a pixel earlier than the hard edge does
+    for (int softness : {1, 4, 16, 64})
+        for (int gray = 0; gray < 256; ++gray)
+            for (int t = 0; t < 512; ++t)
+                if (vt::gradientLevel(uint8_t(gray), t, softness) == 255)
+                    REQUIRE(vt::gradientLevel(uint8_t(gray), t, 0) == 255);
+}
 
 TEST_CASE("Wipe Border Diamonds: all A at tbar 0, all B at 511", "[effect][gradient]") {
     const std::string src = "4.2/Effects/2000FX/Border/Wipe Border Diamonds";
@@ -289,6 +359,7 @@ TEST_CASE("Wipe Border Diamonds: all A at tbar 0, all B at 511", "[effect][gradi
     REQUIRE(e->name() == "Wipe Border Diamonds");
 
     const auto g = openGradient(src);
+    requireGradientEnds(*e, g);
     for (int t : {1, 60, 200, 255, 256, 400, 510}) {
         INFO("tbar " << t);
         requireGradient(*e, g, t);
@@ -344,8 +415,7 @@ TEST_CASE("gradient softness ramps the edge over that many gray levels", "[effec
     const vt::Frame a = solid(kA), b = solid(kB);
     vt::RenderCtx c = ctxWith();
     c.guesses.gradientSoftness = 24;
-    REQUIRE(renderAt(*e, 0, a, b, c).px == a.px);
-    REQUIRE(renderAt(*e, 511, a, b, c).px == b.px);
+    requireGradientEnds(*e, g, 24);
     bool partial = false;
     for (const auto& p : renderAt(*e, 250, a, b, c).px)
         if (!same(p, kA) && !same(p, kB)) partial = true;
@@ -439,11 +509,9 @@ TEST_CASE("Bear-L equals A at its first frame and B at its last, except overlay 
         const auto& f = af.anim.frames[size_t(frame)];
         const vt::Rgba8 video = pass == 0 ? kA : kB;
         const vt::Frame out = renderAt(*e, tbar, solid(kA), solid(kB));
-        size_t overlayPixels = 0;
         requireFrame(out, [&](int x, int y) {
             const int idx = f.px[size_t(y / 2) * size_t(f.w) + size_t(x)];
             if (over_rgba[size_t(idx) * 4 + 3] != 0) {
-                ++overlayPixels;
                 return vt::Rgba8{uint8_t(over_rgba[size_t(idx) * 4]), uint8_t(over_rgba[size_t(idx) * 4 + 1]),
                                  uint8_t(over_rgba[size_t(idx) * 4 + 2]), 255};
             }
@@ -451,7 +519,6 @@ TEST_CASE("Bear-L equals A at its first frame and B at its last, except overlay 
             REQUIRE(idx == (pass == 0 ? aIdx : bIdx));
             return video;
         });
-        (void)overlayPixels;
     }
     // somewhere in the middle the overlay is on screen and both clips show
     bool sawOverlay = false;
@@ -475,7 +542,6 @@ TEST_CASE("a 384-wide effect maps control pixel (10, 5) to raster (20..21, 10..1
 
     // A black, B white: a clip pixel's level comes out as its red channel
     const vt::Frame black = solid(kBlack), white = solid(kWhite);
-    bool neighbourDiffers = false;
     for (int frame : {n / 4, n / 2, n - 1}) {
         const auto& f = af.anim.frames[size_t(frame)];
         const int tbar = tbarForFrame(frame, n);
@@ -490,9 +556,7 @@ TEST_CASE("a 384-wide effect maps control pixel (10, 5) to raster (20..21, 10..1
         for (int y = 0; y < vt::kRasterH; ++y)
             for (int x = 0; x < vt::kRasterW; ++x)
                 if (!same(out.at(x, y), ctrl(x / 2, y / 2))) FAIL("mismatch at " << x << "," << y);
-        if (!same(ctrl(10, 5), ctrl(11, 5)) || !same(ctrl(10, 5), ctrl(10, 6))) neighbourDiffers = true;
     }
-    (void)neighbourDiffers;
 }
 
 TEST_CASE("raster lines with no control line render black, never a copy", "[effect][anim]") {
@@ -747,7 +811,8 @@ TEST_CASE("every corpus animated and gradient wipe loads and renders", "[effect]
         const auto g = openGradient(src);
         const bool hasAnimForm = firstForm(*c, kAnim).has_value();
         if (!hasAnimForm) REQUIRE(e->timing().durationFrames == vt::fixedTiming(*c).durationFrames);
-        for (int t : {0, 300, 511}) requireGradient(*e, g, t);
+        requireGradientEnds(*e, g);
+        requireGradient(*e, g, 300);
     }
     INFO("refused reasons: " << (reasons.empty() ? "none" : *reasons.begin()));
     REQUIRE(loaded > 350);

@@ -52,6 +52,8 @@ public:
     // Overlay plans have no matte: a flash (flashPeak) shows A in animation frames before the peak
     // and B from it, with the overlay on top; other overlay-only effects have no peak, so their
     // clip is cut A -> B at the T-bar midpoint (tbar 256), like the cut (GUESS).
+    // Video under a glow Colour entry (alpha < 255) is A (bLevel 0 for roles), not the nearest A/B
+    // pixel's matte as in the converter: Ruling 14, a v1 limitation.
     // A raster line with no control line is black.
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         const int t = clampTBar(tbar);

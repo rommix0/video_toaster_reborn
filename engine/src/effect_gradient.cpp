@@ -28,6 +28,24 @@ std::vector<uint8_t> grayLut(const Bitmap& bm) {
     return g;
 }
 
+// Controller Ruling 12. With u = (gray + 1) * 511 - P, where P is the T-bar's threshold:
+//   hard edge (softness 0): P = (511 - tbar) * 256, B iff u > 0, i.e.
+//     (gray + 1) * 511 > (511 - tbar) * 256.
+//     tbar 0 shows no B (even gray 255 gives u = 0), tbar 511 shows all B (u >= 511), bright grays
+//     are revealed first and a revealed pixel stays revealed.
+//   softness s > 0: the edge is a linear ramp over s gray levels (s * 511 units of u):
+//     P = (511 - tbar) * (256 + s) - 511 * s,  level = clamp(255 * u / (s * 511), 0, 255).
+//     P(0) = 511 * 256, so tbar 0 is all A; P(511) = -511 * s, so tbar 511 is all B (u >= 511 * (1 + s));
+//     s -> 0 gives the hard edge above exactly.
+uint8_t gradientLevel(uint8_t gray, int tbar, int softness) {
+    const int t = tbar < 0 ? 0 : (tbar > 511 ? 511 : tbar);
+    const int s = softness < 0 ? 0 : (softness > 255 ? 255 : softness);
+    const int u = (int(gray) + 1) * 511 - ((511 - t) * (256 + s) - 511 * s);
+    if (u <= 0) return 0;
+    if (s == 0) return 255;
+    return uint8_t(std::min(255, 255 * u / (s * 511)));
+}
+
 namespace detail {
 namespace {
 
@@ -45,27 +63,13 @@ public:
     int frameCount() const override { return 1; }
     const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
 
-    // The T-bar sets a threshold on the gray value: a pixel shows B where
-    //   gray >= 255 - tbar * 255 / 511            (bright areas are revealed first).
-    // With softness s > 0 the edge is a linear ramp over s gray levels, and the threshold range is
-    // widened to 255 + s so that tbar 0 is still all A and tbar 511 all B:
-    //   thr = (255 + s) - tbar * (255 + s) / 511
-    //   level (B share, 0..255) = clamp(255 * (gray - (thr - s)) / s, 0, 255)
-    // The picture is A + (B - A) * level / 255 per channel (mix255). s = 0 is the hard edge.
+    // Per pixel, B's share is gradientLevel(gray, tbar, softness); the picture is
+    // A + (B - A) * level / 255 per channel (mix255). Raster lines with no control line are black.
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         const int t = clampTBar(tbar);
         const int s = std::clamp(ctx.guesses.gradientSoftness, 0, 255);
-        const int thr = (255 + s) - t * (255 + s) / 511;
         std::array<uint8_t, 256> level{};  // per palette index
-        for (int i = 0; i < 256; ++i) {
-            const int g = gray_[size_t(i)];
-            int l;
-            if (s == 0) l = g >= thr ? 255 : 0;
-            else if (g >= thr) l = 255;
-            else if (g <= thr - s) l = 0;
-            else l = 255 * (g - (thr - s)) / s;
-            level[size_t(i)] = uint8_t(l);
-        }
+        for (int i = 0; i < 256; ++i) level[size_t(i)] = gradientLevel(gray_[size_t(i)], t, s);
         for (int y = 0; y < kRasterH; ++y) {
             Rgba8* dst = &out.at(0, y);
             const int line = map_.line(y);
