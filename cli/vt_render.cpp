@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     sw.autoTransition(sp);
-    if (const vt::Sound* snd = sw.pendingSound(); snd && snd->rate > 0 && snd->channels > 0) {
+    if (const auto snd = sw.pendingSound(); snd && snd->rate > 0 && snd->channels > 0) {
         if (!writeWav(fs::path(outDir) / "effect.wav", *snd)) { std::cerr << "vt_render: cannot write effect.wav\n"; return 1; }
     }
 

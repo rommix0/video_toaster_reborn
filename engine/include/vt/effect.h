@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,10 @@ struct RenderCtx {
     // due (Ruling 25). Values past the last frame show the last frame. Effects with one frame
     // ignore it.
     int animFrame = -1;
+    // The speed button the effect runs at, already resolved against its timing (the Switcher
+    // passes timing().resolve(Switcher::speed())); nullopt = the effect's default speed.
+    // Cycling ChromaFX take their cycle rate from it.
+    std::optional<Speed> speed;
     HardwareGuesses guesses;
 };
 

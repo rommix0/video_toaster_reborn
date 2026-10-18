@@ -25,14 +25,16 @@ public:
 
     void render(int tbar, const Frame&, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         // Ruling 20: while cycling the row position comes from the cycle alone (DummyTBar).
-        const int v = chromaRowPosition(detail::clampTBar(tbar), s_.cycle, step_, ctx.frameNumber);
+        // The cycle rate follows the current speed button ($1f4), Ruling 29.
+        const uint32_t step = ctx.speed ? chromaCycleStep(*ctx.speed) : step_;
+        const int v = chromaRowPosition(detail::clampTBar(tbar), s_.cycle, step, ctx.frameNumber);
         applyChroma(rows_, s_.mode, v, b, out, ctx.guesses.chromaLumaOffset);
     }
 
 private:
     ChromaSettings s_;
     ChromaRows rows_;
-    uint32_t step_;  // 16.16 rows per field, from the speed the Switcher selects for the crouton
+    uint32_t step_;  // 16.16 rows per field at the crouton's default speed (RenderCtx::speed unset)
 };
 
 }  // namespace

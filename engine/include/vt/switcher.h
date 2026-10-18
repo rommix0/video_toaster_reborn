@@ -26,6 +26,9 @@ namespace vt {
 
 enum class Bus { Main, Preview, Overlay };
 enum class Source { In1, In2, In3, In4, DV1, DV2, Bkg };
+// Auto's direction: Forward runs the T-bar to 511 (Space), Reverse back to 0 (Shift+Space,
+// manual PDF 185).
+enum class Direction { Forward, Reverse };
 
 // The live pictures of the four inputs (null = no picture yet, shown as black). DV1, DV2 and BKG
 // are the Switcher's own.
@@ -52,7 +55,9 @@ public:
     // move, that is) or while a DVE move is mid-transition (they share the DV memory, spec
     // 5.8). Cut, dissolve and the wipes are never refused. Ruling 23: a ChromaFX chosen while
     // another is engaged REPLACES it: the old one disengages and the new one starts
-    // disengaged (T-bar 0, frame counter reset). The effect colour becomes e's own.
+    // disengaged (T-bar 0, frame counter reset). The effect colour becomes e's own and the
+    // speed button e's default (timing().defaultSpeed, tag 0x55: the Switcher sets $1f4 from it
+    // when a crouton is loaded); setSpeed then changes it.
     bool setEffect(std::shared_ptr<const Effect> e, std::string* whyNot = nullptr);
     const Effect& effect() const { return *effect_; }
 
@@ -61,6 +66,16 @@ public:
     // effect's own. Independent of the BKG source's colour (setBackground).
     void setEffectColour(EffectColour c) { effectColour_ = c; }
     EffectColour effectColour() const { return effectColour_; }
+
+    // --- speed buttons, hardware guesses ---
+    // The operator's S/M/F/V button. It is what renders resolve (effect().timing().resolve) and
+    // pass on as RenderCtx::speed, e.g. a cycling ChromaFX's cycle rate; autoTransition sets
+    // it too. A running Auto keeps the rate it started with.
+    void setSpeed(Speed s) { speed_ = s; }
+    Speed speed() const { return speed_; }
+    // Passed to every effect render as RenderCtx::guesses.
+    void setGuesses(const HardwareGuesses& g) { guesses_ = g; }
+    const HardwareGuesses& guesses() const { return guesses_; }
 
     // --- T-bar, Auto, Take ---
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
@@ -72,22 +87,29 @@ public:
     // disengages a Transition-mode crouton (a Filter-mode one stays engaged).
     void setTBar(int pos);
     int tbar() const { return tbar_; }
-    // Runs the T-bar from where it is to 511 at the constant rate of
-    // effect().timing().durationTicks[resolve(speed)] ticks for the full 0..511 trip (the
-    // trip from 0 takes exactly that many tick()s; from further along it takes the remaining
-    // fraction, rounded up). Does nothing if the T-bar already is at 511 (ChromaFX).
-    // While it runs the T-bar reads round(511 * elapsed / total) (never 511 before the end), and
-    // an effect with animation frames is rendered at its exact frame elapsed / fieldsPerFrame
-    // (RenderCtx::animFrame), so each frame is shown for exactly fieldsPerFrame ticks and none
-    // is skipped or repeated. A hand-driven T-bar maps to frames by animFrameForTBar instead.
-    void autoTransition(Speed);
+    // Sets the speed button to `speed` and runs the T-bar from where it is to 511 (Forward) or
+    // to 0 (Reverse) at the constant rate of effect().timing().durationTicks[resolve(speed)]
+    // ticks for the full 0..511 trip (the trip from 0 takes exactly that many tick()s; from
+    // further along it takes the remaining fraction, rounded up). Forward does nothing if the
+    // T-bar already is at 511 (an engaged ChromaFX), Reverse if it is at 0 and Auto is not
+    // running. Called while Auto runs, it carries on from the exact position (same direction:
+    // no change but the rate; the other direction: turns round).
+    // While it runs the T-bar reads round(511 * elapsed / total) (never 511 or 0 before the
+    // end), and an effect with animation frames is rendered at its exact frame
+    // elapsed / fieldsPerFrame (RenderCtx::animFrame), so each frame is shown for exactly
+    // fieldsPerFrame ticks and none is skipped or repeated. A hand-driven T-bar maps to frames
+    // by animFrameForTBar instead.
+    // Forward ends as a T-bar run to 511 does (swap, or an engaged ChromaFX stays at 511);
+    // Reverse ends as a return to 0 does: no swap, and a Transition-mode ChromaFX disengages
+    // (a Filter-mode one stays engaged).
+    void autoTransition(Speed speed, Direction dir = Direction::Forward);
     bool autoRunning() const { return auto_; }
     // True from the moment the T-bar leaves 0 or Auto starts until the transition finishes (or,
     // for ChromaFX, until it is disengaged).
     bool transitionActive() const { return auto_ || tbar_ > 0 || chromaEngaged_; }
     bool chromaEngaged() const { return chromaEngaged_; }
     // Cut: swaps the Main and Preview selections. Ends any transition (T-bar 0, Auto stopped,
-    // ChromaFX disengaged).
+    // ChromaFX disengaged) and drops a sound pendingSound() has not handed over.
     void take();
 
     // --- background (BKG source) ---
@@ -109,15 +131,16 @@ public:
     // reads or writes `program` before it is finished, so it may alias an input frame.
     void render(const SourceFrames&, Frame& program) const;
 
-    // The current effect's sound, once, when a transition starts; nullptr otherwise. The pointer
-    // is valid only until the next setEffect().
-    const Sound* pendingSound();
+    // The current effect's sound, once, when a transition starts; nullptr otherwise (and after
+    // a Take). The pointer shares ownership of the effect, so the sound stays valid however
+    // long the caller keeps it, also after setEffect() released the effect.
+    std::shared_ptr<const Sound> pendingSound();
 
 private:
     void beginTransitionIfIdle();
     void finishAt511();
+    void arriveAt0();
     void disengage();
-    void fillSource(Source, const SourceFrames&, Frame& scratch, const Frame*& out) const;
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::Bkg};
     std::shared_ptr<const Effect> effect_;
@@ -126,6 +149,9 @@ private:
     int64_t autoAcc_ = 0;  // T-bar position * autoDur_ (Auto's exact position; 511 per tick)
     int autoDur_ = 1;      // ticks for the full 0..511 trip
     int autoFpf_ = 0;      // fields (ticks) per animation frame at Auto's speed; 0 = no frames
+    Direction autoDir_ = Direction::Forward;
+    Speed speed_ = Speed::Medium;
+    HardwareGuesses guesses_;
     bool chromaEngaged_ = false;
     uint32_t chromaFrames_ = 0;  // ticks since engagement
     bool soundPending_ = false;

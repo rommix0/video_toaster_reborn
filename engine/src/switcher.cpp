@@ -15,6 +15,7 @@ size_t busIndex(Bus b) { return static_cast<size_t>(b); }
 }  // namespace
 
 Switcher::Switcher() : effect_(makeDissolve()), effectColour_(effect_->effectColour()) {
+    speed_ = effect_->timing().defaultSpeed;
     std::fill(dv_.px.begin(), dv_.px.end(), kBlack);
 }
 
@@ -42,6 +43,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     soundPending_ = false;
     effect_ = std::move(e);
     effectColour_ = effect_->effectColour();
+    speed_ = effect_->timing().defaultSpeed;
     return true;
 }
 
@@ -64,6 +66,14 @@ void Switcher::finishAt511() {
     }
 }
 
+// The T-bar is back at 0 (by hand or by a reverse Auto): nothing swaps; a Transition-mode
+// ChromaFX disengages, a Filter-mode one stays engaged.
+void Switcher::arriveAt0() {
+    auto_ = false;
+    tbar_ = 0;
+    if (!effect_->isChromaFilter()) disengage();
+}
+
 void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
@@ -77,29 +87,34 @@ void Switcher::setTBar(int pos) {
         }
     }
     tbar_ = pos;
-    if (chroma) {
-        if (pos == 0 && !effect_->isChromaFilter()) disengage();
-    } else if (pos == kTBarEnd) {
-        finishAt511();
-    }
+    if (pos == 0) arriveAt0();
+    else if (pos == kTBarEnd && !chroma) finishAt511();
 }
 
-void Switcher::autoTransition(Speed speed) {
+void Switcher::autoTransition(Speed speed, Direction dir) {
+    speed_ = speed;
     const Timing t = effect_->timing();
-    const bool chroma = effect_->isChromaFx();
-    if (tbar_ >= kTBarEnd) return;  // only a ChromaFX can rest at 511
-    beginTransitionIfIdle();
-    if (chroma && !chromaEngaged_) {
-        chromaEngaged_ = true;
-        chromaFrames_ = 0;
+    if (dir == Direction::Forward) {
+        if (tbar_ >= kTBarEnd) return;  // only a ChromaFX can rest at 511
+        beginTransitionIfIdle();
+        if (effect_->isChromaFx() && !chromaEngaged_) {
+            chromaEngaged_ = true;
+            chromaFrames_ = 0;
+        }
+    } else if (tbar_ == 0 && !auto_) {
+        return;  // nothing to run back
     }
     const auto s = static_cast<size_t>(t.resolve(speed));
-    autoDur_ = std::max(1, t.durationTicks[s]);
+    // (Over 2^24 ticks, 78 hours, only corrupt tags; the cap keeps the fixed point in range.)
+    const int dur = std::clamp(t.durationTicks[s], 1, 1 << 24);
+    // Exact fixed point: the T-bar is autoAcc_ / autoDur_ rounded, and every tick adds (or, in
+    // reverse, takes away) 511, so the full 0..511 trip takes exactly autoDur_ ticks and the
+    // last one lands on 511 (0). The elapsed tick count from T-bar 0 is autoAcc_ / 511. A
+    // running Auto keeps its exact position, rescaled to the new rate.
+    autoAcc_ = auto_ ? autoAcc_ * dur / autoDur_ : static_cast<int64_t>(tbar_) * dur;
+    autoDur_ = dur;
     autoFpf_ = std::max(0, t.fieldsPerFrame[s]);
-    // Exact fixed point: the T-bar is autoAcc_ / autoDur_ rounded, and every tick adds 511, so
-    // the full 0..511 trip takes exactly autoDur_ ticks and the last one lands on 511. The
-    // elapsed tick count (from T-bar 0) is autoAcc_ / 511.
-    autoAcc_ = static_cast<int64_t>(tbar_) * autoDur_;
+    autoDir_ = dir;
     auto_ = true;
 }
 
@@ -107,6 +122,7 @@ void Switcher::take() {
     auto_ = false;
     tbar_ = 0;
     disengage();
+    soundPending_ = false;
     std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);
 }
 
@@ -114,13 +130,19 @@ void Switcher::tick() {
     ++tickCount_;
     if (chromaEngaged_) ++chromaFrames_;
     if (!auto_) return;
-    autoAcc_ += kTBarEnd;
-    if (autoAcc_ >= static_cast<int64_t>(kTBarEnd) * autoDur_) {
-        tbar_ = kTBarEnd;
-        finishAt511();
+    if (autoDir_ == Direction::Forward) {
+        autoAcc_ += kTBarEnd;
+        if (autoAcc_ >= static_cast<int64_t>(kTBarEnd) * autoDur_) {
+            tbar_ = kTBarEnd;
+            finishAt511();
+        } else {
+            // 511 means finished: a long Auto (over 1022 ticks) must not round up to it early.
+            tbar_ = std::min(kTBarEnd - 1, static_cast<int>((autoAcc_ + autoDur_ / 2) / autoDur_));
+        }
     } else {
-        // 511 means finished: a long Auto (over 1022 ticks) must not round up to it early.
-        tbar_ = std::min(kTBarEnd - 1, static_cast<int>((autoAcc_ + autoDur_ / 2) / autoDur_));
+        autoAcc_ -= kTBarEnd;
+        if (autoAcc_ <= 0) arriveAt0();
+        else tbar_ = std::max(1, static_cast<int>((autoAcc_ + autoDur_ / 2) / autoDur_));
     }
 }
 
@@ -175,18 +197,26 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         // Only ChromaFX uses the frame counter (cycling). Other effects are rendered from the
         // T-bar position alone, so a T-bar moved back looks like a fresh render there.
         ctx.frameNumber = chromaEngaged_ ? chromaFrames_ : 0;
-        // Auto: the exact animation frame for the elapsed ticks (Ruling 25).
-        if (auto_ && autoFpf_ > 0)
-            ctx.animFrame = static_cast<int>(std::min<int64_t>(autoAcc_ / kTBarEnd / autoFpf_, INT_MAX));
+        ctx.speed = effect_->timing().resolve(speed_);
+        ctx.guesses = guesses_;
+        // Auto: the exact animation frame for the elapsed ticks (Ruling 25). Forward shows
+        // elapsed ticks 0 .. total-1, reverse total-1 .. 0, each frame for autoFpf_ ticks.
+        if (auto_ && autoFpf_ > 0) {
+            const int64_t elapsed = autoDir_ == Direction::Forward ? autoAcc_ / kTBarEnd
+                                                                   : std::max<int64_t>(0, autoAcc_ - 1) / kTBarEnd;
+            ctx.animFrame = static_cast<int>(std::min<int64_t>(elapsed / autoFpf_, INT_MAX));
+        }
         effect_->render(tbar_, a, b, out, ctx);
     }
     program.px.swap(out.px);
 }
 
-const Sound* Switcher::pendingSound() {
+std::shared_ptr<const Sound> Switcher::pendingSound() {
     if (!soundPending_) return nullptr;
     soundPending_ = false;
-    return effect_->sound();
+    const Sound* s = effect_->sound();
+    if (!s) return nullptr;
+    return std::shared_ptr<const Sound>(effect_, s);  // aliasing: owns the effect, points at its sound
 }
 
 }  // namespace vt

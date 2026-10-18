@@ -1,12 +1,16 @@
 #include <algorithm>
+#include <cstdint>
 #include <array>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
 #include "vt/background.h"
+#include "vt/chromafx.h"
+#include "vt/crouton.h"
 #include "vt/effect.h"
 #include "vt/switcher.h"
 
@@ -502,13 +506,13 @@ TEST_CASE("pendingSound hands the sound over once per transition", "[switcher]")
     REQUIRE(r.sw.setEffect(beep));
     REQUIRE(r.sw.pendingSound() == nullptr);
     r.sw.setTBar(10);
-    REQUIRE(r.sw.pendingSound() == beep->sound());
+    REQUIRE(r.sw.pendingSound().get() == beep->sound());
     REQUIRE(r.sw.pendingSound() == nullptr);
     r.sw.setTBar(300);  // same transition
     REQUIRE(r.sw.pendingSound() == nullptr);
     r.sw.setTBar(0);
     r.sw.autoTransition(vt::Speed::Fast);
-    REQUIRE(r.sw.pendingSound() == beep->sound());
+    REQUIRE(r.sw.pendingSound().get() == beep->sound());
     r.sw.tick();
     REQUIRE(r.sw.pendingSound() == nullptr);
     while (r.sw.autoRunning()) r.sw.tick();
@@ -516,10 +520,241 @@ TEST_CASE("pendingSound hands the sound over once per transition", "[switcher]")
     // a cut is not a transition
     r.sw.take();
     REQUIRE(r.sw.pendingSound() == nullptr);
+    // a Take drops a sound nobody collected
+    r.sw.setTBar(10);
+    r.sw.take();
+    REQUIRE(r.sw.pendingSound() == nullptr);
     // an effect without sound gives nullptr
     REQUIRE(r.sw.setEffect(dissolve()));
     r.sw.autoTransition(vt::Speed::Fast);
     REQUIRE(r.sw.pendingSound() == nullptr);
+}
+
+TEST_CASE("a pending sound outlives its effect (Ruling 28)", "[switcher]") {
+    Rig r;
+    auto beep = std::make_shared<Beep>();
+    const vt::Sound* raw = beep->sound();
+    REQUIRE(r.sw.setEffect(beep));
+    beep.reset();  // the Switcher holds the last reference
+    r.sw.setTBar(10);
+    const std::shared_ptr<const vt::Sound> snd = r.sw.pendingSound();
+    REQUIRE(snd.get() == raw);
+    REQUIRE(r.sw.setEffect(dissolve()));  // the Switcher lets go of Beep
+    REQUIRE(snd->rate == 8000);
+    REQUIRE(snd->pcm == std::vector<int16_t>{1, 2, 3});
+}
+
+TEST_CASE("the speed button: the effect's default, setSpeed, autoTransition (Ruling 29)", "[switcher]") {
+    Rig r;
+    REQUIRE(r.sw.speed() == vt::Speed::Medium);  // the dissolve's default
+    REQUIRE(r.sw.setEffect(pagePeel()));
+    REQUIRE(r.sw.speed() == vt::Speed::Fast);  // tag 0x55 default, as the Switcher loads it
+    r.sw.setSpeed(vt::Speed::Medium);
+    REQUIRE(r.sw.speed() == vt::Speed::Medium);
+    // the 2000FX Page Peel (54 frames) has no Slow button: Auto runs at its default, Fast
+    REQUIRE(r.sw.setEffect(load("4.2/Effects/2000FX/PagePeel/Page Peel")));
+    r.sw.autoTransition(vt::Speed::Slow);
+    REQUIRE(r.sw.speed() == vt::Speed::Slow);
+    int n = 0;
+    while (r.sw.autoRunning()) {
+        r.sw.tick();
+        REQUIRE(++n <= 54);
+    }
+    REQUIRE(n == 54);
+    // the render context carries the resolved speed
+    Rig q;
+    const auto rec = std::make_shared<Recorder>(pagePeel());
+    REQUIRE(q.sw.setEffect(rec));
+    q.sw.setSpeed(vt::Speed::Variable);  // Page Peel ! has no Variable button: its default
+    q.sw.setTBar(100);
+    (void)q.render();
+    REQUIRE_FALSE(pagePeel()->timing().available(vt::Speed::Variable));
+    REQUIRE(rec->lastCtx.speed == vt::Speed::Fast);
+    q.sw.setSpeed(vt::Speed::Medium);
+    (void)q.render();
+    REQUIRE(rec->lastCtx.speed == vt::Speed::Medium);
+}
+
+TEST_CASE("a cycling ChromaFX cycles at the speed button's rate (FINDINGS)", "[switcher][chromafx]") {
+    // LUT_GridCycle*: Slow 0.25, Medium 0.5, Fast 1, Variable 0.5 rows per field (16.16 below)
+    const auto fx = neonCycle();  // Transition, cycling forward, crouton default Slow
+    const auto c = vt::loadCrouton(dataRoot() / "4.2/Effects/ChromaFx/Neon Cycle");
+    REQUIRE(c);
+    const auto lut = vt::lutFromCrouton(*c);
+    REQUIRE(lut);
+    const auto rows = vt::buildRows(*lut, vt::chromaInterp(*lut));
+    const std::pair<vt::Speed, uint32_t> rates[] = {
+        {vt::Speed::Slow, 0x4000}, {vt::Speed::Medium, 0x8000}, {vt::Speed::Fast, 0x10000}, {vt::Speed::Variable, 0x8000}};
+    for (const auto& [speed, step] : rates) {
+        INFO("speed " << int(speed));
+        Rig r;
+        REQUIRE(r.sw.setEffect(fx));
+        REQUIRE(fx->timing().resolve(speed) == speed);
+        r.sw.setSpeed(speed);
+        r.sw.select(Bus::Main, Source::In3);
+        r.sw.select(Bus::Preview, Source::In4);
+        r.sw.setTBar(1);  // engage
+        uint32_t ticks = 0;
+        for (uint32_t n : {0u, 3u, 4u, 9u, 120u, 479u}) {
+            while (ticks < n) {
+                r.sw.tick();
+                ++ticks;
+            }
+            vt::Frame expect;
+            vt::applyChroma(rows, vt::ChromaMode::Transition, vt::chromaCycleRow(vt::ChromaCycle::Forward, step, n),
+                            r.in4, expect);
+            INFO("tick " << n);
+            REQUIRE(r.render().px == expect.px);
+        }
+    }
+}
+
+TEST_CASE("setGuesses reaches the effects (Ruling 29)", "[switcher]") {
+    Rig r;
+    const auto fx = fadeToNeg();
+    REQUIRE(r.sw.setEffect(fx));
+    REQUIRE(r.sw.guesses().chromaLumaOffset == vt::HardwareGuesses{}.chromaLumaOffset);
+    vt::HardwareGuesses g;
+    g.chromaLumaOffset = 0.0f;
+    r.sw.setGuesses(g);
+    REQUIRE(r.sw.guesses().chromaLumaOffset == 0.0f);
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    r.sw.setTBar(200);
+    vt::Frame expect;
+    vt::RenderCtx ctx;
+    ctx.guesses = g;
+    fx->render(200, r.in3, r.in4, expect, ctx);
+    const vt::Frame shown = r.render();
+    REQUIRE(shown.px == expect.px);
+    REQUIRE(shown.px != direct(*fx, 200, r.in3, r.in4).px);  // the default guess differs
+}
+
+TEST_CASE("reverse Auto runs back to 0 at the same rate, without a swap (Ruling 30)", "[switcher]") {
+    Rig r;  // dissolve, Fast = 60 ticks for 0..511
+    r.sw.setTBar(256);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+    int n = 0, last = 256;
+    while (r.sw.autoRunning()) {
+        REQUIRE(r.render().px == direct(*dissolve(), r.sw.tbar(), r.in1, r.in2).px);
+        r.sw.tick();
+        ++n;
+        REQUIRE(r.sw.tbar() < last);
+        last = r.sw.tbar();
+        REQUIRE(n <= 60);
+    }
+    REQUIRE(n == (256 * 60 + 510) / 511);  // the remaining fraction, rounded up
+    REQUIRE(r.sw.tbar() == 0);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In1);
+    REQUIRE(r.sw.selected(Bus::Preview) == Source::In2);
+    REQUIRE_FALSE(r.sw.transitionActive());
+    REQUIRE(r.render().px == r.in1.px);
+    // at 0 there is nothing to run back
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+    REQUIRE_FALSE(r.sw.autoRunning());
+
+    // turning a running Auto round: it comes back from where it was, each animation frame again
+    // for exactly fieldsPerFrame ticks, and ends at 0 with no swap
+    const auto inner = load("4.2/Effects/2000FX/Organic/Forked Lightning");
+    const auto rec = std::make_shared<Recorder>(inner);
+    Rig t;
+    REQUIRE(t.sw.setEffect(rec));
+    t.sw.autoTransition(vt::Speed::Medium);  // 2 fields per frame
+    for (int i = 0; i < 20; ++i) t.sw.tick();
+    t.sw.autoTransition(vt::Speed::Medium, vt::Direction::Reverse);
+    std::vector<int> shown;
+    while (t.sw.autoRunning()) {
+        (void)t.render();
+        shown.push_back(rec->lastCtx.animFrame);
+        t.sw.tick();
+        REQUIRE(shown.size() <= 20);
+    }
+    REQUIRE(shown.size() == 20);
+    for (size_t i = 0; i < shown.size(); ++i) REQUIRE(shown[i] == (19 - int(i)) / 2);
+    REQUIRE(t.sw.selected(Bus::Main) == Source::In1);
+    REQUIRE_FALSE(t.sw.transitionActive());
+}
+
+TEST_CASE("reverse Auto disengages a Transition ChromaFX, not a Filter one (Ruling 30)", "[switcher][chromafx]") {
+    for (const char* name : {"Fade To Neg", "Mars Filter"}) {
+        INFO(name);
+        const auto fx = load((std::string("4.2/Effects/ChromaFx/") + name).c_str());
+        const bool filter = fx->isChromaFilter();
+        REQUIRE(filter == (std::string(name) == "Mars Filter"));
+        Rig r;
+        REQUIRE(r.sw.setEffect(fx));
+        r.sw.select(Bus::Main, Source::In3);
+        r.sw.select(Bus::Preview, Source::In4);
+        r.sw.autoTransition(vt::Speed::Fast);
+        while (r.sw.autoRunning()) r.sw.tick();
+        REQUIRE(r.sw.chromaEngaged());
+        REQUIRE(r.sw.tbar() == 511);
+        r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+        int n = 0;
+        while (r.sw.autoRunning()) {
+            r.sw.tick();
+            REQUIRE(++n <= fx->timing().durationTicks[size_t(vt::Speed::Fast)]);
+        }
+        REQUIRE(n == fx->timing().durationTicks[size_t(vt::Speed::Fast)]);
+        REQUIRE(r.sw.tbar() == 0);
+        REQUIRE(r.sw.chromaEngaged() == filter);
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);  // never a swap
+        if (filter)
+            REQUIRE(r.render().px == direct(*fx, 0, r.in3, r.in4).px);  // still recolouring, at T-bar 0
+        else
+            REQUIRE(r.render().px == r.in3.px);
+    }
+}
+
+TEST_CASE("a Filter ChromaFX stays engaged at T-bar 0", "[switcher][chromafx]") {
+    Rig r;
+    const auto fx = load("4.2/Effects/ChromaFx/Mars Filter");
+    REQUIRE(fx->isChromaFilter());
+    REQUIRE(r.sw.setEffect(fx));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    r.sw.setTBar(300);
+    REQUIRE(r.sw.chromaEngaged());
+    r.sw.setTBar(0);
+    REQUIRE(r.sw.chromaEngaged());
+    REQUIRE(r.sw.transitionActive());
+    const vt::Frame at0 = r.render();
+    REQUIRE(at0.px == direct(*fx, 0, r.in3, r.in4).px);
+    REQUIRE(at0.px != r.in3.px);
+    // Take turns it off (and cuts)
+    r.sw.take();
+    REQUIRE_FALSE(r.sw.chromaEngaged());
+    REQUIRE(r.render().px == r.in4.px);
+}
+
+TEST_CASE("Take during Auto cuts once and stops Auto", "[switcher]") {
+    Rig r;
+    r.sw.autoTransition(vt::Speed::Fast);
+    for (int i = 0; i < 10; ++i) r.sw.tick();
+    REQUIRE(r.sw.tbar() > 0);
+    r.sw.take();
+    REQUIRE_FALSE(r.sw.autoRunning());
+    REQUIRE(r.sw.tbar() == 0);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
+    for (int i = 0; i < 100; ++i) r.sw.tick();  // no second swap when Auto would have ended
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
+    REQUIRE(r.render().px == r.in2.px);
+}
+
+TEST_CASE("pressing Auto again while it runs changes nothing", "[switcher]") {
+    Rig r;
+    r.sw.autoTransition(vt::Speed::Fast);
+    int n = 0;
+    while (r.sw.autoRunning()) {
+        if (n % 7 == 3) r.sw.autoTransition(vt::Speed::Fast);
+        r.sw.tick();
+        REQUIRE(++n <= 60);
+    }
+    REQUIRE(n == 60);  // still exactly the full trip
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);  // swapped once
+    // after it finished, Auto starts a new transition
+    r.sw.autoTransition(vt::Speed::Fast);
+    REQUIRE(r.sw.autoRunning());
 }
 
 TEST_CASE("BKG renders the background colour", "[switcher]") {
