@@ -14,6 +14,12 @@ JSON-lines files to vtoast_reborn/tests/golden/:
   dve.jsonl       DVE effects: per-frame key/line/art CRCs (overscan unfilled)
   timing.jsonl    effect timing from the crouton tags
   chromafx.jsonl  ChromaFX LUTs from the croutons and the bank files
+  chromafx_rows.jsonl  ChromaFX croutons: the 480 colour-map rows the Toaster builds
+                  (tools/chromafx_rows_ref.py), one CRC per row of 96 RGBA bytes
+
+    python -P -E vtoast_reborn/tools/make_golden.py --only chromafx_rows
+
+writes just the named file(s) (comma-separated).
 
 All CRCs are zlib crc32. Index arrays are hashed as uint8, shape (h, w); the one
 9-plane bitmap (Warp To Globe !) is hashed as little-endian uint16 instead.
@@ -29,6 +35,8 @@ import toaster_iff as T
 import toaster_dve
 import toaster_fx_convert as C
 import chromafx_to_cube as X
+sys.path.insert(0, HERE)
+import chromafx_rows_ref as CR
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
 TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
@@ -126,11 +134,28 @@ def mix_record(a, mode):
     return rec, dict(multi_rt=max(a.reltimes) > 1, palette_changes=palette_changes)
 
 
+def lut_record(path):
+    """The raw 904-byte ' LUT' chunk of a CRFX crouton, or None."""
+    d = open(path, 'rb').read()
+    for ft, fo, fs in T.forms(d):
+        if ft == b'CrUD':
+            sc = T.subchunks(d, fo, fs)
+            if b' LUT' in sc:
+                o, n = sc[b' LUT'][0]
+                return d[o:o + n]
+    return None
+
+
 def main():
+    only = None
+    if '--only' in sys.argv:
+        only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
     os.makedirs(OUT, exist_ok=True)
-    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx')}
+    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
             if r['status'] == 'converted']
+    if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
+        rows = []
     man = {}
     for r in rows:
         man[r['kind']] = man.get(r['kind'], 0) + 1
@@ -194,6 +219,11 @@ def main():
             tg = {f'0x{k:08x}': v for k, v in sorted(tg.items()) if isinstance(v, int)}
             chroma(f'{c}/{f}', res[0], res[1], tg)
             nc += 1
+            if only is None or 'chromafx_rows' in only:
+                rec = lut_record(p)
+                files['chromafx_rows'].append(dict(
+                    source=f'{c}/{f}', interp=CR.interp_index(rec),
+                    row_crcs=[crc(CR.row_bytes(r)) for r in CR.rows(rec)]))
     for bank in X.BANKS:
         if os.path.exists(os.path.join(ROOT, bank)):
             for name, t in X.from_bank(os.path.join(ROOT, bank)):
@@ -201,6 +231,8 @@ def main():
                 nb += 1
 
     for name, recs in files.items():
+        if only is not None and name not in only:
+            continue
         with open(os.path.join(OUT, name + '.jsonl'), 'w', encoding='utf-8', newline='\n') as fo:
             for rec in recs:
                 fo.write(json.dumps(rec, separators=(',', ':'), ensure_ascii=False) + '\n')

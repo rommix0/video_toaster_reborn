@@ -59,5 +59,7 @@ std::unique_ptr<Effect> makeAnimEffect(std::string name, Timing, std::optional<S
                                        std::string* why);
 // DVE content (isDve on the first frame); every frame must be 768x241 DVE control data.
 std::unique_ptr<Effect> makeDveEffect(std::string name, Timing, std::optional<Sound>, const Anim&, std::string* why);
+// CRFX crouton: its ` LUT` record, settings from the tags (vt/chromafx.h).
+std::unique_ptr<Effect> makeChromaEffect(std::string name, const Crouton&, std::string* why);
 
 }  // namespace vt::detail

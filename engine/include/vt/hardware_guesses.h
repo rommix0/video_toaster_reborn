@@ -17,8 +17,11 @@ struct HardwareGuesses {
     // HARDWARE GUESS.
     int dveCellPixel = -1;
 
-    // ChromaFX: offset added to the luma value (0..255 scale) before the colour tables are
-    // applied. HARDWARE GUESS.
+    // ChromaFX: a pixel of Rec.601 luma Y (0..255) reads colour-map entry
+    // floor(chromaLumaOffset + Y / 4), clamped to 0..95 (the identity table's own spacing).
+    // HARDWARE GUESS: the hardware addresses the map with the DV luma sample, which the code does
+    // not show. LUT_LinearRamp (written as DV line 479) would be the identity if the entry were
+    // DV luma / 2 - 18, i.e. 17.5 + 0.253 Y, within one entry of this.
     float chromaLumaOffset = 17.5f;
 };
 

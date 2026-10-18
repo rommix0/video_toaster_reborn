@@ -712,10 +712,6 @@ TEST_CASE("black palettes use the background colour from the render context", "[
 
 TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {
     std::string why;
-    // ChromaFX
-    why.clear();
-    REQUIRE(load("4.2/Effects/ChromaFx/BW Poster", &why) == nullptr);
-    REQUIRE(why == "ChromaFX support not built yet");
     // Bar pictures taller than the raster (Ruling 11)
     int bars = 0;
     for (const auto& r : golden::readLines("ilbm.jsonl")) {

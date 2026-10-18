@@ -1,13 +1,16 @@
 add_library(vt_engine STATIC
     src/anim.cpp
     src/background.cpp
+    src/chromafx.cpp
     src/delta5.cpp
     src/delta7.cpp
     src/delta8.cpp
     src/dve.cpp
+    src/dv_colour.cpp
     src/crc32.cpp
     src/effect_anim.cpp
     src/effect_basic.cpp
+    src/effect_chromafx.cpp
     src/effect_dve.cpp
     src/effect_factory.cpp
     src/effect_gradient.cpp

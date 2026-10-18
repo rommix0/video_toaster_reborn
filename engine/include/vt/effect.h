@@ -34,7 +34,7 @@ public:
     virtual void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx&) const = 0;
     // The effect's 8SVX sound, or nullptr (none, or one that cannot be decoded).
     virtual const Sound* sound() const { return nullptr; }
-    // True for effects that use the DV memory (DVE moves): at most one can run at a time.
+    // True for effects that use the DV memory (DVE moves, ChromaFX): at most one can run at a time.
     virtual bool usesDvMemory() const { return false; }
 };
 
@@ -43,10 +43,11 @@ public:
 std::unique_ptr<Effect> makeCut();
 std::unique_ptr<Effect> makeDissolve();
 
-// Reads a crouton file. The kind is decided by its content: an ANIM form -> DVE move (vt::isDve,
-// see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient wipe. Returns nullptr
-// and sets *whyNot (if given) for files that cannot be played yet: ChromaFX (not built yet),
-// ALGO/MAIN/CTRL (Switcher code), bar pictures, unsupported control image sizes, undecodable files.
+// Reads a crouton file. A CRFX crouton -> ChromaFX (vt/chromafx.h: recolours B at every T-bar
+// position, uses the DV memory). Otherwise the kind is decided by its content: an ANIM form -> DVE
+// move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient wipe.
+// Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: ALGO/MAIN/CTRL
+// (Switcher code), bar pictures, unsupported control image sizes, undecodable files.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);
 
 // The gradient wipe's decision for one pixel: B's share (0..255) for a pixel of the given gray at
