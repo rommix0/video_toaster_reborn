@@ -49,15 +49,16 @@ public:
 
     // --- effect ---
     // Makes `e` the current effect (a null effect is refused). Any transition in progress is
-    // abandoned without swapping (T-bar 0, Auto stopped) and an engaged ChromaFX is disengaged.
-    // A DV-memory effect (usesDvMemory(): DVE moves and ChromaFX) is refused, returning false
-    // with a reason in *whyNot and the current effect kept, while ChromaFX is engaged (a DVE
-    // move, that is) or while a DVE move is mid-transition (they share the DV memory, spec
-    // 5.8). Cut, dissolve and the wipes are never refused. Ruling 23: a ChromaFX chosen while
-    // another is engaged REPLACES it: the old one disengages and the new one starts
-    // disengaged (T-bar 0, frame counter reset). The effect colour becomes e's own and the
-    // speed button e's default (timing().defaultSpeed, tag 0x55: the Switcher sets $1f4 from it
-    // when a crouton is loaded); setSpeed then changes it.
+    // abandoned without swapping (T-bar 0, Auto stopped) and an engaged ChromaFX or overlay is
+    // disengaged. A DV-memory effect (usesDvMemory(): DVE moves and ChromaFX) is refused,
+    // returning false with a reason in *whyNot and the current effect kept, while ChromaFX is
+    // engaged (a DVE move, that is) or while a DVE move is mid-transition or engaged as an
+    // overlay (the Glitch overlays; they share the DV memory, spec 5.8). Cut, dissolve and the
+    // wipes are never refused. Ruling 23: a ChromaFX chosen while another is engaged REPLACES
+    // it: the old one disengages and the new one starts disengaged (T-bar 0, frame counter
+    // reset). The effect colour becomes e's own and the speed button e's default
+    // (timing().defaultSpeed, tag 0x55: the Switcher sets $1f4 from it when a crouton is
+    // loaded); setSpeed then changes it.
     bool setEffect(std::shared_ptr<const Effect> e, std::string* whyNot = nullptr);
     const Effect& effect() const { return *effect_; }
 
@@ -93,9 +94,9 @@ public:
     // to 0 (Reverse) at the constant rate of effect().timing().durationTicks[resolve(speed)]
     // ticks for the full 0..511 trip (the trip from 0 takes exactly that many tick()s; from
     // further along it takes the remaining fraction, rounded up). Forward does nothing if the
-    // T-bar already is at 511 (an engaged ChromaFX), Reverse if it is at 0 and Auto is not
-    // running. Called while Auto runs, it carries on from the exact position (same direction:
-    // no change but the rate; the other direction: turns round).
+    // T-bar already is at 511 (an engaged ChromaFX or overlay), Reverse if it is at 0 and Auto
+    // is not running. Called while Auto runs, it carries on from the exact position (same
+    // direction: no change but the rate; the other direction: turns round).
     // While it runs the T-bar reads round(511 * elapsed / total) (never 511 or 0 before the
     // end), and an effect with animation frames is rendered at its exact frame
     // elapsed / fieldsPerFrame (RenderCtx::animFrame), so each frame is shown for exactly
@@ -127,7 +128,7 @@ public:
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
-    //  * no transition (T-bar 0, ChromaFX not engaged): Program = A;
+    //  * no transition (T-bar 0, Auto not running, nothing engaged): Program = A;
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
     //    (Program shows the recoloured Preview), frameNumber = ticks since engagement;
@@ -164,7 +165,7 @@ private:
     Direction autoDir_ = Direction::Forward;
     Speed speed_ = Speed::Medium;
     HardwareGuesses guesses_;
-    bool engaged_ = false;        // a ChromaFX or overlay is engaged
+    bool engaged_ = false;       // a ChromaFX or overlay is engaged
     uint32_t engagedTicks_ = 0;  // ticks since engagement
     bool soundPending_ = false;
     uint32_t tickCount_ = 0;
