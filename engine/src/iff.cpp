@@ -49,8 +49,11 @@ std::vector<Form> iffForms(std::span<const uint8_t> d, size_t begin, size_t end)
 
 std::vector<Chunk> formChunks(std::span<const uint8_t> d, const Form& f) {
     std::vector<Chunk> out;
-    walk(d, f.offset + 12, f.offset + 8 + f.size,
-         [&](std::array<char, 4> id, size_t o, size_t sz) { out.push_back({id, o + 8, sz}); });
+    const size_t end = std::min(f.offset + 8 + f.size, d.size());  // the form's end, inside the buffer
+    walk(d, f.offset + 12, end, [&](std::array<char, 4> id, size_t o, size_t sz) {
+        // walk() guarantees o + 8 <= end, so the clamp cannot underflow.
+        out.push_back({id, o + 8, std::min(sz, end - (o + 8))});
+    });
     return out;
 }
 
