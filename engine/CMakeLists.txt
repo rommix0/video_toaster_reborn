@@ -8,6 +8,7 @@ add_library(vt_engine STATIC
     src/iff.cpp
     src/crouton.cpp
     src/ilbm.cpp
+    src/mix.cpp
     src/sound.cpp
     src/timing.cpp
 )

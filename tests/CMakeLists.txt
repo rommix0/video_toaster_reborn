@@ -9,6 +9,7 @@ add_executable(vt_tests
     test_crouton.cpp
     test_golden.cpp
     test_ilbm.cpp
+    test_mix.cpp
     test_timing.cpp
 )
 target_link_libraries(vt_tests PRIVATE vt_engine catch2_amalgamated)

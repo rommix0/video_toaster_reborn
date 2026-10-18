@@ -121,7 +121,7 @@ the default.
 |---|---|
 | 0x80000022 | effect mode: 4/5 soft matte, 7 colour roles, 0/2 DVE |
 | 0x80000023 | background colour 1 Black 2 White 3 Red 4 Green 5 Blue 6 Yellow 7 Magenta 8 Cyan 9 Snow; negative → use 0x80000024 |
-| 0x80000024 | custom background colour (12-bit) |
+| 0x80000024 | custom background colour as a raw generator hardware word (not 0x0RGB); the 8 preset words map exactly (see FINDINGS.md 'Background colour generator'); other words are approximated |
 | 0x80000055 | default speed button: 0 Medium, 1 Fast, 2 Variable, 3 Slow (table at 0xe660c); ANIM default 1 = Fast, ILBM default 0 = Medium |
 | 0x80000056–59 | Variable/Slow/Medium/Fast for 68020+ machines |
 | 0x8000005a–5d | the same for 68000 machines (vtoast_reborn uses the 68020 set) |
