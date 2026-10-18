@@ -1,0 +1,5 @@
+add_executable(vt_render vt_render.cpp)
+target_link_libraries(vt_render PRIVATE vt_engine)
+if(MSVC)
+    target_compile_options(vt_render PRIVATE /W4)
+endif()

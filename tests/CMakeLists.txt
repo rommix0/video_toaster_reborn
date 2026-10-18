@@ -25,3 +25,10 @@ if(MSVC)
     target_compile_options(vt_tests PRIVATE /W4)
 endif()
 add_test(NAME vt_tests COMMAND vt_tests)
+
+# vt_render: a CTest script test (the CLI renders Page Peel ! at fast speed; 30 frames).
+add_test(NAME vt_render_cli COMMAND ${CMAKE_COMMAND}
+    -DVT_RENDER=$<TARGET_FILE:vt_render>
+    -DVT_DATA_ROOT=${CMAKE_SOURCE_DIR}/..
+    -DWORK_DIR=${CMAKE_BINARY_DIR}/vt_render_cli_work
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_cli.cmake)
