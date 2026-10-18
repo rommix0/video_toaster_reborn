@@ -246,9 +246,17 @@ TEST_CASE("setEffect and the DV memory (Review Focus 4)", "[switcher]") {
     REQUIRE_FALSE(why.empty());
     REQUIRE(r.sw.effect().name() == fadeToNeg()->name());
     REQUIRE(r.sw.chromaEngaged());
-    // another ChromaFX is a DV-memory effect too
+    // another ChromaFX replaces the engaged one (Ruling 23): it starts disengaged, T-bar 0
+    REQUIRE(r.sw.setEffect(neonCycle(), &why));
+    REQUIRE(r.sw.effect().name() == neonCycle()->name());
+    REQUIRE_FALSE(r.sw.chromaEngaged());
+    REQUIRE_FALSE(r.sw.transitionActive());
+    REQUIRE(r.sw.tbar() == 0);
+    r.sw.setTBar(100);
+    REQUIRE(r.sw.chromaEngaged());
+    // ChromaFX -> DVE stays refused
     why.clear();
-    REQUIRE_FALSE(r.sw.setEffect(neonCycle(), &why));
+    REQUIRE_FALSE(r.sw.setEffect(dve(), &why));
     REQUIRE_FALSE(why.empty());
     // a null pointer is refused as well; a dissolve is not
     why.clear();
@@ -284,6 +292,39 @@ TEST_CASE("setEffect and the DV memory (Review Focus 4)", "[switcher]") {
     REQUIRE(f.sw.setEffect(dve()));
     f.sw.setTBar(511);
     REQUIRE(f.sw.setEffect(fadeToNeg()));
+}
+
+TEST_CASE("selecting a ChromaFX replaces an engaged one and resets its counter (Ruling 23)", "[switcher][chromafx]") {
+    Rig r;
+    const auto fx = neonCycle();
+    REQUIRE(r.sw.setEffect(fx));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    r.sw.setTBar(1);
+    for (int i = 0; i < 40; ++i) r.sw.tick();
+    REQUIRE(r.render().px == direct(*fx, 1, r.in3, r.in4, 40).px);
+    REQUIRE(r.sw.setEffect(fx));  // even the same crouton again
+    REQUIRE_FALSE(r.sw.chromaEngaged());
+    REQUIRE(r.sw.tbar() == 0);
+    REQUIRE(r.render().px == r.in3.px);  // plain Main
+    r.sw.setTBar(1);
+    REQUIRE(r.render().px == direct(*fx, 1, r.in3, r.in4, 0).px);  // counter restarted
+    // a Take-less swap of Main/Preview did not happen
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+}
+
+TEST_CASE("select is live during a transition", "[switcher]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(dissolve()));
+    r.sw.select(Bus::Main, Source::In1);
+    r.sw.select(Bus::Preview, Source::In2);
+    r.sw.setTBar(200);
+    REQUIRE(r.render().px == direct(*dissolve(), 200, r.in1, r.in2).px);
+    r.sw.select(Bus::Preview, Source::In4);  // the next render already blends towards In4
+    REQUIRE(r.render().px == direct(*dissolve(), 200, r.in1, r.in4).px);
+    r.sw.setTBar(511);  // the 511 swap exchanges what is selected at that moment
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
+    REQUIRE(r.sw.selected(Bus::Preview) == Source::In1);
 }
 
 TEST_CASE("ChromaFX stays engaged after Auto, without a swap (Ruling 21)", "[switcher][chromafx]") {

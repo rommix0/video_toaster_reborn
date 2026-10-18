@@ -3,8 +3,8 @@
 // they select, the effect, the T-bar, Auto and Take. It drives the effects of vt/effect.h and
 // produces the Program picture; the Qt app sits on top of it.
 //
-// Threading: single-threaded. Every call (including render, which reads the whole state) must
-// be serialised by the caller.
+// Threading: single-threaded. Every call must be serialised by the caller, including render():
+// it is const but works in member scratch frames, so two renders must not overlap either.
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -33,6 +33,8 @@ public:
 
     // --- buses ---
     // Overlay is present and selectable, but version 1 has no keying (spec 3): render ignores it.
+    // Selections are live at all times, also during a transition: render reads the current
+    // selections, and the swap at T-bar 511 (or Take) exchanges whatever is selected then.
     void select(Bus, Source);
     Source selected(Bus) const;
 
@@ -40,9 +42,11 @@ public:
     // Makes `e` the current effect (a null effect is refused). Any transition in progress is
     // abandoned without swapping (T-bar 0, Auto stopped) and an engaged ChromaFX is disengaged.
     // A DV-memory effect (usesDvMemory(): DVE moves and ChromaFX) is refused, returning false
-    // with a reason in *whyNot and the current effect kept, while ChromaFX is engaged or while
-    // a DVE move is mid-transition (they share the DV memory, spec 5.8). Cut, dissolve and
-    // the wipes are never refused.
+    // with a reason in *whyNot and the current effect kept, while ChromaFX is engaged (a DVE
+    // move, that is) or while a DVE move is mid-transition (they share the DV memory, spec
+    // 5.8). Cut, dissolve and the wipes are never refused. Ruling 23: a ChromaFX chosen while
+    // another is engaged REPLACES it: the old one disengages and the new one starts
+    // disengaged (T-bar 0, frame counter reset).
     bool setEffect(std::shared_ptr<const Effect> e, std::string* whyNot = nullptr);
     const Effect& effect() const { return *effect_; }
 
@@ -50,6 +54,8 @@ public:
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
     // Ordinary effects: reaching 511 swaps Main and Preview at once and the T-bar reads 0 again
     // (the next render shows the new Main plainly); returning to 0 mid-way swaps nothing.
+    // The engine's T-bar reads 0 after a hand-driven 511, so the UI must reset its T-bar widget
+    // then (otherwise its next setTBar(510) starts a new transition).
     // ChromaFX: leaving 0 engages it (see render); 511 does not swap; returning to 0
     // disengages a Transition-mode crouton (a Filter-mode one stays engaged).
     void setTBar(int pos);
@@ -86,7 +92,8 @@ public:
     // `program` before it is finished, so it may alias an input frame.
     void render(const SourceFrames&, Frame& program) const;
 
-    // The current effect's sound, once, when a transition starts; nullptr otherwise.
+    // The current effect's sound, once, when a transition starts; nullptr otherwise. The pointer
+    // is valid only until the next setEffect().
     const Sound* pendingSound();
 
 private:
@@ -108,6 +115,7 @@ private:
     BkgColour bkg_ = BkgColour::Black;
     bool bkgCustom_ = false;
     uint32_t bkgWord_ = 0;
+    mutable Frame bkgScratch_, blackScratch_, outScratch_;  // render's working frames
     Frame dv_;  // DV1 and DV2 stay black until freeze / framestores exist (spec 3)
 };
 

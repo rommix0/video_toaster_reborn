@@ -24,7 +24,9 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
         return false;
     };
     if (!e) return refuse("no effect given");
-    if (e->usesDvMemory()) {
+    // Ruling 23: a ChromaFX replaces an engaged ChromaFX (the old one disengages below).
+    const bool replacingChroma = chromaEngaged_ && e->isChromaFx();
+    if (e->usesDvMemory() && !replacingChroma) {
         // ChromaFX and the DVE moves share the DV memory (spec 5.8): only one can use it at a time.
         if (chromaEngaged_) return refuse("a ChromaFX effect is engaged: press Take or return the T-bar to 0 first");
         if (effect_->usesDvMemory() && transitionActive())
@@ -127,7 +129,6 @@ void Switcher::tick() {
 void Switcher::render(const SourceFrames& in, Frame& program) const {
     const bool snow = bkgCustom_ ? (bkgWord_ & 0x8000u) != 0 : bkg_ == BkgColour::Snow;
     // BKG: the colour, or noise that changes every tick. Built only if a bus uses it.
-    Frame bkgFrame;
     bool bkgBuilt = false;
     Rgba8 bkgRgb = kBlack;  // what effects get as RenderCtx::background (black for Snow)
     if (!snow) bkgRgb = bkgCustom_ ? customBkgColour(bkgWord_) : bkgColour(bkg_);
@@ -141,32 +142,34 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
             case Source::Bkg:
                 if (!bkgBuilt) {
                     if (snow) {
-                        renderSnow(bkgFrame, tickCount_);
+                        renderSnow(bkgScratch_, tickCount_);
                     } else {
-                        std::fill(bkgFrame.px.begin(), bkgFrame.px.end(), bkgRgb);
+                        std::fill(bkgScratch_.px.begin(), bkgScratch_.px.end(), bkgRgb);
                     }
                     bkgBuilt = true;
                 }
-                return &bkgFrame;
+                return &bkgScratch_;
         }
         return nullptr;
     };
-    Frame black;  // only filled if an input is missing
     bool blackBuilt = false;
     auto pick = [&](Source s) -> const Frame& {
         const Frame* f = frameOf(s);
         if (f) return *f;
         if (!blackBuilt) {
-            std::fill(black.px.begin(), black.px.end(), kBlack);
+            std::fill(blackScratch_.px.begin(), blackScratch_.px.end(), kBlack);
             blackBuilt = true;
         }
-        return black;
+        return blackScratch_;
     };
 
     const Frame& a = pick(sel_[busIndex(Bus::Main)]);
     // Output goes to a separate frame: DVE effects must not alias their inputs, and `program`
-    // may be one of the input frames. (The Overlay bus has no keying in version 1.)
-    Frame out;
+    // may be one of the input frames. (The Overlay bus has no keying in version 1.) The scratch
+    // frames are members and `program`'s buffer is swapped in and out, so a steady stream of
+    // renders allocates nothing.
+    Frame& out = outScratch_;
+    out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
     if (!transitionActive()) {
         out.px = a.px;
     } else {
@@ -178,7 +181,7 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         ctx.frameNumber = chromaEngaged_ ? chromaFrames_ : 0;
         effect_->render(tbar_, a, b, out, ctx);
     }
-    program.px = std::move(out.px);
+    program.px.swap(out.px);
 }
 
 const Sound* Switcher::pendingSound() {
