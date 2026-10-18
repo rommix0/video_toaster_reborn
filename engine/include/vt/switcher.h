@@ -136,6 +136,9 @@ public:
     //    (RenderCtx::animFrame), so frame 0 again after frameCount x fieldsPerFrame ticks.
     // RenderCtx::background is effectColour().rgb() (black for Snow), whatever BKG shows. Never
     // reads or writes `program` before it is finished, so it may alias an input frame.
+    // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
+    // steady-state renders allocation-free), so program.px.data() alternates between two
+    // buffers: do not keep a pointer into program.px across renders.
     void render(const SourceFrames&, Frame& program) const;
 
     // The current effect's sound, once, when a transition starts; nullptr otherwise (and after

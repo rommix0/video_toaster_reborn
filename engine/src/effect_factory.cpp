@@ -1,10 +1,10 @@
 // loadEffect: crouton file -> Effect.
 #include <array>
 #include <cctype>
-#include <cstdio>
 #include <exception>
 
 #include "effect_detail.h"
+#include "log_detail.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/iff.h"
@@ -16,7 +16,7 @@ std::optional<Sound> loadSound(const Crouton& c, const std::string& effectName) 
     try {
         return readSound(c.bytes);
     } catch (const std::exception& ex) {  // compressed or malformed 8SVX: the effect plays without sound
-        std::fprintf(stderr, "vtoast: %s: sound not loaded (%s)\n", effectName.c_str(), ex.what());
+        warn(effectName + ": sound not loaded (" + ex.what() + ")");
         return std::nullopt;
     }
 }

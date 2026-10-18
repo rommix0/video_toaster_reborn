@@ -16,9 +16,10 @@ enum class BkgColour { Black = 1, White, Red, Green, Blue, Yellow, Magenta, Cyan
 Rgba8 bkgColour(BkgColour);
 
 // Tag 0x80000024. In the Switcher this is a raw hardware word (two level nibbles and a hue
-// nibble), not RGB. The nine preset words (0x99000 + $4c) and the "super white" 0x0fff map
-// to their colours exactly. Any other word has no RGB defined in the program; it is read as
-// 12-bit 0x0RGB (x17), which is an approximation. Bit 15 (snow) is the caller's to check.
+// nibble), not RGB. The eight colour preset words (0x99000 + $4c; the ninth button, Snow, is
+// bit 15) and the "super white" 0x0fff map to their colours exactly. Any other word has no RGB
+// defined in the program; it is read as 12-bit 0x0RGB (x17), which is an approximation. Bit 15
+// (snow) is the caller's to check.
 Rgba8 customBkgColour(uint32_t tag0x24);
 
 // Snow: the hardware's noise source. Grey per-pixel noise, deterministic per frame number.

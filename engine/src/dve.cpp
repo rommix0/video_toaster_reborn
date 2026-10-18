@@ -69,6 +69,8 @@ DveControl decodeDve(const Planes& p) {
     int bit = 0;
     for (int pl = 3; pl < p.count; ++pl) {
         if (startsWithSig(p, pl)) continue;
+        // checked before shifting: 1 << bit is undefined from bit 32 on (corrupt files)
+        if (bit >= 8) throw std::runtime_error("DVE art layer has more than 8 planes");
         if (c.art.empty()) c.art.assign(size_t(kDveLines) * kDveWidth, 0);
         const uint8_t* src = p.plane(pl);
         for (int k = 0; k < kDveLines; ++k)
@@ -76,7 +78,6 @@ DveControl decodeDve(const Planes& p) {
                 if (src[k * 96 + x / 8] & (0x80 >> (x % 8))) c.art[size_t(k) * kDveWidth + size_t(x)] |= uint8_t(1 << bit);
         ++bit;
     }
-    if (bit > 8) throw std::runtime_error("DVE art layer has more than 8 planes");
     return c;
 }
 

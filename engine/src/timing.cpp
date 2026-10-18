@@ -59,7 +59,8 @@ Timing fixedTiming(const Crouton& c) {
 
 int animFrameForTBar(int tbar, int frameCount) {
     if (frameCount <= 0) return 0;
-    return std::min(frameCount - 1, static_cast<int>(static_cast<int64_t>(tbar) * frameCount / 512));
+    const int t = std::clamp(tbar, 0, 511);  // a negative T-bar gave a negative frame
+    return std::min(frameCount - 1, static_cast<int>(static_cast<int64_t>(t) * frameCount / 512));
 }
 
 }  // namespace vt

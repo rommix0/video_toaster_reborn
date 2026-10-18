@@ -1,10 +1,13 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "catch_amalgamated.hpp"
@@ -14,6 +17,7 @@
 #include "vt/crouton.h"
 #include "vt/effect.h"
 #include "vt/ilbm.h"
+#include "vt/log.h"
 #include "vt/mix.h"
 #include "vt/sound.h"
 #include "vt/timing.h"
@@ -507,17 +511,20 @@ TEST_CASE("Bear-L equals A at its first frame and B at its last, except overlay 
         const int frame = pass == 0 ? 0 : n - 1;
         REQUIRE(vt::animFrameForTBar(tbar, n) == frame);
         const auto& f = af.anim.frames[size_t(frame)];
-        const vt::Rgba8 video = pass == 0 ? kA : kB;
-        const vt::Frame out = renderAt(*e, tbar, solid(kA), solid(kB));
+        // textured sources: every pixel differs, so reading the wrong pixel (or clip) shows up
+        const vt::Frame a = pattern(1), b = pattern(2);
+        const vt::Frame& video = pass == 0 ? a : b;
+        const vt::Frame out = renderAt(*e, tbar, a, b);
         requireFrame(out, [&](int x, int y) {
             const int idx = f.px[size_t(y / 2) * size_t(f.w) + size_t(x)];
             if (over_rgba[size_t(idx) * 4 + 3] != 0) {
+                // opaque overlay colour; the alpha under it carries no meaning, so it is not checked
                 return vt::Rgba8{uint8_t(over_rgba[size_t(idx) * 4]), uint8_t(over_rgba[size_t(idx) * 4 + 1]),
-                                 uint8_t(over_rgba[size_t(idx) * 4 + 2]), 255};
+                                 uint8_t(over_rgba[size_t(idx) * 4 + 2]), out.at(x, y).a};
             }
             // the frame holds only the video index of its own end (and overlay)
             REQUIRE(idx == (pass == 0 ? aIdx : bIdx));
-            return video;
+            return video.at(x, y);
         });
     }
     // somewhere in the middle the overlay is on screen and both clips show
@@ -825,4 +832,41 @@ TEST_CASE("every corpus animated and gradient wipe loads and renders", "[effect]
     REQUIRE(sounds >= 1);
     // everything refused among the animated wipes has a known reason
     for (const auto& why : reasons) REQUIRE(why == "overlay effect with nothing but video in it");
+}
+
+TEST_CASE("engine warnings go to the log sink (setLogSink)", "[effect][log]") {
+    // Falling Sheep with its 8SVX marked compressed: the effect loads without sound and warns.
+    std::vector<uint8_t> bytes;
+    {
+        std::ifstream in(golden::sourcePath("4.2/Effects/2000FX/Animals/Falling Sheep"), std::ios::binary);
+        bytes.assign(std::istreambuf_iterator<char>(in), {});
+    }
+    const std::string svx = "8SVX", vhdr = "VHDR";
+    const auto s = std::search(bytes.begin(), bytes.end(), svx.begin(), svx.end());
+    REQUIRE(s != bytes.end());
+    const auto v = std::search(s, bytes.end(), vhdr.begin(), vhdr.end());
+    REQUIRE(v != bytes.end());
+    v[8 + 15] = 1;  // VHDR sCompression (oneShot, repeat, perCycle: 4 bytes each, rate 2, octaves 1)
+    const auto path = std::filesystem::temp_directory_path() / "vtoast_log_sink_test";
+    {
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        out.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+    }
+    std::vector<std::string> got;
+    vt::setLogSink([&](std::string_view m) { got.emplace_back(m); });
+    auto e = vt::loadEffect(path);
+    vt::setLogSink({});  // back to stderr
+    std::filesystem::remove(path);
+    REQUIRE(e);
+    REQUIRE(e->sound() == nullptr);
+    REQUIRE(got.size() == 1);
+    REQUIRE(got[0].find("vtoast_log_sink_test: sound not loaded") == 0);
+    // the untouched file loads with its sound and says nothing
+    got.clear();
+    vt::setLogSink([&](std::string_view m) { got.emplace_back(m); });
+    auto ok = load("4.2/Effects/2000FX/Animals/Falling Sheep");
+    vt::setLogSink({});
+    REQUIRE(ok);
+    REQUIRE(ok->sound() != nullptr);
+    REQUIRE(got.empty());
 }

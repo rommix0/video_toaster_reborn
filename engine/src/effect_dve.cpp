@@ -5,9 +5,10 @@
 // The art layer's palette for frame k is the most recent non-empty cmaps[j], 1 <= j <= k, else
 // bm.cmap (the anim effects' rule). Effects with unknown key codes (24..63; none in the corpus)
 // are logged once, when loaded.
-#include <cstdio>
+#include <string>
 
 #include "effect_detail.h"
+#include "log_detail.h"
 #include "vt/dve.h"
 #include "vt/timing.h"
 
@@ -28,8 +29,7 @@ public:
             for (uint8_t v : frames_.back().key) unknownCells += v >= 24 && v < 64;
         }
         if (unknownCells > 0)
-            std::fprintf(stderr, "vtoast: %s: %ld DVE cells use unknown fill codes (drawn mid grey)\n", basics().name.c_str(),
-                         unknownCells);
+            warn(basics().name + ": " + std::to_string(unknownCells) + " DVE cells use unknown fill codes (drawn mid grey)");
         black_.px.assign(black_.px.size(), kBlack);
     }
 

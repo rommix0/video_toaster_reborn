@@ -227,6 +227,16 @@ TEST_CASE("readSound decodes a stereo 8SVX effect sound") {
     REQUIRE(std::abs(double(s->pcm.size()) - expect) <= expect * 0.01);
     REQUIRE(s->pcm.size() % 2 == 0);
     for (int16_t v : s->pcm) REQUIRE(v % 256 == 0);  // 8-bit samples scaled by 256
+    // Exact samples: CRC-32 of the interleaved int16 little-endian PCM, computed from
+    // tools/toaster_iff.read_8svx (left block, right block; L/R interleaved, x256).
+    REQUIRE(s->pcm.size() == 248152);
+    std::vector<uint8_t> le;
+    le.reserve(s->pcm.size() * 2);
+    for (int16_t v : s->pcm) {
+        le.push_back(uint8_t(uint16_t(v)));
+        le.push_back(uint8_t(uint16_t(v) >> 8));
+    }
+    REQUIRE(vt::crc32(le) == 1166533720u);
 }
 
 TEST_CASE("readSound: mono, stereo by CHAN, no 8SVX, bad data") {

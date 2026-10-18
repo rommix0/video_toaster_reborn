@@ -43,7 +43,8 @@ Timing animTiming(const Crouton&, int frameCount);
 // twice those.
 Timing fixedTiming(const Crouton&);
 
-// T-bar position (0..511) -> animation frame: min(N - 1, tbar * N / 512). The Switcher uses it
+// T-bar position (clamped to 0..511) -> animation frame: min(N - 1, tbar * N / 512); 0 when
+// N <= 0. The Switcher uses it
 // for a hand-driven T-bar; during Auto it gives the effect the exact frame instead
 // (RenderCtx::animFrame).
 int animFrameForTBar(int tbar, int frameCount);

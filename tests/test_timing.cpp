@@ -135,4 +135,8 @@ TEST_CASE("T-bar maps to frames") {
     REQUIRE(vt::animFrameForTBar(256, 60) == 30);
     REQUIRE(vt::animFrameForTBar(511, 1) == 0);
     REQUIRE(vt::animFrameForTBar(600, 60) == 59);  // clamped
+    REQUIRE(vt::animFrameForTBar(-1, 60) == 0);
+    REQUIRE(vt::animFrameForTBar(-9, 60) == 0);
+    REQUIRE(vt::animFrameForTBar(-100000, 60) == 0);
+    REQUIRE(vt::animFrameForTBar(100, 0) == 0);
 }

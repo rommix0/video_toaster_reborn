@@ -22,7 +22,9 @@ struct RenderCtx {
     // its effect colour (Switcher::effectColour(): the effect's own unless overridden), not the
     // BKG source's colour (Ruling 26); black for Snow.
     Rgba8 background{0, 0, 0, 255};
-    uint32_t frameNumber = 0;        // output frame counter (snow noise etc.)
+    // Switcher ticks since the current ChromaFX or overlay was engaged, 0 otherwise. Cycling
+    // ChromaFX take their cycle phase from it; other effects ignore it.
+    uint32_t frameNumber = 0;
     // The animation frame to show, or -1: derive it from the T-bar (animFrameForTBar). The
     // Switcher sets it during Auto, where the T-bar's 0..511 steps cannot say which frame is
     // due (Ruling 25). Values past the last frame show the last frame. Effects with one frame
@@ -45,7 +47,9 @@ public:
     // unless RenderCtx::animFrame names the frame.
     virtual int frameCount() const = 0;
     // tbar is 0..511 (values outside are clamped). `a` is the outgoing picture, `b` the incoming
-    // one; the result goes to `out` (all kRasterW x kRasterH pixels are written).
+    // one; the result goes to `out` (all kRasterW x kRasterH pixels are written). `out` must not
+    // alias `a` or `b` (effects read inputs after writing output pixels); `a` and `b` may be the
+    // same frame.
     virtual void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx&) const = 0;
     // The effect's 8SVX sound, or nullptr (none, or one that cannot be decoded).
     virtual const Sound* sound() const { return nullptr; }

@@ -163,6 +163,14 @@ TEST_CASE("isDve and decodeDve on hand-made planes", "[dve]") {
     // no art planes -> empty art
     REQUIRE(vt::decodeDve(blankPlanes(3)).art.empty());
 
+    // more than 8 art planes is refused before any undefined shift, even with 40 of them
+    for (int count : {12, 43}) {
+        vt::Planes deep = blankPlanes(count);
+        for (int pl = 3; pl < count; ++pl) deep.plane(pl)[0] = 0x80;
+        REQUIRE_THROWS_AS(vt::decodeDve(deep), std::runtime_error);
+    }
+    REQUIRE(vt::decodeDve(blankPlanes(11)).art.size() == size_t(241) * 768);  // exactly 8 is fine
+
     vt::Planes bad = blankPlanes(3);
     bad.plane(2)[3] = 0x03;  // 15 2D 06 03 is the other planes' header, not DVE plane 2
     REQUIRE_FALSE(vt::isDve(bad));
