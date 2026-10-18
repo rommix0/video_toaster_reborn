@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <limits>
 #include <map>
 #include <set>
 #include <string>
@@ -8,7 +9,6 @@
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
-#include "vt/background.h"
 #include "vt/chromafx.h"
 #include "vt/crc32.h"
 #include "vt/crouton.h"
@@ -88,12 +88,16 @@ TEST_CASE("DV YIQ -> RGB inverts the matrix with DV black 71 / white 200", "[chr
     // The Background colour generator table (switcher.main 0x6d88) is the reference.
     CHECK(same(vt::dvYiqToRgb({71, 0, 0}), {0, 0, 0, 255}));
     CHECK(same(vt::dvYiqToRgb({200, 0, 0}), {255, 255, 255, 255}));
-    CHECK(same(vt::dvYiqToRgb({100, 58, 20}), vt::bkgColour(vt::BkgColour::Red)));
-    CHECK(same(vt::dvYiqToRgb({128, -27, -51}), vt::bkgColour(vt::BkgColour::Green)));
-    CHECK(same(vt::dvYiqToRgb({110, 27, 51}), vt::bkgColour(vt::BkgColour::Magenta)));
+    // (literal values: bkgColour itself is computed with dvYiqToRgb)
+    CHECK(same(vt::dvYiqToRgb({100, 58, 20}), {191, 1, 0, 255}));
+    CHECK(same(vt::dvYiqToRgb({128, -27, -51}), {0, 192, 0, 255}));
+    CHECK(same(vt::dvYiqToRgb({81, -31, 30}), {0, 0, 189, 255}));
+    CHECK(same(vt::dvYiqToRgb({157, 31, -30}), {192, 192, 1, 255}));
+    CHECK(same(vt::dvYiqToRgb({110, 27, 51}), {191, 0, 190, 255}));
+    CHECK(same(vt::dvYiqToRgb({138, -58, -20}), {0, 189, 192, 255}));
     // a quad decodes to its mean and half-differences
     CHECK(same(vt::dvQuadToRgb({200, 200, 200, 200}), {255, 255, 255, 255}));
-    CHECK(same(vt::dvQuadToRgb({100 - 58, 100 - 20, 100 + 58, 100 + 20}), vt::bkgColour(vt::BkgColour::Red)));
+    CHECK(same(vt::dvQuadToRgb({100 - 58, 100 - 20, 100 + 58, 100 + 20}), {191, 1, 0, 255}));
 }
 
 TEST_CASE("parseLut tables match the golden CRCs for croutons and banks", "[chromafx][golden]") {
@@ -226,12 +230,14 @@ TEST_CASE("Transition: every line of a field reads the same row pair", "[chromaf
     CHECK(t[2] == 12);
     CHECK(t[240] == 12);
     for (int y = 2; y < vt::kRasterH; ++y) {
-        REQUIRE(vt::rowForLine(ChromaMode::Transition, 511, y, 0) == 476 + (y & 3));
-        REQUIRE(vt::rowForLine(ChromaMode::Transition, 0, y, 0) == 4 + (y & 3));
+        REQUIRE(vt::rowForLine(ChromaMode::Transition, vt::chromaRowStart(511), y) == 476 + (y & 3));
+        REQUIRE(vt::rowForLine(ChromaMode::Transition, 0, y) == 4 + (y & 3));
+        REQUIRE(vt::chromaTableRow(t, y) == 4 * 5 + 4 + (y & 3));
     }
-    CHECK(vt::rowForLine(ChromaMode::Transition, 0, 0, 0) == -1);  // control line 0 holds 0xf0
-    CHECK(vt::rowForLine(ChromaMode::Transition, 0, 1, 0) == -1);
-    CHECK(vt::rowForLine(ChromaMode::Transition, 0, vt::kRasterH, 0) == -1);
+    CHECK(vt::rowForLine(ChromaMode::Transition, 0, 0) == -1);  // control line 0 holds 0xf0
+    CHECK(vt::rowForLine(ChromaMode::Transition, 0, 1) == -1);
+    CHECK(vt::rowForLine(ChromaMode::Transition, 0, vt::kRasterH) == -1);
+    CHECK(vt::rowForLine(ChromaMode::Transition, 0, -1) == -1);
 }
 
 TEST_CASE("Filter: consecutive lines read consecutive rows and wrap", "[chromafx]") {
@@ -242,7 +248,7 @@ TEST_CASE("Filter: consecutive lines read consecutive rows and wrap", "[chromafx
     CHECK(t[239] == 1);
     CHECK(t[240] == 2);
     // one row per raster line from 4v + 2
-    for (int y = 2; y < 2 * 239; ++y) REQUIRE(vt::rowForLine(ChromaMode::Filter, 0, y, 0) == y);
+    for (int y = 2; y < 2 * 239; ++y) REQUIRE(vt::rowForLine(ChromaMode::Filter, 0, y) == y);
     const int v = 50, tbar = (v + 9) * 4;
     REQUIRE(vt::chromaRowStart(tbar) == v);
     const auto f = vt::chromaLineTable(ChromaMode::Filter, v);
@@ -252,10 +258,16 @@ TEST_CASE("Filter: consecutive lines read consecutive rows and wrap", "[chromafx
     REQUIRE(it != f.end());
     CHECK(*(it + 1) == 1);
     CHECK(*(it + 2) == 2);
-    for (int y = 2; y < 2 * 238 - 4 * v; ++y) REQUIRE(vt::rowForLine(ChromaMode::Filter, tbar, y, 0) == 4 * v + y);
-    // the cycle offset moves v and wraps at 0x77
-    CHECK(vt::rowForLine(ChromaMode::Filter, 0, 10, 119) == vt::rowForLine(ChromaMode::Filter, 0, 10, 0));
-    CHECK(vt::rowForLine(ChromaMode::Filter, 511, 10, 1) == vt::rowForLine(ChromaMode::Filter, 0, 10, 0));
+    for (int y = 2; y < 2 * 238 - 4 * v; ++y) REQUIRE(vt::rowForLine(ChromaMode::Filter, v, y) == 4 * v + y);
+    // row positions wrap at 0x77
+    CHECK(vt::rowForLine(ChromaMode::Filter, 119, 10) == vt::rowForLine(ChromaMode::Filter, 0, 10));
+    CHECK(vt::rowForLine(ChromaMode::Filter, -1, 10) == vt::rowForLine(ChromaMode::Filter, 118, 10));
+    // Ruling 20: while cycling the T-bar is ignored; otherwise the T-bar alone decides
+    for (int tb : {0, 100, 400, 511}) {
+        REQUIRE(vt::chromaRowPosition(tb, vt::ChromaCycle::None, 0x10000, 7) == vt::chromaRowStart(tb));
+        for (auto c : {vt::ChromaCycle::Forward, vt::ChromaCycle::Backward, vt::ChromaCycle::Both})
+            REQUIRE(vt::chromaRowPosition(tb, c, 0x10000, 7) == vt::chromaCycleRow(c, 0x10000, 7));
+    }
 }
 
 TEST_CASE("cycle speed and direction follow the cycle routines", "[chromafx]") {
@@ -284,22 +296,32 @@ TEST_CASE("applyChroma looks up each pixel's luma in its line's row", "[chromafx
     const auto rows = vt::buildRows(twoColours({255, 0, 0}, {0, 0, 255}), vt::ChromaInterp::Spread);
     const vt::Frame in = solid({128, 128, 128, 255});
     vt::Frame out;
-    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, 0, in, out);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, out);
     // raster lines 0 and 1 have no row
     CHECK(same(out.at(5, 0), {0, 0, 0, 255}));
     CHECK(same(out.at(5, 1), {0, 0, 0, 255}));
     // luma 128 -> entry floor(17.5 + 32) = 49
     for (int y = 2; y < 10; ++y) CHECK(same(out.at(7, y), rows.rows[size_t(4 + (y & 3))][49]));
-    vt::applyChroma(rows, vt::ChromaMode::Transition, 511, 0, in, out);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, vt::chromaRowStart(511), in, out);
     CHECK(same(out.at(7, 4), rows.rows[476][49]));
     // the offset is adjustable; entries clamp to 0..95
-    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, 0, in, out, 100.0f);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, out, 100.0f);
     CHECK(same(out.at(7, 4), rows.rows[4][95]));
-    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, 0, in, out, -100.0f);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, out, -100.0f);
     CHECK(same(out.at(7, 4), rows.rows[4][0]));
+    // a non-finite offset counts as 0: luma 128 -> entry 32
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, out, std::numeric_limits<float>::quiet_NaN());
+    CHECK(same(out.at(7, 4), rows.rows[4][32]));
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, out, std::numeric_limits<float>::infinity());
+    CHECK(same(out.at(7, 4), rows.rows[4][32]));
+    // the default offset is the hardware guess
+    vt::Frame d1, d2;
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, d1);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, 0, in, d2, vt::HardwareGuesses{}.chromaLumaOffset);
+    CHECK(d1.px == d2.px);
     // Rec.601 luma: (299 R + 587 G + 114 B) / 1000; pure green 255 -> 149.685 -> entry 54
     const vt::Frame g = solid({0, 255, 0, 255});
-    vt::applyChroma(rows, vt::ChromaMode::Filter, 0, 0, g, out);
+    vt::applyChroma(rows, vt::ChromaMode::Filter, 0, g, out);
     CHECK(same(out.at(3, 20), rows.rows[20][54]));
 }
 
@@ -323,7 +345,7 @@ TEST_CASE("ChromaFX croutons load as effects that recolour B", "[chromafx][effec
     }
     REQUIRE(n == 96);
 
-    // "Red" is a Transition crouton (no cycling): out = applyChroma(rows, Transition, tbar, 0, b)
+    // "Red" is a Transition crouton (no cycling): out = applyChroma(rows, Transition, v(tbar), b)
     auto e = vt::loadEffect(chromaDir() / "Red");
     REQUIRE(e);
     const auto c = vt::loadCrouton(chromaDir() / "Red");
@@ -333,7 +355,7 @@ TEST_CASE("ChromaFX croutons load as effects that recolour B", "[chromafx][effec
     vt::RenderCtx ctx;
     for (int tbar : {0, 200, 511}) {
         e->render(tbar, a, b, out, ctx);
-        vt::applyChroma(rows, vt::ChromaMode::Transition, tbar, 0, b, expect);
+        vt::applyChroma(rows, vt::ChromaMode::Transition, vt::chromaRowStart(tbar), b, expect);
         REQUIRE(out.px == expect.px);
     }
     // A is never shown
@@ -343,7 +365,7 @@ TEST_CASE("ChromaFX croutons load as effects that recolour B", "[chromafx][effec
     // the luma offset comes from the hardware guesses
     ctx.guesses.chromaLumaOffset = 0.0f;
     e->render(200, a, b, out2, ctx);
-    vt::applyChroma(rows, vt::ChromaMode::Transition, 200, 0, b, expect, 0.0f);
+    vt::applyChroma(rows, vt::ChromaMode::Transition, vt::chromaRowStart(200), b, expect, 0.0f);
     REQUIRE(out2.px == expect.px);
 }
 
@@ -365,7 +387,7 @@ TEST_CASE("cycling ChromaFX advances with the frame number", "[chromafx][effect]
     for (uint32_t fn : {0u, 4u, 40u, 476u, 1000u}) {
         ctx.frameNumber = fn;
         e->render(0, b, b, out, ctx);
-        vt::applyChroma(rows, vt::ChromaMode::Transition, 0, vt::chromaCycleRow(s.cycle, 0x4000, fn), b, expect);
+        vt::applyChroma(rows, vt::ChromaMode::Transition, vt::chromaCycleRow(s.cycle, 0x4000, fn), b, expect);
         INFO(fn);
         REQUIRE(out.px == expect.px);
     }
@@ -377,4 +399,27 @@ TEST_CASE("cycling ChromaFX advances with the frame number", "[chromafx][effect]
     ctx.frameNumber = 77;
     red->render(100, b, b, o2, ctx);
     REQUIRE(o1.px == o2.px);
+}
+
+TEST_CASE("a cycling ChromaFX ignores the T-bar (Ruling 20)", "[chromafx][effect]") {
+    // The Toaster runs DummyTBar while cycling: the row comes from the cycle accumulator alone.
+    vt::Frame b;
+    for (size_t i = 0; i < b.px.size(); ++i) b.px[i] = {uint8_t(i * 7), uint8_t(i >> 5), uint8_t(i >> 2), 255};
+    vt::RenderCtx ctx;
+    auto neon = vt::loadEffect(chromaDir() / "Neon Cycle");  // Transition, cycling forward
+    REQUIRE(neon);
+    vt::Frame o0, o400;
+    for (uint32_t fn : {0u, 37u, 500u}) {
+        ctx.frameNumber = fn;
+        neon->render(0, b, b, o0, ctx);
+        neon->render(400, b, b, o400, ctx);
+        INFO(fn);
+        REQUIRE(o0.px == o400.px);
+    }
+    // a non-cycling Transition crouton follows the T-bar
+    auto red = vt::loadEffect(chromaDir() / "Red");
+    REQUIRE(red);
+    red->render(0, b, b, o0, ctx);
+    red->render(400, b, b, o400, ctx);
+    REQUIRE(o0.px != o400.px);
 }

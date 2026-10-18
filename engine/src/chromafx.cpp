@@ -443,12 +443,13 @@ std::array<uint8_t, 241> chromaLineTable(ChromaMode mode, int v) {
     return t;
 }
 
-int rowForLine(ChromaMode mode, int tbar, int line, int cycleOffset) {
+int chromaTableRow(const std::array<uint8_t, 241>& t, int line) {
     if (line < 0 || line >= kRasterH) return -1;
-    const auto t = chromaLineTable(mode, chromaRowStart(tbar) + wrapV(cycleOffset));
     const int row = 2 * t[size_t(line / 2)] + (line & 1);
     return row < kChromaRows ? row : -1;
 }
+
+int rowForLine(ChromaMode mode, int v, int line) { return chromaTableRow(chromaLineTable(mode, v), line); }
 
 uint32_t chromaCycleStep(Speed s) {
     static constexpr uint32_t kTable[4] = {0x4000, 0x8000, 0x10000, 0x8000};  // 0x9b14
@@ -480,25 +481,29 @@ int chromaCycleRow(ChromaCycle c, uint32_t step, uint64_t fields) {
     }
 }
 
-void applyChroma(const ChromaRows& rows, ChromaMode mode, int tbar, int cycleOffset, const Frame& in, Frame& out,
-                 float lumaOffset) {
+int chromaRowPosition(int tbar, ChromaCycle c, uint32_t step, uint64_t fields) {
+    return c == ChromaCycle::None ? chromaRowStart(tbar) : chromaCycleRow(c, step, fields);
+}
+
+void applyChroma(const ChromaRows& rows, ChromaMode mode, int v, const Frame& in, Frame& out, float lumaOffset) {
     out.px.resize(in.px.size());
-    const auto t = chromaLineTable(mode, chromaRowStart(tbar) + wrapV(cycleOffset));
-    const double off = lumaOffset;
+    const auto t = chromaLineTable(mode, v);
+    // A non-finite offset would make the entry conversion undefined; any offset beyond +-1000
+    // already clamps every pixel to entry 0 or 95.
+    const double off = std::isfinite(lumaOffset) ? std::clamp(double(lumaOffset), -1000.0, 1000.0) : 0.0;
     for (int y = 0; y < kRasterH; ++y) {
-        const int row = 2 * t[size_t(y / 2)] + (y & 1);
+        const int row = chromaTableRow(t, y);
         Rgba8* o = &out.at(0, y);
         const Rgba8* i = &in.at(0, y);
-        if (row >= int(rows.rows.size())) {
+        if (row < 0 || size_t(row) >= rows.rows.size()) {
             std::fill(o, o + kRasterW, Rgba8{0, 0, 0, 255});
             continue;
         }
         const auto& map = rows.rows[size_t(row)];
         for (int x = 0; x < kRasterW; ++x) {
             const int ysum = 299 * i[x].r + 587 * i[x].g + 114 * i[x].b;  // 1000 x Rec.601 luma
-            const double e = std::floor(off + ysum / 4000.0);
-            const int entry = e < 0 ? 0 : (e > kE - 1 ? kE - 1 : int(e));
-            o[x] = map[size_t(entry)];
+            const int e = int(std::floor(off + ysum / 4000.0));
+            o[x] = map[size_t(std::clamp(e, 0, kE - 1))];
         }
     }
 }

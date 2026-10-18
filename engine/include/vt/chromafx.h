@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "vt/crouton.h"
+#include "vt/hardware_guesses.h"
 #include "vt/ilbm.h"
 #include "vt/raster.h"
 #include "vt/timing.h"
@@ -83,12 +84,13 @@ int chromaRowStart(int tbar);
 //   Filter: entries 1, 2, 3, ... = 2v+1, 2v+2, 2v+3, ...; after a pair ending above 238 the
 //   pairs restart at 1, 2.
 std::array<uint8_t, 241> chromaLineTable(ChromaMode, int v);
-// The row (index into ChromaRows::rows) raster line `line` (0..481) shows: control line
-// k = line / 2 has table value w = chromaLineTable(mode, v)[k] and the line parity picks DV line
-// 2w or 2w + 1 (spec 5.10, the DVE convention). v = (chromaRowStart(tbar) + cycleOffset) mod 119.
-// -1 when that DV line was never written (control line 0: w = 0xf0 -> 480, 481) or `line` is
-// outside the raster.
-int rowForLine(ChromaMode, int tbar, int line, int cycleOffset);
+// The row (index into ChromaRows::rows) that raster line `line` (0..481) shows for line table
+// `t`: control line k = line / 2 has value w = t[k] and the line parity picks DV line 2w or
+// 2w + 1 (spec 5.10, the DVE convention). -1 when that DV line was never written (control
+// line 0: w = 0xf0 -> 480, 481) or `line` is outside the raster.
+int chromaTableRow(const std::array<uint8_t, 241>& t, int line);
+// chromaTableRow(chromaLineTable(mode, v), line).
+int rowForLine(ChromaMode, int v, int line);
 
 // Cycle step in 16.16 rows per video field: LUT_GridCycle* index the table at 0x9b14
 // {0x4000, 0x8000, 0x10000, 0x8000} with ($1f4 + 1) & 3, $1f4 = the Switcher's speed in tag 0x55
@@ -98,11 +100,17 @@ uint32_t chromaCycleStep(Speed);
 // field) from LUT_CycleModeOn's accumulator 0: forward (n * step) mod 119, backward
 // (-n * step) mod 119, both: h = (n * step) mod 238, v = h < 119 ? h : 237 - h. 0 for None.
 int chromaCycleRow(ChromaCycle, uint32_t step16_16, uint64_t fields);
+// The row position v the Switcher uses (Ruling 20): while cycling (cycle != None) the cycle
+// accumulator alone, chromaCycleRow(cycle, step, fields), and the T-bar is ignored (the
+// crouton's T-bar handler is DummyTBar, LUT_ExCroutonTBarTb 0x93d6); otherwise
+// chromaRowStart(tbar).
+int chromaRowPosition(int tbar, ChromaCycle, uint32_t step16_16, uint64_t fields);
 
-// out = in recoloured: per raster line the row rowForLine picks (black where it is -1), per
-// pixel the entry floor(lumaOffset + Y / 4) clamped to 0..95, Y = Rec.601 luma
-// (299 R + 587 G + 114 B) / 1000 of the input pixel. Alpha 255.
-void applyChroma(const ChromaRows&, ChromaMode, int tbar, int cycleOffset, const Frame& in, Frame& out,
-                 float lumaOffset = 17.5f);
+// out = in recoloured at row position v: per raster line the row rowForLine(mode, v, line)
+// picks (black where it is -1), per pixel the entry floor(lumaOffset + Y / 4) clamped to 0..95,
+// Y = Rec.601 luma (299 R + 587 G + 114 B) / 1000 of the input pixel. A non-finite lumaOffset
+// counts as 0. Alpha 255.
+void applyChroma(const ChromaRows&, ChromaMode, int v, const Frame& in, Frame& out,
+                 float lumaOffset = HardwareGuesses{}.chromaLumaOffset);
 
 }  // namespace vt
