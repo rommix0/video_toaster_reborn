@@ -10,6 +10,7 @@ inline constexpr int kRasterW = 768, kRasterH = 482;
 
 struct Rgba8 {
     uint8_t r, g, b, a;
+    bool operator==(const Rgba8&) const = default;
 };
 
 struct Frame {
