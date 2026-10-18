@@ -4,6 +4,7 @@ target_include_directories(catch2_amalgamated SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/
 
 add_executable(vt_tests
     test_anim.cpp
+    test_background.cpp
     test_crc32.cpp
     test_crouton.cpp
     test_golden.cpp

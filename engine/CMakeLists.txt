@@ -1,5 +1,6 @@
 add_library(vt_engine STATIC
     src/anim.cpp
+    src/background.cpp
     src/delta5.cpp
     src/delta7.cpp
     src/delta8.cpp
