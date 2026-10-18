@@ -47,6 +47,9 @@ Planes bodyToPlanes(const Bitmap& bm, std::span<const uint8_t> body);
 // 8 planes (the one 9-plane DVE ANIM) throws std::runtime_error; so does w > rowbytes * 8.
 IndexImage planesToIndex(const Planes& planes, int w);
 
+// BMHD, CMAP and CAMG of one FORM ILBM (BMHD required; BODY is not looked at).
+Bitmap readBitmapHeader(std::span<const uint8_t> d, const Form& form);
+
 // Decode one FORM ILBM (BMHD and BODY required).
 std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form);
 

@@ -103,7 +103,7 @@ IndexImage planesToIndex(const Planes& planes, int w) {
     return img;
 }
 
-std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form) {
+Bitmap readBitmapHeader(std::span<const uint8_t> d, const Form& form) {
     const auto chunks = formChunks(d, form);
     Bitmap bm;
 
@@ -126,7 +126,12 @@ std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& f
         if (c.size() < 4) throw std::runtime_error("ILBM: CAMG too short");
         bm.camg = (uint32_t(c[0]) << 24) | (uint32_t(c[1]) << 16) | (uint32_t(c[2]) << 8) | c[3];
     }
+    return bm;
+}
 
+std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form) {
+    Bitmap bm = readBitmapHeader(d, form);
+    const auto chunks = formChunks(d, form);
     const Chunk* bo = find(chunks, kBody);
     if (!bo) throw std::runtime_error("ILBM: no BODY");
     Planes planes = bodyToPlanes(bm, payload(d, *bo));
