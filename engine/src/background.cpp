@@ -40,13 +40,22 @@ Rgba8 customBkgColour(uint32_t tag0x24) {
     return {uint8_t((w >> 8 & 15) * 17), uint8_t((w >> 4 & 15) * 17), uint8_t((w & 15) * 17), 255};
 }
 
+namespace {
+
+uint64_t mix64(uint64_t z) {  // splitmix64 finaliser
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+    return z ^ (z >> 31);
+}
+
+}  // namespace
+
 void renderSnow(Frame& f, uint32_t frameNumber) {
-    uint64_t s = 0x9e3779b97f4a7c15ull * (uint64_t(frameNumber) + 1);
+    // Seed from a full mix of the frame number so consecutive frames are independent streams
+    // (a linear seed made frame n+1 equal frame n shifted by one pixel).
+    uint64_t s = mix64(uint64_t(frameNumber) ^ 0x5bd1e9955bd1e995ull);
     for (auto& p : f.px) {  // splitmix64, one grey byte per pixel
-        uint64_t z = (s += 0x9e3779b97f4a7c15ull);
-        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
-        z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
-        const auto v = uint8_t((z ^ (z >> 31)) >> 56);
+        const auto v = uint8_t(mix64(s += 0x9e3779b97f4a7c15ull) >> 56);
         p = {v, v, v, 255};
     }
 }

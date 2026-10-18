@@ -63,6 +63,12 @@ TEST_CASE("renderSnow is deterministic per frame number") {
     vt::renderSnow(c, 8);
     CHECK(sameFrame(a, b));
     CHECK_FALSE(sameFrame(a, c));
+    // Frame 8 is fresh noise, not frame 7 shifted along by a few pixels.
+    for (size_t shift = 0; shift <= 4; ++shift) {
+        int match = 0;
+        for (size_t i = 0; i < 1000; ++i) match += c.px[i].r == a.px[i + shift].r;
+        CHECK(match < 50);  // independent bytes match ~1000/256 = 4 times
+    }
     // Grey, opaque, and actually noisy.
     bool dark = false, light = false;
     for (auto& p : a.px) {
