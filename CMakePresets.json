@@ -1,0 +1,20 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "msvc",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/msvc",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "msvc", "configurePreset": "msvc" }
+  ],
+  "testPresets": [
+    { "name": "msvc", "configurePreset": "msvc", "output": { "outputOnFailure": true } }
+  ]
+}

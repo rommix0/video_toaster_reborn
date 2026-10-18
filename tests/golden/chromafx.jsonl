@@ -1,0 +1,492 @@
+{"source":"4.2/Effects/ChromaFx/BW Poster","name":"B&W Poster","tables_crc":[2631561148,2631561148,2631561148],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":364}}
+{"source":"4.2/Effects/ChromaFx/BWPoster","name":"B&Wposter","tables_crc":[1122635200,2631561148,1122635200],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Band Filter","name":"Band Filter","tables_crc":[720572485,2631561148,4118963043],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Blue Darks","name":"Blue Darks","tables_crc":[2631561148,1360066178,1360066178],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":352}}
+{"source":"4.2/Effects/ChromaFx/BlueGreen","name":"BlueGreen","tables_crc":[2631561148,1061699680,1061699680],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/BlueMetal","name":"BlueMetal","tables_crc":[1539008505,3888358777,1539008505],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":188}}
+{"source":"4.2/Effects/ChromaFx/BluePrint","name":"BluePrint","tables_crc":[1115602628,4048846294,1115602628],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/BlueRedSpred","name":"BlueRedSpred","tables_crc":[2629564452,2631561148,2629564452],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/BlueYelSpred","name":"BlueYelSpred","tables_crc":[2879530636,2631561148,2879530636],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":58}}
+{"source":"4.2/Effects/ChromaFx/BrightPoster3","name":"BritePoster3","tables_crc":[2457862059,2631561148,2457862059],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":62}}
+{"source":"4.2/Effects/ChromaFx/Brightness","name":"Brightness","tables_crc":[3719144350,686917393,3719144350],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":510}}
+{"source":"4.2/Effects/ChromaFx/BrnCyan-3col","name":"BrnCyan-3col","tables_crc":[626447897,2631561148,626447897],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":511}}
+{"source":"4.2/Effects/ChromaFx/Bronze","name":"Bronze","tables_crc":[3248403988,538371600,3248403988],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Brown","name":"Brown","tables_crc":[2631561148,1512554354,1512554354],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Charcoal","name":"Charcoal","tables_crc":[1453131764,2631561148,1453131764],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Chartreuse","name":"Chartreuse","tables_crc":[2631561148,276621795,276621795],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Chrome","name":"Chrome","tables_crc":[2631561148,3312928553,3312928553],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Color Bands","name":"Color Bands","tables_crc":[3184813849,2631561148,3184813849],"tags":{"0x80000055":1,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Color Shade","name":"Color Shade","tables_crc":[3184813849,2631561148,3184813849],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":8}}
+{"source":"4.2/Effects/ChromaFx/Contrast","name":"Contrast","tables_crc":[900424395,2787092532,900424395],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Cool","name":"Cool","tables_crc":[2631561148,952128098,952128098],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/CoolDark","name":"CoolDark","tables_crc":[2631561148,1432824995,1432824995],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/CoolGraySprd","name":"CoolGraySprd","tables_crc":[3856764484,2631561148,3856764484],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/CoolSprd","name":"CoolSpread","tables_crc":[3291067056,1495847513,3291067056],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Crazy Nuke","name":"Crazy Nuke","tables_crc":[2317494034,2631561148,2317494034],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":1,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Cycle Solar","name":"Cycle Solar","tables_crc":[2971706921,2631561148,2971706921],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/DarkWood","name":"DarkWood","tables_crc":[2906525408,2056332011,2906525408],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/DayLight","name":"Daylight","tables_crc":[2631561148,2287080983,2287080983],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Fade To Neg","name":"Fade To Neg","tables_crc":[2631561148,109843667,109843667],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/FadePostNeg","name":"Fade~PostNeg","tables_crc":[2631561148,1752865975,4158861833],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Fire","name":"Fire","tables_crc":[576851412,2631561148,576851412],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":3,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Flesh-3col-1","name":"Flesh-3col-1","tables_crc":[1199053875,2631561148,1199053875],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":36}}
+{"source":"4.2/Effects/ChromaFx/FleshPoster1","name":"FleshPoster1","tables_crc":[4178646589,2631561148,4178646589],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":36}}
+{"source":"4.2/Effects/ChromaFx/FleshSpread1","name":"FleshSpread1","tables_crc":[2250204200,2631561148,2250204200],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":48}}
+{"source":"4.2/Effects/ChromaFx/Fluorescent","name":"Fluorescent","tables_crc":[2631561148,1982439573,2631561148],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Fog","name":"Fog","tables_crc":[2007902166,2631561148,2007902166],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Gold","name":"Gold","tables_crc":[1799160688,3217798970,3217798970],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Green Neon","name":"Green Neon","tables_crc":[2351534212,2631561148,2351534212],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":234}}
+{"source":"4.2/Effects/ChromaFx/Heavy Poster","name":"Heavy Poster","tables_crc":[2631561148,2916588317,2631561148],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Hue Bands","name":"Hue Bands","tables_crc":[3593644313,20651491,20651491],"tags":{"0x80000055":1,"0x8000007e":0,"0x8000007f":1,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Hue Filter","name":"Hue Filter","tables_crc":[3593644313,20651491,20651491],"tags":{"0x80000055":3,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Light Pointer","name":"Light Poster","tables_crc":[2631561148,855894313,2631561148],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":510}}
+{"source":"4.2/Effects/ChromaFx/Line Art","name":"Line Art","tables_crc":[3425576661,2631561148,3425576661],"tags":{"0x80000055":1,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":138}}
+{"source":"4.2/Effects/ChromaFx/MagentaBands","name":"magentabands","tables_crc":[1262779290,2631561148,1262779290],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Maroon-3Col","name":"Maroon-3col","tables_crc":[360468028,2631561148,360468028],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":2,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/MaroonLaySpd","name":"MaroonLavSpd","tables_crc":[2772263503,2631561148,2772263503],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":68}}
+{"source":"4.2/Effects/ChromaFx/Mars Filter","name":"Mars Filter","tables_crc":[1848032731,1698846856,1698846856],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/MidRangeFilt","name":"MidRangeFilt","tables_crc":[3614845544,2822171846,3614845544],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":306}}
+{"source":"4.2/Effects/ChromaFx/MidRangeTint","name":"MidRangeTint","tables_crc":[622988217,447805697,447805697],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Moonlight","name":"Moonlight","tables_crc":[2631561148,2007102955,2007102955],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Neon Cycle","name":"Neon Cycle","tables_crc":[4251130523,2631561148,4251130523],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Nuke","name":"Nuke","tables_crc":[2631561148,2631561148,2631561148],"tags":{"0x80000055":1,"0x8000007e":0,"0x8000007f":2,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Nuke Solar","name":"Nuke Solar","tables_crc":[2123229104,2631561148,2123229104],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Ocean Filter","name":"OceanFilter","tables_crc":[3533253249,4013279613,3533253249],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/OldMovie","name":"OldMovie","tables_crc":[4265037399,80676050,80676050],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/OrangeWhite","name":"OrangeWhite","tables_crc":[2729908367,2631561148,2729908367],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":299}}
+{"source":"4.2/Effects/ChromaFx/Pastel","name":"Pastel","tables_crc":[2251787318,2631561148,2251787318],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/PastelSpread","name":"PastelSpread","tables_crc":[1000949982,3445152948,3445152948],"tags":{"0x80000055":1,"0x8000007e":0,"0x8000007f":3,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/PearlyGates","name":"PearlyGates","tables_crc":[3369634768,3746490637,3746490637],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":65}}
+{"source":"4.2/Effects/ChromaFx/Pinky","name":"Pinky","tables_crc":[1413269817,1395187865,1413269817],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Poster Bright","name":"Poster Brite","tables_crc":[4089275205,4158574842,4089275205],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":390}}
+{"source":"4.2/Effects/ChromaFx/Poster-Solar","name":"Poster-Solar","tables_crc":[1189877125,2996548070,1189877125],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":203}}
+{"source":"4.2/Effects/ChromaFx/PosterCycle","name":"PosterCycle","tables_crc":[3471699523,1189877125,3471699523],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Posterize","name":"Posterize","tables_crc":[2631561148,4236651629,2631561148],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":235}}
+{"source":"4.2/Effects/ChromaFx/PurpWhtPostr","name":"PurpWhtPostr","tables_crc":[650051826,2631561148,650051826],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Purple","name":"Purple","tables_crc":[2631561148,4050737960,4050737960],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/RainboBands","name":"RainboBands","tables_crc":[3277067974,2631561148,3277067974],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/RainboStripe","name":"RainboStripe","tables_crc":[500035146,2631561148,500035146],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Red","name":"Red","tables_crc":[2631561148,1395187865,1395187865],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Red Chrome","name":"Red Chrome","tables_crc":[2487377496,3521689216,3521689216],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":339}}
+{"source":"4.2/Effects/ChromaFx/Red Mids","name":"Red Mids","tables_crc":[2631561148,1698027873,1698027873],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":237}}
+{"source":"4.2/Effects/ChromaFx/Red Poster","name":"Red Poster","tables_crc":[1186025301,5541514,1186025301],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":388}}
+{"source":"4.2/Effects/ChromaFx/Red-Grn-Blu","name":"Red-Grn-Blu","tables_crc":[2631561148,1015202514,1015202514],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":87}}
+{"source":"4.2/Effects/ChromaFx/RedCyanField","name":"RedCyanField","tables_crc":[2984667174,99577593,2984667174],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/RedDraw","name":"RedDraw","tables_crc":[2957818803,2631561148,2957818803],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":53}}
+{"source":"4.2/Effects/ChromaFx/SepiaTone","name":"SepiaTone","tables_crc":[2631561148,2350879462,2350879462],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":406}}
+{"source":"4.2/Effects/ChromaFx/Snow Bands","name":"Snow Bands","tables_crc":[2631561148,80676050,80676050],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":177}}
+{"source":"4.2/Effects/ChromaFx/Snow Cycle","name":"Snow Cycle","tables_crc":[2461112940,2461112940,2461112940],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":173}}
+{"source":"4.2/Effects/ChromaFx/Snow Darks","name":"Snow Darks","tables_crc":[2631561148,922899667,922899667],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":353}}
+{"source":"4.2/Effects/ChromaFx/Snow Lights","name":"Snow Lights","tables_crc":[2631561148,329503413,329503413],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":347}}
+{"source":"4.2/Effects/ChromaFx/Snow Mids","name":"Snow Mids","tables_crc":[2631561148,1685731541,1685731541],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":234}}
+{"source":"4.2/Effects/ChromaFx/Soft Rainbow","name":"Soft Rainbow","tables_crc":[1854341253,2631561148,1854341253],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/Solar Filter","name":"Solar Filter","tables_crc":[2680463589,2000713013,2680463589],"tags":{"0x80000055":1,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Solarize","name":"Solarize","tables_crc":[2631561148,602363499,602363499],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":276}}
+{"source":"4.2/Effects/ChromaFx/Stripe Cycle","name":"Stripe Cycle","tables_crc":[2013153686,2631561148,2013153686],"tags":{"0x80000055":0,"0x8000007e":1,"0x8000007f":1,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/StripeFilter","name":"StripeFilter","tables_crc":[715247724,2631561148,715247724],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Sunset Filter","name":"SunsetFilter","tables_crc":[351956076,2277725120,2277725120],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":2}}
+{"source":"4.2/Effects/ChromaFx/TingSten","name":"Tungsten","tables_crc":[2631561148,652174799,652174799],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Tobacco","name":"Tobacco","tables_crc":[4124059121,2631561148,4124059121],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/USA-3Color","name":"USA-3color","tables_crc":[2315905395,2631561148,2315905395],"tags":{"0x80000055":3,"0x8000007e":1,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Warm","name":"Warm","tables_crc":[2631561148,2085598053,2085598053],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/WarmDark","name":"WarmDark","tables_crc":[2631561148,501176218,501176218],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/WarmGraySprd","name":"WarmGraySprd","tables_crc":[195557250,2631561148,195557250],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/WarmSunset","name":"WarmSunset","tables_crc":[953941125,242559750,242559750],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":0,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Yellow","name":"Yellow","tables_crc":[2631561148,2786652432,2786652432],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":0}}
+{"source":"4.2/Effects/ChromaFx/Yellow Light","name":"Yellow Light","tables_crc":[2631561148,1785302163,1785302163],"tags":{"0x80000055":0,"0x8000007e":0,"0x8000007f":0,"0x80000080":1,"0x80000086":367}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Solar Filter]","name":"Solar Filter","tables_crc":[2680463589,2000713013,2680463589],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [SunsetFilter]","name":"SunsetFilter","tables_crc":[351956076,2277725120,2277725120],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [OceanFilter]","name":"OceanFilter","tables_crc":[3533253249,4013279613,3533253249],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Hue Filter]","name":"Hue Filter","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Hue Bands]","name":"Hue Bands","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Mars Filter]","name":"Mars Filter","tables_crc":[1848032731,1698846856,1698846856],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [SepiaTone]","name":"SepiaTone","tables_crc":[2631561148,2350879462,2350879462],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Contrast]","name":"Contrast","tables_crc":[900424395,2787092532,900424395],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Brightness]","name":"Brightness","tables_crc":[3719144350,686917393,3719144350],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Gamma]","name":"Gamma","tables_crc":[2258502121,1590808499,2258502121],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Line Art]","name":"Line Art","tables_crc":[3425576661,2631561148,3425576661],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Charcoal]","name":"Charcoal","tables_crc":[1453131764,2631561148,1453131764],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Pastel]","name":"Pastel","tables_crc":[2251787318,2631561148,2251787318],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Light Poster]","name":"Light Poster","tables_crc":[2631561148,855894313,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Posterize]","name":"Posterize","tables_crc":[2631561148,4236651629,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Heavy Poster]","name":"Heavy Poster","tables_crc":[2631561148,2916588317,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Poster Brite]","name":"Poster Brite","tables_crc":[4089275205,4158574842,4089275205],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [B&W Poster]","name":"B&W Poster","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Red Poster]","name":"Red Poster","tables_crc":[1186025301,5541514,1186025301],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Fire]","name":"Fire","tables_crc":[576851412,2631561148,576851412],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Solarize]","name":"Solarize","tables_crc":[2631561148,602363499,602363499],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Cycle Solar]","name":"Cycle Solar","tables_crc":[2971706921,2631561148,2971706921],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Nuke]","name":"Nuke","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Nuke Solar]","name":"Nuke Solar","tables_crc":[2123229104,2631561148,2123229104],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Crazy Nuke]","name":"Crazy Nuke","tables_crc":[2317494034,2631561148,2317494034],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Fade To Neg]","name":"Fade To Neg","tables_crc":[2631561148,109843667,109843667],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Fade~PostNeg]","name":"Fade~PostNeg","tables_crc":[2631561148,1752865975,4158861833],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Chrome]","name":"Chrome","tables_crc":[2631561148,3312928553,3312928553],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Gold]","name":"Gold","tables_crc":[1799160688,3217798970,3217798970],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Red Chrome]","name":"Red Chrome","tables_crc":[2487377496,3521689216,3521689216],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Yellow Light]","name":"Yellow Light","tables_crc":[2631561148,1785302163,1785302163],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Red Mids]","name":"Red Mids","tables_crc":[2631561148,1698027873,1698027873],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Blue Darks]","name":"Blue Darks","tables_crc":[2631561148,1360066178,1360066178],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [MidRangeTint]","name":"MidRangeTint","tables_crc":[622988217,447805697,447805697],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [MidRangeFilt]","name":"MidRangeFilt","tables_crc":[3614845544,2822171846,3614845544],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Red-Grn-Blu]","name":"Red-Grn-Blu","tables_crc":[2631561148,1015202514,1015202514],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Poster-Solar]","name":"Poster-Solar","tables_crc":[1189877125,2996548070,1189877125],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [PosterCycle]","name":"PosterCycle","tables_crc":[3471699523,1189877125,3471699523],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Snow Mids]","name":"Snow Mids","tables_crc":[2631561148,1685731541,1685731541],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Snow Lights]","name":"Snow Lights","tables_crc":[2631561148,329503413,329503413],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Snow Darks]","name":"Snow Darks","tables_crc":[2631561148,922899667,922899667],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Snow Cycle]","name":"Snow Cycle","tables_crc":[2461112940,2461112940,2461112940],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Snow Bands]","name":"Snow Bands","tables_crc":[2631561148,80676050,80676050],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Green Neon]","name":"Green Neon","tables_crc":[2351534212,2631561148,2351534212],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Neon Cycle]","name":"Neon Cycle","tables_crc":[4251130523,2631561148,4251130523],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Stripe Cycle]","name":"Stripe Cycle","tables_crc":[2013153686,2631561148,2013153686],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [StripeFilter]","name":"StripeFilter","tables_crc":[715247724,2631561148,715247724],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Band Filter]","name":"Band Filter","tables_crc":[4118963043,2631561148,4118963043],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Zebra Stripe]","name":"Zebra Stripe","tables_crc":[2335965514,2631561148,2335965514],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Color Bands]","name":"Color Bands","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Color Shade]","name":"Color Shade","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [RainboStripe]","name":"RainboStripe","tables_crc":[500035146,2631561148,500035146],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [RainboBands]","name":"RainboBands","tables_crc":[3277067974,2631561148,3277067974],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Soft Rainbow]","name":"Soft Rainbow","tables_crc":[1854341253,2631561148,1854341253],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Fog]","name":"Fog","tables_crc":[2007902166,2631561148,2007902166],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [OldMovie]","name":"OldMovie","tables_crc":[4265037399,80676050,80676050],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [B&Wposter]","name":"B&Wposter","tables_crc":[1122635200,2631561148,1122635200],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BlueMetal]","name":"BlueMetal","tables_crc":[1539008505,3888358777,1539008505],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Daylight]","name":"Daylight","tables_crc":[2631561148,2287080983,2287080983],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Tungsten]","name":"Tungsten","tables_crc":[2631561148,652174799,652174799],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Fluorescent]","name":"Fluorescent","tables_crc":[2631561148,1982439573,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Red]","name":"Red","tables_crc":[2631561148,1395187865,1395187865],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [RedCyanField]","name":"RedCyanField","tables_crc":[2984667174,99577593,2984667174],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Purple]","name":"Purple","tables_crc":[2631561148,4050737960,4050737960],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [PurpWhtPostr]","name":"PurpWhtPostr","tables_crc":[650051826,2631561148,650051826],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Yellow]","name":"Yellow","tables_crc":[2631561148,2786652432,2786652432],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Moonlight]","name":"Moonlight","tables_crc":[2631561148,2007102955,2007102955],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [WarmGraySprd]","name":"WarmGraySprd","tables_crc":[195557250,2631561148,195557250],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Chartreuse]","name":"Chartreuse","tables_crc":[2631561148,276621795,276621795],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [CoolGraySprd]","name":"CoolGraySprd","tables_crc":[3856764484,2631561148,3856764484],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [CoolSpread]","name":"CoolSpread","tables_crc":[3291067056,1495847513,3291067056],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BlueGreen]","name":"BlueGreen","tables_crc":[2631561148,1061699680,1061699680],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Flesh-3col-1]","name":"Flesh-3col-1","tables_crc":[1199053875,2631561148,1199053875],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [FleshPoster1]","name":"FleshPoster1","tables_crc":[4178646589,2631561148,4178646589],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [FleshSpread1]","name":"FleshSpread1","tables_crc":[2250204200,2631561148,2250204200],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Warm]","name":"Warm","tables_crc":[2631561148,2085598053,2085598053],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Cool]","name":"Cool","tables_crc":[2631561148,952128098,952128098],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Brown]","name":"Brown","tables_crc":[2631561148,1512554354,1512554354],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [CoolDark]","name":"CoolDark","tables_crc":[2631561148,1432824995,1432824995],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [WarmDark]","name":"WarmDark","tables_crc":[2631561148,501176218,501176218],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BrnCyan-3col]","name":"BrnCyan-3col","tables_crc":[626447897,2631561148,626447897],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [DarkWood]","name":"DarkWood","tables_crc":[2906525408,2056332011,2906525408],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BlueYelSpred]","name":"BlueYelSpred","tables_crc":[2879530636,2631561148,2879530636],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [OrangeWhite]","name":"OrangeWhite","tables_crc":[2729908367,2631561148,2729908367],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [WarmSunset]","name":"WarmSunset","tables_crc":[953941125,242559750,242559750],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [magentabands]","name":"magentabands","tables_crc":[1262779290,2631561148,1262779290],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Maroon-3col]","name":"Maroon-3col","tables_crc":[360468028,2631561148,360468028],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [MaroonLavSpd]","name":"MaroonLavSpd","tables_crc":[2772263503,2631561148,2772263503],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Tobacco]","name":"Tobacco","tables_crc":[4124059121,2631561148,4124059121],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BlueRedSpred]","name":"BlueRedSpred","tables_crc":[2629564452,2631561148,2629564452],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BluePrint]","name":"BluePrint","tables_crc":[1115602628,4048846294,1115602628],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [USA-3color]","name":"USA-3color","tables_crc":[2315905395,2631561148,2315905395],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Bronze]","name":"Bronze","tables_crc":[2631561148,538371600,538371600],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [PearlyGates]","name":"PearlyGates","tables_crc":[3369634768,3746490637,3746490637],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BluePoster]","name":"BluePoster","tables_crc":[4202518659,4125979431,4202518659],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [PastelSpread]","name":"PastelSpread","tables_crc":[1000949982,3445152948,3445152948],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [BritePoster3]","name":"BritePoster3","tables_crc":[2457862059,2631561148,2457862059],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [RedDraw]","name":"RedDraw","tables_crc":[2957818803,2631561148,2957818803],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Effects [Pinky]","name":"Pinky","tables_crc":[1413269817,1395187865,1413269817],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Solar Filter]","name":"Solar Filter","tables_crc":[2680463589,2000713013,2680463589],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [SunsetFilter]","name":"SunsetFilter","tables_crc":[351956076,2277725120,2277725120],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [OceanFilter]","name":"OceanFilter","tables_crc":[3533253249,4013279613,3533253249],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Hue Filter]","name":"Hue Filter","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Hue Bands]","name":"Hue Bands","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Mars Filter]","name":"Mars Filter","tables_crc":[1848032731,1698846856,1698846856],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [SepiaTone]","name":"SepiaTone","tables_crc":[2631561148,2350879462,2350879462],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Contrast]","name":"Contrast","tables_crc":[900424395,2787092532,900424395],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Brightness]","name":"Brightness","tables_crc":[3719144350,686917393,3719144350],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Gamma]","name":"Gamma","tables_crc":[2258502121,1590808499,2258502121],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Line Art]","name":"Line Art","tables_crc":[3425576661,2631561148,3425576661],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Charcoal]","name":"Charcoal","tables_crc":[1453131764,2631561148,1453131764],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Pastel]","name":"Pastel","tables_crc":[2251787318,2631561148,2251787318],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Light Poster]","name":"Light Poster","tables_crc":[2631561148,855894313,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Posterize]","name":"Posterize","tables_crc":[2631561148,4236651629,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Heavy Poster]","name":"Heavy Poster","tables_crc":[2631561148,2916588317,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Poster Brite]","name":"Poster Brite","tables_crc":[4089275205,4158574842,4089275205],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [B&W Poster]","name":"B&W Poster","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Red Poster]","name":"Red Poster","tables_crc":[1186025301,5541514,1186025301],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Fire]","name":"Fire","tables_crc":[576851412,2631561148,576851412],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Solarize]","name":"Solarize","tables_crc":[2631561148,602363499,602363499],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Cycle Solar]","name":"Cycle Solar","tables_crc":[2971706921,2631561148,2971706921],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Nuke]","name":"Nuke","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Nuke Solar]","name":"Nuke Solar","tables_crc":[2123229104,2631561148,2123229104],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Crazy Nuke]","name":"Crazy Nuke","tables_crc":[2317494034,2631561148,2317494034],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Fade To Neg]","name":"Fade To Neg","tables_crc":[2631561148,109843667,109843667],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Fade~PostNeg]","name":"Fade~PostNeg","tables_crc":[2631561148,1752865975,4158861833],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Chrome]","name":"Chrome","tables_crc":[2631561148,3312928553,3312928553],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Gold]","name":"Gold","tables_crc":[1799160688,3217798970,3217798970],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Red Chrome]","name":"Red Chrome","tables_crc":[2487377496,3521689216,3521689216],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Yellow Light]","name":"Yellow Light","tables_crc":[2631561148,1785302163,1785302163],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Red Mids]","name":"Red Mids","tables_crc":[2631561148,1698027873,1698027873],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Blue Darks]","name":"Blue Darks","tables_crc":[2631561148,1360066178,1360066178],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [MidRangeTint]","name":"MidRangeTint","tables_crc":[622988217,447805697,447805697],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [MidRangeFilt]","name":"MidRangeFilt","tables_crc":[3614845544,2822171846,3614845544],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Red-Grn-Blu]","name":"Red-Grn-Blu","tables_crc":[2631561148,1015202514,1015202514],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Poster-Solar]","name":"Poster-Solar","tables_crc":[1189877125,2996548070,1189877125],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [PosterCycle]","name":"PosterCycle","tables_crc":[3471699523,1189877125,3471699523],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Snow Mids]","name":"Snow Mids","tables_crc":[2631561148,1685731541,1685731541],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Snow Lights]","name":"Snow Lights","tables_crc":[2631561148,329503413,329503413],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Snow Darks]","name":"Snow Darks","tables_crc":[2631561148,922899667,922899667],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Snow Cycle]","name":"Snow Cycle","tables_crc":[2461112940,2461112940,2461112940],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Snow Bands]","name":"Snow Bands","tables_crc":[2631561148,80676050,80676050],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Green Neon]","name":"Green Neon","tables_crc":[2351534212,2631561148,2351534212],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Neon Cycle]","name":"Neon Cycle","tables_crc":[4251130523,2631561148,4251130523],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Stripe Cycle]","name":"Stripe Cycle","tables_crc":[1395817562,2631561148,1395817562],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [StripeFilter]","name":"StripeFilter","tables_crc":[715247724,2631561148,715247724],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Band Filter]","name":"Band Filter","tables_crc":[4118963043,2631561148,4118963043],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Zebra Stripe]","name":"Zebra Stripe","tables_crc":[2335965514,2631561148,2335965514],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Color Bands]","name":"Color Bands","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Color Shade]","name":"Color Shade","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [RainboStripe]","name":"RainboStripe","tables_crc":[500035146,2631561148,500035146],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [RainboBands]","name":"RainboBands","tables_crc":[3277067974,2631561148,3277067974],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Soft Rainbow]","name":"Soft Rainbow","tables_crc":[1854341253,2631561148,1854341253],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Fog]","name":"Fog","tables_crc":[2007902166,2631561148,2007902166],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [OldMovie]","name":"OldMovie","tables_crc":[4265037399,80676050,80676050],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [B&Wposter]","name":"B&Wposter","tables_crc":[1122635200,2631561148,1122635200],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BlueMetal]","name":"BlueMetal","tables_crc":[1539008505,3888358777,1539008505],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Daylight]","name":"Daylight","tables_crc":[2631561148,2287080983,2287080983],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Tungsten]","name":"Tungsten","tables_crc":[2631561148,652174799,652174799],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Fluorescent]","name":"Fluorescent","tables_crc":[2631561148,1982439573,2631561148],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Red]","name":"Red","tables_crc":[2631561148,1395187865,1395187865],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [RedCyanField]","name":"RedCyanField","tables_crc":[2984667174,99577593,2984667174],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Purple]","name":"Purple","tables_crc":[2631561148,4050737960,4050737960],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [PurpWhtPostr]","name":"PurpWhtPostr","tables_crc":[650051826,2631561148,650051826],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Yellow]","name":"Yellow","tables_crc":[2631561148,2786652432,2786652432],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Moonlight]","name":"Moonlight","tables_crc":[2631561148,2007102955,2007102955],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [WarmGraySprd]","name":"WarmGraySprd","tables_crc":[195557250,2631561148,195557250],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Chartreuse]","name":"Chartreuse","tables_crc":[2631561148,276621795,276621795],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [CoolGraySprd]","name":"CoolGraySprd","tables_crc":[3856764484,2631561148,3856764484],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [CoolSpread]","name":"CoolSpread","tables_crc":[3291067056,1495847513,3291067056],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BlueGreen]","name":"BlueGreen","tables_crc":[2631561148,1061699680,1061699680],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Flesh-3col-1]","name":"Flesh-3col-1","tables_crc":[1199053875,2631561148,1199053875],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [FleshPoster1]","name":"FleshPoster1","tables_crc":[4178646589,2631561148,4178646589],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [FleshSpread1]","name":"FleshSpread1","tables_crc":[2250204200,2631561148,2250204200],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Warm]","name":"Warm","tables_crc":[2631561148,2085598053,2085598053],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Cool]","name":"Cool","tables_crc":[2631561148,952128098,952128098],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Brown]","name":"Brown","tables_crc":[2631561148,1512554354,1512554354],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [CoolDark]","name":"CoolDark","tables_crc":[2631561148,1432824995,1432824995],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [WarmDark]","name":"WarmDark","tables_crc":[2631561148,501176218,501176218],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BrnCyan-3col]","name":"BrnCyan-3col","tables_crc":[626447897,2631561148,626447897],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [DarkWood]","name":"DarkWood","tables_crc":[2906525408,2056332011,2906525408],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BlueYelSpred]","name":"BlueYelSpred","tables_crc":[2879530636,2631561148,2879530636],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [OrangeWhite]","name":"OrangeWhite","tables_crc":[2729908367,2631561148,2729908367],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [WarmSunset]","name":"WarmSunset","tables_crc":[953941125,242559750,242559750],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [magentabands]","name":"magentabands","tables_crc":[1262779290,2631561148,1262779290],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Maroon-3col]","name":"Maroon-3col","tables_crc":[360468028,2631561148,360468028],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [MaroonLavSpd]","name":"MaroonLavSpd","tables_crc":[2772263503,2631561148,2772263503],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Tobacco]","name":"Tobacco","tables_crc":[4124059121,2631561148,4124059121],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BlueRedSpred]","name":"BlueRedSpred","tables_crc":[2629564452,2631561148,2629564452],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BluePrint]","name":"BluePrint","tables_crc":[1115602628,4048846294,1115602628],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [USA-3color]","name":"USA-3color","tables_crc":[2315905395,2631561148,2315905395],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Bronze]","name":"Bronze","tables_crc":[2631561148,538371600,538371600],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [PearlyGates]","name":"PearlyGates","tables_crc":[3369634768,3746490637,3746490637],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BluePoster]","name":"BluePoster","tables_crc":[4202518659,4125979431,4202518659],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [PastelSpread]","name":"PastelSpread","tables_crc":[1000949982,3445152948,3445152948],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [BritePoster3]","name":"BritePoster3","tables_crc":[2457862059,2631561148,2457862059],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [RedDraw]","name":"RedDraw","tables_crc":[2957818803,2631561148,2957818803],"tags":{}}
+{"source":"4.2/Programs/ChromaFX_Support/ChromaFX.Default [Pinky]","name":"Pinky","tables_crc":[1413269817,1395187865,1413269817],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Solar Filter]","name":"Solar Filter","tables_crc":[2680463589,2000713013,2680463589],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [SunsetFilter]","name":"SunsetFilter","tables_crc":[351956076,2277725120,2277725120],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [OceanFilter]","name":"OceanFilter","tables_crc":[3533253249,4013279613,3533253249],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Hue Filter]","name":"Hue Filter","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Hue Bands]","name":"Hue Bands","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Mars Filter]","name":"Mars Filter","tables_crc":[1848032731,1698846856,1698846856],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [SepiaTone]","name":"SepiaTone","tables_crc":[2631561148,2350879462,2350879462],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Contrast]","name":"Contrast","tables_crc":[900424395,2787092532,900424395],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Brightness]","name":"Brightness","tables_crc":[3719144350,686917393,3719144350],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Gamma]","name":"Gamma","tables_crc":[2258502121,1590808499,2258502121],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Line Art]","name":"Line Art","tables_crc":[3425576661,2631561148,3425576661],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Charcoal]","name":"Charcoal","tables_crc":[1453131764,2631561148,1453131764],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Pastel]","name":"Pastel","tables_crc":[2251787318,2631561148,2251787318],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Light Poster]","name":"Light Poster","tables_crc":[2631561148,855894313,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Posterize]","name":"Posterize","tables_crc":[2631561148,4236651629,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Heavy Poster]","name":"Heavy Poster","tables_crc":[2631561148,2916588317,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Poster Brite]","name":"Poster Brite","tables_crc":[4089275205,4158574842,4089275205],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [B&W Poster]","name":"B&W Poster","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Red Poster]","name":"Red Poster","tables_crc":[1186025301,5541514,1186025301],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Fire]","name":"Fire","tables_crc":[576851412,2631561148,576851412],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Solarize]","name":"Solarize","tables_crc":[2631561148,602363499,602363499],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Cycle Solar]","name":"Cycle Solar","tables_crc":[2971706921,2631561148,2971706921],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Nuke]","name":"Nuke","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Nuke Solar]","name":"Nuke Solar","tables_crc":[2123229104,2631561148,2123229104],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Crazy Nuke]","name":"Crazy Nuke","tables_crc":[2317494034,2631561148,2317494034],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Fade To Neg]","name":"Fade To Neg","tables_crc":[2631561148,109843667,109843667],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Fade~PostNeg]","name":"Fade~PostNeg","tables_crc":[2631561148,1752865975,4158861833],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Chrome]","name":"Chrome","tables_crc":[2631561148,3312928553,3312928553],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Gold]","name":"Gold","tables_crc":[1799160688,3217798970,3217798970],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Red Chrome]","name":"Red Chrome","tables_crc":[2487377496,3521689216,3521689216],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Yellow Light]","name":"Yellow Light","tables_crc":[2631561148,1785302163,1785302163],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Red Mids]","name":"Red Mids","tables_crc":[2631561148,1698027873,1698027873],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Blue Darks]","name":"Blue Darks","tables_crc":[2631561148,1360066178,1360066178],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [MidRangeTint]","name":"MidRangeTint","tables_crc":[622988217,447805697,447805697],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [MidRangeFilt]","name":"MidRangeFilt","tables_crc":[3614845544,2822171846,3614845544],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Red-Grn-Blu]","name":"Red-Grn-Blu","tables_crc":[2631561148,1015202514,1015202514],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Poster-Solar]","name":"Poster-Solar","tables_crc":[1189877125,2996548070,1189877125],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [PosterCycle]","name":"PosterCycle","tables_crc":[3471699523,1189877125,3471699523],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Snow Mids]","name":"Snow Mids","tables_crc":[2631561148,1685731541,1685731541],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Snow Lights]","name":"Snow Lights","tables_crc":[2631561148,329503413,329503413],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Snow Darks]","name":"Snow Darks","tables_crc":[2631561148,922899667,922899667],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Snow Cycle]","name":"Snow Cycle","tables_crc":[2461112940,2461112940,2461112940],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Snow Bands]","name":"Snow Bands","tables_crc":[2631561148,80676050,80676050],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Green Neon]","name":"Green Neon","tables_crc":[2351534212,2631561148,2351534212],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Neon Cycle]","name":"Neon Cycle","tables_crc":[4251130523,2631561148,4251130523],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Stripe Cycle]","name":"Stripe Cycle","tables_crc":[1395817562,2631561148,1395817562],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [StripeFilter]","name":"StripeFilter","tables_crc":[715247724,2631561148,715247724],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Band Filter]","name":"Band Filter","tables_crc":[4118963043,2631561148,4118963043],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Zebra Stripe]","name":"Zebra Stripe","tables_crc":[2335965514,2631561148,2335965514],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Color Bands]","name":"Color Bands","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Color Shade]","name":"Color Shade","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [RainboStripe]","name":"RainboStripe","tables_crc":[500035146,2631561148,500035146],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [RainboBands]","name":"RainboBands","tables_crc":[3277067974,2631561148,3277067974],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Soft Rainbow]","name":"Soft Rainbow","tables_crc":[1854341253,2631561148,1854341253],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Fog]","name":"Fog","tables_crc":[2007902166,2631561148,2007902166],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [OldMovie]","name":"OldMovie","tables_crc":[4265037399,80676050,80676050],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [B&Wposter]","name":"B&Wposter","tables_crc":[1122635200,2631561148,1122635200],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BlueMetal]","name":"BlueMetal","tables_crc":[1539008505,3888358777,1539008505],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Daylight]","name":"Daylight","tables_crc":[2631561148,2287080983,2287080983],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Tungsten]","name":"Tungsten","tables_crc":[2631561148,652174799,652174799],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Fluorescent]","name":"Fluorescent","tables_crc":[2631561148,1982439573,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Red]","name":"Red","tables_crc":[2631561148,1395187865,1395187865],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [RedCyanField]","name":"RedCyanField","tables_crc":[2984667174,99577593,2984667174],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Purple]","name":"Purple","tables_crc":[2631561148,4050737960,4050737960],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [PurpWhtPostr]","name":"PurpWhtPostr","tables_crc":[650051826,2631561148,650051826],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Yellow]","name":"Yellow","tables_crc":[2631561148,2786652432,2786652432],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Moonlight]","name":"Moonlight","tables_crc":[2631561148,2007102955,2007102955],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [WarmGraySprd]","name":"WarmGraySprd","tables_crc":[195557250,2631561148,195557250],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Chartreuse]","name":"Chartreuse","tables_crc":[2631561148,276621795,276621795],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [CoolGraySprd]","name":"CoolGraySprd","tables_crc":[3856764484,2631561148,3856764484],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [CoolSpread]","name":"CoolSpread","tables_crc":[3291067056,1495847513,3291067056],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BlueGreen]","name":"BlueGreen","tables_crc":[2631561148,1061699680,1061699680],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Flesh-3col-1]","name":"Flesh-3col-1","tables_crc":[1199053875,2631561148,1199053875],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [FleshPoster1]","name":"FleshPoster1","tables_crc":[4178646589,2631561148,4178646589],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [FleshSpread1]","name":"FleshSpread1","tables_crc":[2250204200,2631561148,2250204200],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Warm]","name":"Warm","tables_crc":[2631561148,2085598053,2085598053],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Cool]","name":"Cool","tables_crc":[2631561148,952128098,952128098],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Brown]","name":"Brown","tables_crc":[2631561148,1512554354,1512554354],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [CoolDark]","name":"CoolDark","tables_crc":[2631561148,1432824995,1432824995],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [WarmDark]","name":"WarmDark","tables_crc":[2631561148,501176218,501176218],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BrnCyan-3col]","name":"BrnCyan-3col","tables_crc":[626447897,2631561148,626447897],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [DarkWood]","name":"DarkWood","tables_crc":[2906525408,2056332011,2906525408],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BlueYelSpred]","name":"BlueYelSpred","tables_crc":[2879530636,2631561148,2879530636],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [OrangeWhite]","name":"OrangeWhite","tables_crc":[2729908367,2631561148,2729908367],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [WarmSunset]","name":"WarmSunset","tables_crc":[953941125,242559750,242559750],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [magentabands]","name":"magentabands","tables_crc":[1262779290,2631561148,1262779290],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Maroon-3col]","name":"Maroon-3col","tables_crc":[360468028,2631561148,360468028],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [MaroonLavSpd]","name":"MaroonLavSpd","tables_crc":[2772263503,2631561148,2772263503],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Tobacco]","name":"Tobacco","tables_crc":[4124059121,2631561148,4124059121],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BlueRedSpred]","name":"BlueRedSpred","tables_crc":[2629564452,2631561148,2629564452],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BluePrint]","name":"BluePrint","tables_crc":[1115602628,4048846294,1115602628],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [USA-3color]","name":"USA-3color","tables_crc":[2315905395,2631561148,2315905395],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Bronze]","name":"Bronze","tables_crc":[2631561148,538371600,538371600],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [PearlyGates]","name":"PearlyGates","tables_crc":[3369634768,3746490637,3746490637],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BluePoster]","name":"BluePoster","tables_crc":[4202518659,4125979431,4202518659],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [PastelSpread]","name":"PastelSpread","tables_crc":[1000949982,3445152948,3445152948],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [BritePoster3]","name":"BritePoster3","tables_crc":[2457862059,2631561148,2457862059],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [RedDraw]","name":"RedDraw","tables_crc":[2957818803,2631561148,2957818803],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Effects [Pinky]","name":"Pinky","tables_crc":[1413269817,1395187865,1413269817],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Solar Filter]","name":"Solar Filter","tables_crc":[2680463589,2000713013,2680463589],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [SunsetFilter]","name":"SunsetFilter","tables_crc":[351956076,2277725120,2277725120],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [OceanFilter]","name":"OceanFilter","tables_crc":[3533253249,4013279613,3533253249],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Hue Filter]","name":"Hue Filter","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Hue Bands]","name":"Hue Bands","tables_crc":[3593644313,20651491,20651491],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Mars Filter]","name":"Mars Filter","tables_crc":[1848032731,1698846856,1698846856],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [SepiaTone]","name":"SepiaTone","tables_crc":[2631561148,2350879462,2350879462],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Contrast]","name":"Contrast","tables_crc":[900424395,2787092532,900424395],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Brightness]","name":"Brightness","tables_crc":[3719144350,686917393,3719144350],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Gamma]","name":"Gamma","tables_crc":[2258502121,1590808499,2258502121],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Line Art]","name":"Line Art","tables_crc":[3425576661,2631561148,3425576661],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Charcoal]","name":"Charcoal","tables_crc":[1453131764,2631561148,1453131764],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Pastel]","name":"Pastel","tables_crc":[2251787318,2631561148,2251787318],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Light Poster]","name":"Light Poster","tables_crc":[2631561148,855894313,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Posterize]","name":"Posterize","tables_crc":[2631561148,4236651629,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Heavy Poster]","name":"Heavy Poster","tables_crc":[2631561148,2916588317,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Poster Brite]","name":"Poster Brite","tables_crc":[4089275205,4158574842,4089275205],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [B&W Poster]","name":"B&W Poster","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Red Poster]","name":"Red Poster","tables_crc":[1186025301,5541514,1186025301],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Fire]","name":"Fire","tables_crc":[576851412,2631561148,576851412],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Solarize]","name":"Solarize","tables_crc":[2631561148,602363499,602363499],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Cycle Solar]","name":"Cycle Solar","tables_crc":[2971706921,2631561148,2971706921],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Nuke]","name":"Nuke","tables_crc":[2631561148,2631561148,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Nuke Solar]","name":"Nuke Solar","tables_crc":[2123229104,2631561148,2123229104],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Crazy Nuke]","name":"Crazy Nuke","tables_crc":[2317494034,2631561148,2317494034],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Fade To Neg]","name":"Fade To Neg","tables_crc":[2631561148,109843667,109843667],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Fade~PostNeg]","name":"Fade~PostNeg","tables_crc":[2631561148,1752865975,4158861833],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Chrome]","name":"Chrome","tables_crc":[2631561148,3312928553,3312928553],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Gold]","name":"Gold","tables_crc":[1799160688,3217798970,3217798970],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Red Chrome]","name":"Red Chrome","tables_crc":[2487377496,3521689216,3521689216],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Yellow Light]","name":"Yellow Light","tables_crc":[2631561148,1785302163,1785302163],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Red Mids]","name":"Red Mids","tables_crc":[2631561148,1698027873,1698027873],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Blue Darks]","name":"Blue Darks","tables_crc":[2631561148,1360066178,1360066178],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [MidRangeTint]","name":"MidRangeTint","tables_crc":[622988217,447805697,447805697],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [MidRangeFilt]","name":"MidRangeFilt","tables_crc":[3614845544,2822171846,3614845544],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Red-Grn-Blu]","name":"Red-Grn-Blu","tables_crc":[2631561148,1015202514,1015202514],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Poster-Solar]","name":"Poster-Solar","tables_crc":[1189877125,2996548070,1189877125],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [PosterCycle]","name":"PosterCycle","tables_crc":[3471699523,1189877125,3471699523],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Snow Mids]","name":"Snow Mids","tables_crc":[2631561148,1685731541,1685731541],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Snow Lights]","name":"Snow Lights","tables_crc":[2631561148,329503413,329503413],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Snow Darks]","name":"Snow Darks","tables_crc":[2631561148,922899667,922899667],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Snow Cycle]","name":"Snow Cycle","tables_crc":[2461112940,2461112940,2461112940],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Snow Bands]","name":"Snow Bands","tables_crc":[2631561148,80676050,80676050],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Green Neon]","name":"Green Neon","tables_crc":[2351534212,2631561148,2351534212],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Neon Cycle]","name":"Neon Cycle","tables_crc":[4251130523,2631561148,4251130523],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Stripe Cycle]","name":"Stripe Cycle","tables_crc":[1395817562,2631561148,1395817562],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [StripeFilter]","name":"StripeFilter","tables_crc":[715247724,2631561148,715247724],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Band Filter]","name":"Band Filter","tables_crc":[4118963043,2631561148,4118963043],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Zebra Stripe]","name":"Zebra Stripe","tables_crc":[2335965514,2631561148,2335965514],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Color Bands]","name":"Color Bands","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Color Shade]","name":"Color Shade","tables_crc":[3184813849,2631561148,3184813849],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [RainboStripe]","name":"RainboStripe","tables_crc":[500035146,2631561148,500035146],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [RainboBands]","name":"RainboBands","tables_crc":[3277067974,2631561148,3277067974],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Soft Rainbow]","name":"Soft Rainbow","tables_crc":[1854341253,2631561148,1854341253],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Fog]","name":"Fog","tables_crc":[2007902166,2631561148,2007902166],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [OldMovie]","name":"OldMovie","tables_crc":[4265037399,80676050,80676050],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [B&Wposter]","name":"B&Wposter","tables_crc":[1122635200,2631561148,1122635200],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BlueMetal]","name":"BlueMetal","tables_crc":[1539008505,3888358777,1539008505],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Daylight]","name":"Daylight","tables_crc":[2631561148,2287080983,2287080983],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Tungsten]","name":"Tungsten","tables_crc":[2631561148,652174799,652174799],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Fluorescent]","name":"Fluorescent","tables_crc":[2631561148,1982439573,2631561148],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Red]","name":"Red","tables_crc":[2631561148,1395187865,1395187865],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [RedCyanField]","name":"RedCyanField","tables_crc":[2984667174,99577593,2984667174],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Purple]","name":"Purple","tables_crc":[2631561148,4050737960,4050737960],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [PurpWhtPostr]","name":"PurpWhtPostr","tables_crc":[650051826,2631561148,650051826],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Yellow]","name":"Yellow","tables_crc":[2631561148,2786652432,2786652432],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Moonlight]","name":"Moonlight","tables_crc":[2631561148,2007102955,2007102955],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [WarmGraySprd]","name":"WarmGraySprd","tables_crc":[195557250,2631561148,195557250],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Chartreuse]","name":"Chartreuse","tables_crc":[2631561148,276621795,276621795],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [CoolGraySprd]","name":"CoolGraySprd","tables_crc":[3856764484,2631561148,3856764484],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [CoolSpread]","name":"CoolSpread","tables_crc":[3291067056,1495847513,3291067056],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BlueGreen]","name":"BlueGreen","tables_crc":[2631561148,1061699680,1061699680],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Flesh-3col-1]","name":"Flesh-3col-1","tables_crc":[1199053875,2631561148,1199053875],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [FleshPoster1]","name":"FleshPoster1","tables_crc":[4178646589,2631561148,4178646589],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [FleshSpread1]","name":"FleshSpread1","tables_crc":[2250204200,2631561148,2250204200],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Warm]","name":"Warm","tables_crc":[2631561148,2085598053,2085598053],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Cool]","name":"Cool","tables_crc":[2631561148,952128098,952128098],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Brown]","name":"Brown","tables_crc":[2631561148,1512554354,1512554354],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [CoolDark]","name":"CoolDark","tables_crc":[2631561148,1432824995,1432824995],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [WarmDark]","name":"WarmDark","tables_crc":[2631561148,501176218,501176218],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BrnCyan-3col]","name":"BrnCyan-3col","tables_crc":[626447897,2631561148,626447897],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [DarkWood]","name":"DarkWood","tables_crc":[2906525408,2056332011,2906525408],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BlueYelSpred]","name":"BlueYelSpred","tables_crc":[2879530636,2631561148,2879530636],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [OrangeWhite]","name":"OrangeWhite","tables_crc":[2729908367,2631561148,2729908367],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [WarmSunset]","name":"WarmSunset","tables_crc":[953941125,242559750,242559750],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [magentabands]","name":"magentabands","tables_crc":[1262779290,2631561148,1262779290],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Maroon-3col]","name":"Maroon-3col","tables_crc":[360468028,2631561148,360468028],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [MaroonLavSpd]","name":"MaroonLavSpd","tables_crc":[2772263503,2631561148,2772263503],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Tobacco]","name":"Tobacco","tables_crc":[4124059121,2631561148,4124059121],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BlueRedSpred]","name":"BlueRedSpred","tables_crc":[2629564452,2631561148,2629564452],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BluePrint]","name":"BluePrint","tables_crc":[1115602628,4048846294,1115602628],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [USA-3color]","name":"USA-3color","tables_crc":[2315905395,2631561148,2315905395],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Bronze]","name":"Bronze","tables_crc":[2631561148,538371600,538371600],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [PearlyGates]","name":"PearlyGates","tables_crc":[3369634768,3746490637,3746490637],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BluePoster]","name":"BluePoster","tables_crc":[4202518659,4125979431,4202518659],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [PastelSpread]","name":"PastelSpread","tables_crc":[1000949982,3445152948,3445152948],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [BritePoster3]","name":"BritePoster3","tables_crc":[2457862059,2631561148,2457862059],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [RedDraw]","name":"RedDraw","tables_crc":[2957818803,2631561148,2957818803],"tags":{}}
+{"source":"3.1/ToasterAll/ChromaFX/ChromaFX.Default [Pinky]","name":"Pinky","tables_crc":[1413269817,1395187865,1413269817],"tags":{}}
