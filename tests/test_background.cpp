@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <optional>
 
 #include "catch_amalgamated.hpp"
 #include "vt/background.h"
@@ -78,4 +79,27 @@ TEST_CASE("renderSnow is deterministic per frame number") {
     }
     CHECK(dark);
     CHECK(light);
+}
+
+TEST_CASE("an effect's colour comes from tags 0x23 / 0x24 (Ruling 26)") {
+    using vt::BkgColour;
+    using vt::EffectColour;
+    CHECK(vt::effectColourFromTags(2, std::nullopt) == EffectColour::of(BkgColour::White));
+    CHECK(vt::effectColourFromTags(8, 0x0906) == EffectColour::of(BkgColour::Cyan));  // 0x24 only if 0x23 < 0
+    CHECK(vt::effectColourFromTags(9, std::nullopt).isSnow());
+    // negative 0x23: the custom word
+    const EffectColour c = vt::effectColourFromTags(0xffffffffu, 0x0906);
+    CHECK(c == EffectColour::customWord(0x0906));
+    CHECK(same(c.rgb(), vt::bkgColour(BkgColour::Red)));
+    CHECK(vt::effectColourFromTags(0x80000000u, 0x8000).isSnow());
+    CHECK(vt::effectColourFromTags(0x80000000u, std::nullopt) == EffectColour::customWord(0));
+    // missing, 0 (the library default) and out of range: Black
+    for (auto t : {std::optional<uint32_t>{}, std::optional<uint32_t>{0u}, std::optional<uint32_t>{10u}})
+        CHECK(vt::effectColourFromTags(t, std::nullopt) == EffectColour{});
+    CHECK(EffectColour{} == EffectColour::of(BkgColour::Black));
+    // rgb: the generator's colours; Snow is black (noise has no single colour)
+    CHECK(same(EffectColour::of(BkgColour::Blue).rgb(), vt::bkgColour(BkgColour::Blue)));
+    CHECK(same(EffectColour::of(BkgColour::Snow).rgb(), {0, 0, 0, 255}));
+    CHECK(same(EffectColour::customWord(0x0f80).rgb(), vt::customBkgColour(0x0f80)));
+    CHECK(same(EffectColour::customWord(0x8f80).rgb(), {0, 0, 0, 255}));
 }

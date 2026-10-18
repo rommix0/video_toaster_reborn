@@ -544,16 +544,57 @@ TEST_CASE("BKG renders the background colour", "[switcher]") {
     REQUIRE(r.render().px == expect.px);
 }
 
-TEST_CASE("effects see the background colour", "[switcher]") {
-    Rig r;
-    r.sw.setBackground(vt::BkgColour::Blue);
-    REQUIRE(r.sw.setEffect(pagePeel()));
-    r.sw.setTBar(250);
-    vt::Frame expect;
+// The effect rendered directly with this matte colour.
+vt::Frame withMatte(const vt::Effect& e, int tbar, const vt::Frame& a, const vt::Frame& b, vt::Rgba8 matte) {
+    vt::Frame out;
     vt::RenderCtx ctx;
-    ctx.background = vt::bkgColour(vt::BkgColour::Blue);
-    pagePeel()->render(250, r.in1, r.in2, expect, ctx);
-    REQUIRE(r.render().px == expect.px);
+    ctx.background = matte;
+    e.render(tbar, a, b, out, ctx);
+    return out;
+}
+
+TEST_CASE("effects get their own Effect Color, not the BKG colour (Ruling 26)", "[switcher]") {
+    const vt::Rgba8 white = vt::bkgColour(vt::BkgColour::White), black = vt::bkgColour(vt::BkgColour::Black);
+    // Forked Lightning: tag 0x23 = 2 (White) over a black palette
+    const auto fork = load("4.2/Effects/2000FX/Organic/Forked Lightning");
+    REQUIRE(fork->effectColour() == vt::EffectColour::of(vt::BkgColour::White));
+    Rig r;
+    REQUIRE(r.sw.setEffect(fork));
+    REQUIRE(r.sw.effectColour() == fork->effectColour());
+    REQUIRE(r.sw.background() == vt::EffectColour::of(vt::BkgColour::Black));  // BKG left Black
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    int t = 8;  // a T-bar position where the matte is on screen
+    while (t < 511 && withMatte(*fork, t, r.in3, r.in4, white).px == withMatte(*fork, t, r.in3, r.in4, black).px) t += 8;
+    REQUIRE(t < 511);
+    r.sw.setTBar(t);
+    REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, white).px);  // a white matte
+    // the Effect Color pop-up overrides it until another setEffect
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Red));
+    REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, vt::bkgColour(vt::BkgColour::Red)).px);
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Snow));  // Snow: black, as for BKG
+    REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, black).px);
+    REQUIRE(r.sw.setEffect(fork));
+    REQUIRE(r.sw.effectColour() == vt::EffectColour::of(vt::BkgColour::White));
+
+    // Bear-L: tag 0x23 = 1 (Black) stays black whatever BKG is
+    const auto bear = load("4.2/Effects/2000FX/Animals/Bear-L");
+    REQUIRE(bear->effectColour() == vt::EffectColour::of(vt::BkgColour::Black));
+    Rig b;
+    b.sw.setBackground(vt::BkgColour::Blue);
+    REQUIRE(b.sw.setEffect(bear));
+    const vt::Rgba8 blue = vt::bkgColour(vt::BkgColour::Blue);
+    t = 8;  // a T-bar position where the matte shows (a blue matte would differ)
+    while (t < 511 && withMatte(*bear, t, b.in3, b.in4, blue).px == withMatte(*bear, t, b.in3, b.in4, black).px) t += 8;
+    REQUIRE(t < 511);
+    b.sw.select(Bus::Main, Source::In3);
+    b.sw.select(Bus::Preview, Source::In4);
+    b.sw.setTBar(t);
+    REQUIRE(b.render().px == withMatte(*bear, t, b.in3, b.in4, black).px);
+    // and BKG on a bus still shows blue
+    b.sw.setTBar(0);
+    b.sw.select(Bus::Main, Source::Bkg);
+    REQUIRE(b.render().px == solid(vt::bkgColour(vt::BkgColour::Blue)).px);
 }
 
 TEST_CASE("render may write into an input frame", "[switcher]") {

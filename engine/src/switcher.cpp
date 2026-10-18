@@ -14,7 +14,9 @@ size_t busIndex(Bus b) { return static_cast<size_t>(b); }
 
 }  // namespace
 
-Switcher::Switcher() : effect_(makeDissolve()) { std::fill(dv_.px.begin(), dv_.px.end(), kBlack); }
+Switcher::Switcher() : effect_(makeDissolve()), effectColour_(effect_->effectColour()) {
+    std::fill(dv_.px.begin(), dv_.px.end(), kBlack);
+}
 
 void Switcher::select(Bus b, Source s) { sel_[busIndex(b)] = s; }
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
@@ -39,6 +41,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     disengage();
     soundPending_ = false;
     effect_ = std::move(e);
+    effectColour_ = effect_->effectColour();
     return true;
 }
 
@@ -107,16 +110,6 @@ void Switcher::take() {
     std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);
 }
 
-void Switcher::setBackground(BkgColour c) {
-    bkg_ = c;
-    bkgCustom_ = false;
-}
-
-void Switcher::setCustomBackground(uint32_t word) {
-    bkgWord_ = word;
-    bkgCustom_ = true;
-}
-
 void Switcher::tick() {
     ++tickCount_;
     if (chromaEngaged_) ++chromaFrames_;
@@ -132,11 +125,9 @@ void Switcher::tick() {
 }
 
 void Switcher::render(const SourceFrames& in, Frame& program) const {
-    const bool snow = bkgCustom_ ? (bkgWord_ & 0x8000u) != 0 : bkg_ == BkgColour::Snow;
     // BKG: the colour, or noise that changes every tick. Built only if a bus uses it.
+    const bool snow = bkg_.isSnow();
     bool bkgBuilt = false;
-    Rgba8 bkgRgb = kBlack;  // what effects get as RenderCtx::background (black for Snow)
-    if (!snow) bkgRgb = bkgCustom_ ? customBkgColour(bkgWord_) : bkgColour(bkg_);
 
     auto frameOf = [&](Source s) -> const Frame* {
         switch (s) {
@@ -149,7 +140,7 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
                     if (snow) {
                         renderSnow(bkgScratch_, tickCount_);
                     } else {
-                        std::fill(bkgScratch_.px.begin(), bkgScratch_.px.end(), bkgRgb);
+                        std::fill(bkgScratch_.px.begin(), bkgScratch_.px.end(), bkg_.rgb());
                     }
                     bkgBuilt = true;
                 }
@@ -180,7 +171,7 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     } else {
         const Frame& b = pick(sel_[busIndex(Bus::Preview)]);
         RenderCtx ctx;
-        ctx.background = bkgRgb;
+        ctx.background = effectColour_.rgb();  // the effect's own colour, not BKG's (Ruling 26)
         // Only ChromaFX uses the frame counter (cycling). Other effects are rendered from the
         // T-bar position alone, so a T-bar moved back looks like a fresh render there.
         ctx.frameNumber = chromaEngaged_ ? chromaFrames_ : 0;

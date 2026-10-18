@@ -12,16 +12,13 @@
 namespace vt {
 namespace {
 
-class ChromaFx final : public Effect {
+class ChromaFx final : public detail::CroutonEffect {
 public:
-    ChromaFx(std::string name, Timing timing, std::optional<Sound> sound, ChromaSettings s, ChromaRows rows)
-        : name_(std::move(name)), timing_(timing), sound_(std::move(sound)), s_(s), rows_(std::move(rows)),
-          step_(chromaCycleStep(timing.defaultSpeed)) {}
+    ChromaFx(detail::CroutonBasics b, ChromaSettings s, ChromaRows rows)
+        : CroutonEffect(std::move(b)), s_(s), rows_(std::move(rows)),
+          step_(chromaCycleStep(basics().timing.defaultSpeed)) {}
 
-    std::string name() const override { return name_; }
-    Timing timing() const override { return timing_; }
     int frameCount() const override { return 1; }
-    const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
     bool usesDvMemory() const override { return true; }
     bool isChromaFx() const override { return true; }
     bool isChromaFilter() const override { return s_.mode == ChromaMode::Filter; }
@@ -33,9 +30,6 @@ public:
     }
 
 private:
-    std::string name_;
-    Timing timing_;
-    std::optional<Sound> sound_;
     ChromaSettings s_;
     ChromaRows rows_;
     uint32_t step_;  // 16.16 rows per field, from the speed the Switcher selects for the crouton
@@ -45,15 +39,14 @@ private:
 
 namespace detail {
 
-std::unique_ptr<Effect> makeChromaEffect(std::string name, const Crouton& c, std::string* why) {
+std::unique_ptr<Effect> makeChromaEffect(CroutonBasics b, const Crouton& c, std::string* why) {
     const auto lut = lutFromCrouton(c);
     if (!lut) {
         if (why) *why = "ChromaFX crouton without a LUT chunk";
         return nullptr;
     }
     const ChromaSettings s = chromaSettings(c, *lut);
-    const Timing timing = fixedTiming(c);
-    return std::make_unique<ChromaFx>(name, timing, loadSound(c, name), s, buildRows(*lut, s.interp));
+    return std::make_unique<ChromaFx>(std::move(b), s, buildRows(*lut, s.interp));
 }
 
 }  // namespace detail

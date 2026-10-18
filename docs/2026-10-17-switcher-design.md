@@ -247,7 +247,9 @@ FFmpeg timestamps).
 
 BKG and effect colours come from the background colour generator (5.1 tag 0x23):
 eight solid colours plus Snow (noise). Exact YIQ/RGB values must come from
-`switcher.main` (the generator's table), not from guesses.
+`switcher.main` (the generator's table), not from guesses. Each effect has its own
+"Effect Color" (tags 0x23/0x24, the manual's pop-up, PDF 178/181); vtoast_reborn keeps it
+separate from the BKG source's colour and gives effects black for Snow.
 
 ## 6. Shape of the program (builder's design, with these constraints)
 

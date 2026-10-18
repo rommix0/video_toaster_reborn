@@ -27,6 +27,8 @@ namespace {
 constexpr std::array<char, 4> kAnimForm{'A', 'N', 'I', 'M'};
 constexpr std::array<char, 4> kIlbmForm{'I', 'L', 'B', 'M'};
 constexpr uint32_t kTagMode = 0x80000022;
+constexpr uint32_t kTagColour = 0x80000023;        // Effect Color preset (vt/background.h)
+constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
 
 const Form* firstForm(const Crouton& c, std::array<char, 4> type) {
     for (const auto& f : c.forms)
@@ -48,11 +50,17 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         const auto u8 = path.filename().u8string();
         const std::string name(u8.begin(), u8.end());
 
+        // Name, timing, sound and colour; the sound is read only for effects that get built.
+        auto basics = [&](Timing t) {
+            return detail::CroutonBasics{name, t, detail::loadSound(*c, name),
+                                         effectColourFromTags(c->tag(kTagColour), c->tag(kTagCustomColour))};
+        };
+
         switch (c->type) {
             case CroutonType::Algo: return fail(why, "Switcher move (ALGO) not reverse-engineered yet");
             case CroutonType::Main: return fail(why, "Switcher move (MAIN) not reverse-engineered yet");
             case CroutonType::Ctrl: return fail(why, "Switcher move (CTRL) not reverse-engineered yet");
-            case CroutonType::Crfx: return detail::makeChromaEffect(name, *c, why);
+            case CroutonType::Crfx: return detail::makeChromaEffect(basics(fixedTiming(*c)), *c, why);
             default: break;
         }
 
@@ -61,14 +69,12 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             Anim an = readAnim(c->bytes, *af);
             if (!an.planes.empty() && isDve(an.planes[0])) {
                 // DVE files are ANIM content; the one 9-plane DVE has no index frames (Ruling 6)
-                const Timing timing = animTiming(*c, int(an.planes.size()));
-                return detail::makeDveEffect(name, timing, detail::loadSound(*c, name), an, why);
+                return detail::makeDveEffect(basics(animTiming(*c, int(an.planes.size()))), an, why);
             }
             AnimPlan plan = planAnim(an, c->tag(kTagMode));
             if (plan.kind == AnimKind::Unsupported) return fail(why, plan.reason);
-            const Timing timing = animTiming(*c, int(an.frames.size()));
-            return detail::makeAnimEffect(name, timing, detail::loadSound(*c, name), std::move(an),
-                                           std::move(plan), why);
+            auto b = basics(animTiming(*c, int(an.frames.size())));  // before `an` is moved from
+            return detail::makeAnimEffect(std::move(b), std::move(an), std::move(plan), why);
         }
 
         for (const auto& f : c->forms) {
@@ -77,8 +83,7 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             if (head.w == 80 && head.h == 50) continue;  // the icon
             if (const char* refusal = detail::gradientRefusal(head)) return fail(why, refusal);
             auto [bm, img] = readIlbm(c->bytes, f);
-            return detail::makeGradient(name, fixedTiming(*c), detail::loadSound(*c, name), std::move(bm),
-                                        std::move(img), why);
+            return detail::makeGradient(basics(fixedTiming(*c)), std::move(bm), std::move(img), why);
         }
         return fail(why, "no image data (parameter-only effect)");
     } catch (const std::exception& ex) {

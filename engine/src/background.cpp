@@ -47,6 +47,18 @@ Rgba8 customBkgColour(uint32_t tag0x24) {
     return {uint8_t((w >> 8 & 15) * 17), uint8_t((w >> 4 & 15) * 17), uint8_t((w & 15) * 17), 255};
 }
 
+Rgba8 EffectColour::rgb() const {
+    if (isSnow()) return {0, 0, 0, 255};
+    return custom ? customBkgColour(word) : bkgColour(preset);
+}
+
+EffectColour effectColourFromTags(std::optional<uint32_t> tag23, std::optional<uint32_t> tag24) {
+    const uint32_t v = tag23.value_or(0);
+    if (v & 0x80000000u) return EffectColour::customWord(tag24.value_or(0));
+    if (v >= 1 && v <= 9) return EffectColour::of(BkgColour(v));
+    return {};
+}
+
 namespace {
 
 uint64_t mix64(uint64_t z) {  // splitmix64 finaliser

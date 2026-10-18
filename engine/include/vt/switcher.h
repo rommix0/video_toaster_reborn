@@ -52,9 +52,15 @@ public:
     // move, that is) or while a DVE move is mid-transition (they share the DV memory, spec
     // 5.8). Cut, dissolve and the wipes are never refused. Ruling 23: a ChromaFX chosen while
     // another is engaged REPLACES it: the old one disengages and the new one starts
-    // disengaged (T-bar 0, frame counter reset).
+    // disengaged (T-bar 0, frame counter reset). The effect colour becomes e's own.
     bool setEffect(std::shared_ptr<const Effect> e, std::string* whyNot = nullptr);
     const Effect& effect() const { return *effect_; }
+
+    // The current effect's matte colour, its "Effect Color" (Ruling 26): effect().effectColour()
+    // until overridden here (the UI's Effect Color pop-up); setEffect resets it to the new
+    // effect's own. Independent of the BKG source's colour (setBackground).
+    void setEffectColour(EffectColour c) { effectColour_ = c; }
+    EffectColour effectColour() const { return effectColour_; }
 
     // --- T-bar, Auto, Take ---
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
@@ -85,9 +91,10 @@ public:
     void take();
 
     // --- background (BKG source) ---
-    void setBackground(BkgColour);
+    void setBackground(BkgColour c) { bkg_ = EffectColour::of(c); }
     // Tag 0x80000024 hardware word (customBkgColour); bit 15 set selects Snow.
-    void setCustomBackground(uint32_t word);
+    void setCustomBackground(uint32_t word) { bkg_ = EffectColour::customWord(word); }
+    EffectColour background() const { return bkg_; }
 
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
     // Auto and (while engaged) the ChromaFX frame counter.
@@ -98,8 +105,8 @@ public:
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
     //    (Program shows the recoloured Preview), frameNumber = ticks since engagement.
-    // RenderCtx::background is the BKG colour (black when BKG is Snow). Never reads or writes
-    // `program` before it is finished, so it may alias an input frame.
+    // RenderCtx::background is effectColour().rgb() (black for Snow), whatever BKG shows. Never
+    // reads or writes `program` before it is finished, so it may alias an input frame.
     void render(const SourceFrames&, Frame& program) const;
 
     // The current effect's sound, once, when a transition starts; nullptr otherwise. The pointer
@@ -123,9 +130,8 @@ private:
     uint32_t chromaFrames_ = 0;  // ticks since engagement
     bool soundPending_ = false;
     uint32_t tickCount_ = 0;
-    BkgColour bkg_ = BkgColour::Black;
-    bool bkgCustom_ = false;
-    uint32_t bkgWord_ = 0;
+    EffectColour bkg_;           // the BKG source
+    EffectColour effectColour_;  // the effect's matte colour
     mutable Frame bkgScratch_, blackScratch_, outScratch_;  // render's working frames
     Frame dv_;  // DV1 and DV2 stay black until freeze / framestores exist (spec 3)
 };

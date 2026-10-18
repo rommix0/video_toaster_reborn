@@ -16,10 +16,9 @@ namespace {
 
 static_assert(kRasterW == kDveWidth && kRasterH == 2 * kDveLines, "DVE control drives the raster 1:1 / line-doubled");
 
-class DveEffect final : public Effect {
+class DveEffect final : public CroutonEffect {
 public:
-    DveEffect(std::string name, Timing t, std::optional<Sound> snd, const Anim& an, DveInfo info)
-        : name_(std::move(name)), timing_(t), sound_(std::move(snd)), info_(info) {
+    DveEffect(CroutonBasics b, const Anim& an, DveInfo info) : CroutonEffect(std::move(b)), info_(info) {
         long unknownCells = 0;
         const std::vector<Rgb>* palette = &an.bm.cmap;
         for (size_t k = 0; k < an.planes.size(); ++k) {
@@ -29,15 +28,12 @@ public:
             for (uint8_t v : frames_.back().key) unknownCells += v >= 24 && v < 64;
         }
         if (unknownCells > 0)
-            std::fprintf(stderr, "vtoast: %s: %ld DVE cells use unknown fill codes (drawn mid grey)\n", name_.c_str(),
+            std::fprintf(stderr, "vtoast: %s: %ld DVE cells use unknown fill codes (drawn mid grey)\n", basics().name.c_str(),
                          unknownCells);
         black_.px.assign(black_.px.size(), kBlack);
     }
 
-    std::string name() const override { return name_; }
-    Timing timing() const override { return timing_; }
     int frameCount() const override { return int(frames_.size()); }
-    const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
     bool usesDvMemory() const override { return true; }
 
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
@@ -57,9 +53,6 @@ public:
     }
 
 private:
-    std::string name_;
-    Timing timing_;
-    std::optional<Sound> sound_;
     DveInfo info_;
     std::vector<DveControl> frames_;
     std::vector<std::vector<Rgb>> palettes_;  // per frame
@@ -68,8 +61,7 @@ private:
 
 }  // namespace
 
-std::unique_ptr<Effect> makeDveEffect(std::string name, Timing timing, std::optional<Sound> snd, const Anim& an,
-                                      std::string* why) {
+std::unique_ptr<Effect> makeDveEffect(CroutonBasics b, const Anim& an, std::string* why) {
     if (an.planes.empty()) {
         if (why) *why = "DVE effect without frames";
         return nullptr;
@@ -80,7 +72,7 @@ std::unique_ptr<Effect> makeDveEffect(std::string name, Timing timing, std::opti
             return nullptr;
         }
     const DveInfo info = dveInfo(an);
-    return std::make_unique<DveEffect>(std::move(name), timing, std::move(snd), an, info);
+    return std::make_unique<DveEffect>(std::move(b), an, info);
 }
 
 }  // namespace vt::detail

@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "vt/anim.h"
 #include "vt/crouton.h"
@@ -57,17 +58,39 @@ inline int animFrameFor(int tbar, int n, const RenderCtx& ctx) {
 // The crouton's 8SVX sound; nullopt if absent or undecodable (the reason is logged once).
 std::optional<Sound> loadSound(const Crouton&, const std::string& effectName);
 
+// What every effect read from a crouton carries besides its picture data.
+struct CroutonBasics {
+    std::string name;
+    Timing timing;
+    std::optional<Sound> sound;
+    EffectColour colour;  // tags 0x80000023/0x24 (effectColourFromTags)
+};
+
+// Base of the crouton effects: answers the Effect queries that come from CroutonBasics.
+class CroutonEffect : public Effect {
+public:
+    explicit CroutonEffect(CroutonBasics b) : b_(std::move(b)) {}
+    std::string name() const override { return b_.name; }
+    Timing timing() const override { return b_.timing; }
+    const Sound* sound() const override { return b_.sound ? &*b_.sound : nullptr; }
+    EffectColour effectColour() const override { return b_.colour; }
+
+protected:
+    const CroutonBasics& basics() const { return b_; }
+
+private:
+    CroutonBasics b_;
+};
+
 // nullptr if a gradient ILBM can be played, else the reason it cannot (bar pictures, deep colour, HAM).
 const char* gradientRefusal(const Bitmap&);
 
 // `why` may be null. Return nullptr and set *why when the effect cannot be built.
-std::unique_ptr<Effect> makeGradient(std::string name, Timing, std::optional<Sound>, Bitmap, IndexImage,
-                                     std::string* why);
-std::unique_ptr<Effect> makeAnimEffect(std::string name, Timing, std::optional<Sound>, Anim, AnimPlan,
-                                       std::string* why);
+std::unique_ptr<Effect> makeGradient(CroutonBasics, Bitmap, IndexImage, std::string* why);
+std::unique_ptr<Effect> makeAnimEffect(CroutonBasics, Anim, AnimPlan, std::string* why);
 // DVE content (isDve on the first frame); every frame must be 768x241 DVE control data.
-std::unique_ptr<Effect> makeDveEffect(std::string name, Timing, std::optional<Sound>, const Anim&, std::string* why);
+std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, std::string* why);
 // CRFX crouton: its ` LUT` record, settings from the tags (vt/chromafx.h).
-std::unique_ptr<Effect> makeChromaEffect(std::string name, const Crouton&, std::string* why);
+std::unique_ptr<Effect> makeChromaEffect(CroutonBasics, const Crouton&, std::string* why);
 
 }  // namespace vt::detail

@@ -12,13 +12,13 @@ namespace {
 
 bool sameColour(Rgba8 a, Rgba8 b) { return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a; }
 
-class AnimEffect final : public Effect {
+class AnimEffect final : public CroutonEffect {
 public:
     using Table = std::array<MixEntry, 256>;
 
-    AnimEffect(std::string name, Timing t, std::optional<Sound> snd, Anim an, AnimPlan plan, ControlMap map)
-        : name_(std::move(name)), timing_(t), sound_(std::move(snd)), an_(std::move(an)), plan_(std::move(plan)),
-          map_(map), peak_(flashPeak(an_, plan_)) {
+    AnimEffect(CroutonBasics b, Anim an, AnimPlan plan, ControlMap map)
+        : CroutonEffect(std::move(b)), an_(std::move(an)), plan_(std::move(plan)), map_(map),
+          peak_(flashPeak(an_, plan_)) {
         // Palette segments: frame k uses the most recent non-empty cmaps[j] with 1 <= j <= k, else
         // bm.cmap (frame 0 is never a palette change). paletteFrame_[s] is that j (0 = bm.cmap).
         paletteFrame_.push_back(0);
@@ -30,10 +30,7 @@ public:
         }
     }
 
-    std::string name() const override { return name_; }
-    Timing timing() const override { return timing_; }
     int frameCount() const override { return int(an_.frames.size()); }
-    const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
 
     // True if some palette of this effect draws solid colour (otherwise an Overlay plan has
     // nothing to show but the video).
@@ -107,9 +104,6 @@ private:
         return cache_;
     }
 
-    std::string name_;
-    Timing timing_;
-    std::optional<Sound> sound_;
     Anim an_;
     AnimPlan plan_;
     ControlMap map_;
@@ -122,8 +116,7 @@ private:
 
 }  // namespace
 
-std::unique_ptr<Effect> makeAnimEffect(std::string name, Timing timing, std::optional<Sound> snd, Anim an,
-                                       AnimPlan plan, std::string* why) {
+std::unique_ptr<Effect> makeAnimEffect(CroutonBasics b, Anim an, AnimPlan plan, std::string* why) {
     if (an.frames.empty() || plan.kind == AnimKind::Unsupported) {
         if (why) *why = plan.reason.empty() ? "no palette-index frames" : plan.reason;
         return nullptr;
@@ -131,7 +124,7 @@ std::unique_ptr<Effect> makeAnimEffect(std::string name, Timing timing, std::opt
     auto map = controlMap(an.frames[0].w, an.frames[0].h, why);
     if (!map) return nullptr;
     const bool overlayOnly = plan.kind == AnimKind::Overlay;
-    auto e = std::make_unique<AnimEffect>(std::move(name), timing, std::move(snd), std::move(an), std::move(plan), *map);
+    auto e = std::make_unique<AnimEffect>(std::move(b), std::move(an), std::move(plan), *map);
     if (overlayOnly && !e->drawsColour()) {
         if (why) *why = "overlay effect with nothing but video in it";
         return nullptr;

@@ -49,19 +49,14 @@ uint8_t gradientLevel(uint8_t gray, int tbar, int softness) {
 namespace detail {
 namespace {
 
-class GradientEffect final : public Effect {
+class GradientEffect final : public CroutonEffect {
 public:
-    GradientEffect(std::string name, Timing t, std::optional<Sound> snd, ControlMap map, IndexImage img,
-                   std::vector<uint8_t> gray)
-        : name_(std::move(name)), timing_(t), sound_(std::move(snd)), map_(map), img_(std::move(img)),
-          gray_(std::move(gray)) {
+    GradientEffect(CroutonBasics b, ControlMap map, IndexImage img, std::vector<uint8_t> gray)
+        : CroutonEffect(std::move(b)), map_(map), img_(std::move(img)), gray_(std::move(gray)) {
         gray_.resize(256, 0);  // indices past the palette cannot occur; keep lookups in range
     }
 
-    std::string name() const override { return name_; }
-    Timing timing() const override { return timing_; }
     int frameCount() const override { return 1; }
-    const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
 
     // Per pixel, B's share is gradientLevel(gray, tbar, softness); the picture is
     // A + (B - A) * level / 255 per channel (mix255). Raster lines with no control line are black.
@@ -85,9 +80,6 @@ public:
     }
 
 private:
-    std::string name_;
-    Timing timing_;
-    std::optional<Sound> sound_;
     ControlMap map_;
     IndexImage img_;
     std::vector<uint8_t> gray_;
@@ -103,8 +95,7 @@ const char* gradientRefusal(const Bitmap& bm) {
     return nullptr;
 }
 
-std::unique_ptr<Effect> makeGradient(std::string name, Timing timing, std::optional<Sound> snd, Bitmap bm,
-                                     IndexImage img, std::string* why) {
+std::unique_ptr<Effect> makeGradient(CroutonBasics b, Bitmap bm, IndexImage img, std::string* why) {
     if (const char* m = gradientRefusal(bm)) {
         if (why) *why = m;
         return nullptr;
@@ -112,8 +103,7 @@ std::unique_ptr<Effect> makeGradient(std::string name, Timing timing, std::optio
     auto map = controlMap(bm.w, bm.h, why);
     if (!map) return nullptr;
     auto gray = grayLut(bm);
-    return std::make_unique<GradientEffect>(std::move(name), timing, std::move(snd), *map, std::move(img),
-                                            std::move(gray));
+    return std::make_unique<GradientEffect>(std::move(b), *map, std::move(img), std::move(gray));
 }
 
 }  // namespace detail

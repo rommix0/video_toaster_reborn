@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "vt/background.h"
 #include "vt/hardware_guesses.h"
 #include "vt/ilbm.h"
 #include "vt/raster.h"
@@ -16,7 +17,10 @@
 namespace vt {
 
 struct RenderCtx {
-    Rgba8 background{0, 0, 0, 255};  // the BKG/matte colour (black palettes in colour effects use it)
+    // The effect's matte colour (black palettes in colour effects use it). The Switcher passes
+    // its effect colour (Switcher::effectColour(): the effect's own unless overridden), not the
+    // BKG source's colour (Ruling 26); black for Snow.
+    Rgba8 background{0, 0, 0, 255};
     uint32_t frameNumber = 0;        // output frame counter (snow noise etc.)
     // The animation frame to show, or -1: derive it from the T-bar (animFrameForTBar). The
     // Switcher sets it during Auto, where the T-bar's 0..511 steps cannot say which frame is
@@ -40,6 +44,9 @@ public:
     virtual void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx&) const = 0;
     // The effect's 8SVX sound, or nullptr (none, or one that cannot be decoded).
     virtual const Sound* sound() const { return nullptr; }
+    // The effect's own matte colour, its "Effect Color" (crouton tags 0x80000023/0x24, see
+    // effectColourFromTags); Black for the built-in effects.
+    virtual EffectColour effectColour() const { return {}; }
     // True for effects that use the DV memory (DVE moves, ChromaFX): at most one can run at a time.
     virtual bool usesDvMemory() const { return false; }
     // True for ChromaFX effects. The Switcher keeps one engaged after its T-bar run instead of
