@@ -7,6 +7,7 @@ add_executable(vt_tests
     test_background.cpp
     test_crc32.cpp
     test_crouton.cpp
+    test_dve.cpp
     test_effects.cpp
     test_golden.cpp
     test_ilbm.cpp

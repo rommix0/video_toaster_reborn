@@ -712,16 +712,6 @@ TEST_CASE("black palettes use the background colour from the render context", "[
 
 TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {
     std::string why;
-    // DVE (Ruling 2)
-    int dve = 0;
-    for (const auto& r : golden::readLines("dve.jsonl")) {
-        why.clear();
-        INFO(str(r, "source"));
-        REQUIRE(load(str(r, "source"), &why) == nullptr);
-        REQUIRE(why == "DVE support not built yet");
-        ++dve;
-    }
-    REQUIRE(dve == 64);
     // ChromaFX
     why.clear();
     REQUIRE(load("4.2/Effects/ChromaFx/BW Poster", &why) == nullptr);

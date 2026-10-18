@@ -5,6 +5,7 @@
 
 #include "effect_detail.h"
 #include "vt/crouton.h"
+#include "vt/dve.h"
 #include "vt/iff.h"
 
 namespace vt {
@@ -26,16 +27,6 @@ namespace {
 constexpr std::array<char, 4> kAnimForm{'A', 'N', 'I', 'M'};
 constexpr std::array<char, 4> kIlbmForm{'I', 'L', 'B', 'M'};
 constexpr uint32_t kTagMode = 0x80000022;
-
-// DVE content: >= 3 planes, rowbytes 96, plane 2 row 0 starts 15 2D 06 83. Task 9 replaces this
-// with vt::isDve.
-bool looksLikeDve(const Anim& a) {
-    if (a.planes.empty()) return false;
-    const Planes& p = a.planes[0];
-    if (p.count < 3 || p.rowbytes != 96 || p.h < 1) return false;
-    const uint8_t* row = p.plane(2);
-    return row[0] == 0x15 && row[1] == 0x2D && row[2] == 0x06 && row[3] == 0x83;
-}
 
 const Form* firstForm(const Crouton& c, std::array<char, 4> type) {
     for (const auto& f : c.forms)
@@ -68,7 +59,11 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         // The content decides, not the TYPE (Ruling 3).
         if (const Form* af = firstForm(*c, kAnimForm)) {
             Anim an = readAnim(c->bytes, *af);
-            if (looksLikeDve(an)) return fail(why, "DVE support not built yet");
+            if (!an.planes.empty() && isDve(an.planes[0])) {
+                // DVE files are ANIM content; the one 9-plane DVE has no index frames (Ruling 6)
+                const Timing timing = animTiming(*c, int(an.planes.size()));
+                return detail::makeDveEffect(name, timing, detail::loadSound(*c, name), an, why);
+            }
             AnimPlan plan = planAnim(an, c->tag(kTagMode));
             if (plan.kind == AnimKind::Unsupported) return fail(why, plan.reason);
             const Timing timing = animTiming(*c, int(an.frames.size()));

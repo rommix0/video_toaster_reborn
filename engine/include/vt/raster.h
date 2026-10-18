@@ -8,6 +8,17 @@ namespace vt {
 
 inline constexpr int kRasterW = 768, kRasterH = 482;
 
+struct Rect {
+    int x, y, w, h;
+};
+
+// The part of the raster shown by default (spec 5.6); underscan shows the whole raster.
+// This is the measured clean area of the DVE control data: cells 12..171 (pixels 48..687) and
+// control lines 13..228 (raster lines 26..457). The Switcher's control-display copper lists
+// (DIWSTRT 0x155C / DIWSTOP 0x06CA, DDFSTRT 0x20 / DDFSTOP 0xD4, e.g. sw_m4c2 at 0x33524) do not
+// blank to this area, and no Toaster blanking setting was found (tools/re/FINDINGS.md, "DVE").
+inline constexpr Rect kVisibleArea{48, 26, 640, 432};
+
 struct Rgba8 {
     uint8_t r, g, b, a;
     bool operator==(const Rgba8&) const = default;

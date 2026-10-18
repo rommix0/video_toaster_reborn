@@ -57,5 +57,7 @@ std::unique_ptr<Effect> makeGradient(std::string name, Timing, std::optional<Sou
                                      std::string* why);
 std::unique_ptr<Effect> makeAnimEffect(std::string name, Timing, std::optional<Sound>, Anim, AnimPlan,
                                        std::string* why);
+// DVE content (isDve on the first frame); every frame must be 768x241 DVE control data.
+std::unique_ptr<Effect> makeDveEffect(std::string name, Timing, std::optional<Sound>, const Anim&, std::string* why);
 
 }  // namespace vt::detail

@@ -43,10 +43,10 @@ public:
 std::unique_ptr<Effect> makeCut();
 std::unique_ptr<Effect> makeDissolve();
 
-// Reads a crouton file. The kind is decided by its content: an ANIM form -> animated wipe (or DVE),
-// else the first non-icon ILBM -> gradient wipe. Returns nullptr and sets *whyNot (if given) for
-// files that cannot be played yet: DVE and ChromaFX (not built yet), ALGO/MAIN/CTRL (Switcher
-// code), bar pictures, unsupported control image sizes, undecodable files.
+// Reads a crouton file. The kind is decided by its content: an ANIM form -> DVE move (vt::isDve,
+// see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient wipe. Returns nullptr
+// and sets *whyNot (if given) for files that cannot be played yet: ChromaFX (not built yet),
+// ALGO/MAIN/CTRL (Switcher code), bar pictures, unsupported control image sizes, undecodable files.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);
 
 // The gradient wipe's decision for one pixel: B's share (0..255) for a pixel of the given gray at
