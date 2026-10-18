@@ -86,7 +86,7 @@ public:
     // then (otherwise its next setTBar(510) starts a new transition).
     // ChromaFX: leaving 0 engages it (see render); 511 does not swap; returning to 0
     // disengages a Transition-mode crouton (a Filter-mode one stays engaged).
-    // Overlays (effect().isOverlay(), Ruling 27): leaving 0 engages it; 511 does not swap;
+    // Overlays (effect().isOverlay(), Rulings 27, 32): leaving 0 engages it; 511 does not swap;
     // returning to 0 ends it.
     void setTBar(int pos);
     int tbar() const { return tbar_; }
@@ -132,9 +132,15 @@ public:
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
     //    (Program shows the recoloured Preview), frameNumber = ticks since engagement;
-    //  * engaged overlay: the effect with A = B = Main source, its animation looping: frame
-    //    (ticks since engagement / fieldsPerFrame) mod frameCount at the speed button
-    //    (RenderCtx::animFrame), so frame 0 again after frameCount x fieldsPerFrame ticks.
+    //  * engaged overlay (Ruling 32), A = Main source:
+    //      - animated matte: B = a frame of effectColour() (Snow: noise), so the matte shows the
+    //        effect colour over Main;
+    //      - DVE move (the Glitch overlays): B = Main as well (Main distorted);
+    //      - gradient (Split1/2/3 !): B = Preview source at the T-bar position, a split screen
+    //        held where the operator leaves the T-bar.
+    //    Animated ones loop: frame (ticks since engagement / fieldsPerFrame) mod frameCount at
+    //    the speed button (RenderCtx::animFrame), so frame 0 again after frameCount x
+    //    fieldsPerFrame ticks.
     // RenderCtx::background is effectColour().rgb() (black for Snow), whatever BKG shows. Never
     // reads or writes `program` before it is finished, so it may alias an input frame.
     // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
@@ -172,6 +178,9 @@ private:
     EffectColour bkg_;           // the BKG source
     EffectColour effectColour_;  // the effect's matte colour
     mutable Frame bkgScratch_, blackScratch_, outScratch_;  // render's working frames
+    mutable Frame colourScratch_;      // an overlay's effect-colour B
+    mutable bool colourValid_ = false;  // colourScratch_ holds colourBuilt_ (never for Snow)
+    mutable EffectColour colourBuilt_;
     Frame dv_;  // DV1 and DV2 stay black until freeze / framestores exist (spec 3)
 };
 

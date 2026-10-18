@@ -12,6 +12,16 @@ constexpr Rgba8 kBlack{0, 0, 0, 255};
 
 size_t busIndex(Bus b) { return static_cast<size_t>(b); }
 
+// What an engaged overlay lays over Main (Ruling 32).
+enum class OverlayB { Colour, Main, Preview };
+OverlayB overlayB(const Effect& e) {
+    if (e.usesDvMemory()) return OverlayB::Main;  // DVE content: the Glitch overlays distort Main
+    const Timing t = e.timing();
+    for (int f : t.fieldsPerFrame)
+        if (f > 0) return OverlayB::Colour;  // animated matte: the effect colour over Main
+    return OverlayB::Preview;                // gradient content: a split screen with Preview
+}
+
 }  // namespace
 
 Switcher::Switcher() : effect_(makeDissolve()), effectColour_(effect_->effectColour()) {
@@ -192,7 +202,23 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         out.px = a.px;
     } else {
         const bool overlay = overlayEngaged();
-        const Frame& b = overlay ? a : pick(sel_[busIndex(Bus::Preview)]);  // overlays lie over Main
+        const Frame* bp = nullptr;
+        switch (overlay ? overlayB(*effect_) : OverlayB::Preview) {
+            case OverlayB::Preview: bp = &pick(sel_[busIndex(Bus::Preview)]); break;
+            case OverlayB::Main: bp = &a; break;
+            case OverlayB::Colour:
+                if (effectColour_.isSnow()) {
+                    renderSnow(colourScratch_, tickCount_);
+                    colourValid_ = false;
+                } else if (!colourValid_ || !(colourBuilt_ == effectColour_)) {
+                    std::fill(colourScratch_.px.begin(), colourScratch_.px.end(), effectColour_.rgb());
+                    colourBuilt_ = effectColour_;
+                    colourValid_ = true;
+                }
+                bp = &colourScratch_;
+                break;
+        }
+        const Frame& b = *bp;
         const Timing timing = effect_->timing();
         const Speed speed = timing.resolve(speed_);
         RenderCtx ctx;
@@ -210,7 +236,8 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
                                                                    : std::max<int64_t>(0, autoAcc_ - 1) / kTBarEnd;
             ctx.animFrame = static_cast<int>(std::min<int64_t>(elapsed / autoFpf_, INT_MAX));
         }
-        // An engaged overlay loops its animation whatever the T-bar or Auto does (Ruling 27).
+        // An engaged animated overlay loops its animation whatever the T-bar or Auto does
+        // (Ruling 27); a gradient one (fpf 0) follows the T-bar.
         const int fpf = timing.fieldsPerFrame[static_cast<size_t>(speed)];
         if (overlay && fpf > 0 && effect_->frameCount() > 0)
             ctx.animFrame = static_cast<int>(engagedTicks_ / uint32_t(fpf) % uint32_t(effect_->frameCount()));

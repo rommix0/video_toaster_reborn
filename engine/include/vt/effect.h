@@ -65,9 +65,9 @@ public:
     // the T-bar home does not disengage it). False for everything else.
     virtual bool isChromaFilter() const { return false; }
     // True for the Overlays-drawer effects (manual PDF 181: a still or looping graphic laid over
-    // the current video, ended by hand). The Switcher loops them over Main instead of running a
-    // transition (Ruling 27). No crouton tag tells them apart, so loadEffect decides from the
-    // path: a folder named "Overlays" (any case) above the file.
+    // the current video, ended by hand). The Switcher runs them over Main instead of running a
+    // transition (Rulings 27, 32). No crouton tag tells them apart, so loadEffect decides from
+    // the path: the file's own folder is named "Overlays" (any case).
     virtual bool isOverlay() const { return false; }
 };
 

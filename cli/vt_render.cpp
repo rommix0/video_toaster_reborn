@@ -38,8 +38,9 @@ void usage(std::ostream& o) {
          "\n"
          "Frames are 59.94 fps, one per Switcher tick; 0001 shows the T-bar at 0. An ordinary\n"
          "effect renders until its transition ends, which is durationTicks[speed] frames (Page\n"
-         "Peel ! at fast: 60). A ChromaFX effect never ends by itself - it stays engaged - so\n"
-         "exactly durationTicks[speed] frames are rendered.\n";
+         "Peel ! at fast: 60). A ChromaFX or Overlays-drawer effect never ends by itself - it\n"
+         "stays engaged - so exactly durationTicks[speed] frames are rendered: for an animated\n"
+         "overlay that is one full loop of its animation over A.\n";
 }
 
 vt::Frame makePicture(const std::string& kind, bool isB) {
@@ -145,7 +146,9 @@ int main(int argc, char** argv) {
     const vt::Timing timing = effect->timing();
     const vt::Speed sp = timing.resolve(speed.value_or(timing.defaultSpeed));
     const int duration = timing.durationTicks[size_t(sp)];
-    const bool fixedCount = effect->isChromaFx();
+    // ChromaFX and overlays never end by themselves: render durationTicks frames (an animated
+    // overlay's durationTicks is one full loop, frameCount x fieldsPerFrame).
+    const bool fixedCount = effect->isChromaFx() || effect->isOverlay();
 
     const vt::Frame picA = makePicture(a, false), picB = makePicture(b, true);
     vt::SourceFrames src;

@@ -842,7 +842,7 @@ TEST_CASE("render may write into an input frame", "[switcher]") {
     REQUIRE(r.in1.px == expect.px);
 }
 
-TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Ruling 27)", "[switcher][overlay]") {
+TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Rulings 27, 32)", "[switcher][overlay]") {
     int loaded = 0;
     for (const char* drawer : {"4.2/Effects/2000FX/OverLays", "4.2/Effects/4000FX/Overlays"}) {
         for (const auto& ent : std::filesystem::directory_iterator(dataRoot() / drawer)) {
@@ -859,14 +859,39 @@ TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Ruling 2
     // the same bytes outside the drawer are an ordinary effect
     REQUIRE_FALSE(load("4.2/Effects/4000FX/Weddings/Wedding Bells !")->isOverlay());
     REQUIRE(load("4.2/Effects/4000FX/Overlays/Wedding Bells !")->isOverlay());
+    // only the crouton's own folder counts (Ruling 32), in any case
+    namespace fs = std::filesystem;
+    const fs::path tmp = fs::temp_directory_path() / "vtoast_overlay_drawer_test";
+    fs::remove_all(tmp);
+    fs::create_directories(tmp / "Overlays" / "sub");
+    fs::create_directories(tmp / "OVERLAYS");
+    const fs::path snow = dataRoot() / "4.2/Effects/4000FX/Overlays/Snowfall Loop";
+    fs::copy_file(snow, tmp / "Overlays" / "sub" / "Snowfall Loop");
+    fs::copy_file(snow, tmp / "OVERLAYS" / "Snowfall Loop");
+    const auto nested = vt::loadEffect(tmp / "Overlays" / "sub" / "Snowfall Loop");
+    const auto upper = vt::loadEffect(tmp / "OVERLAYS" / "Snowfall Loop");
+    fs::remove_all(tmp);
+    REQUIRE(nested);
+    REQUIRE(upper);
+    REQUIRE_FALSE(nested->isOverlay());
+    REQUIRE(upper->isOverlay());
     REQUIRE_FALSE(pagePeel()->isOverlay());
     REQUIRE_FALSE(fadeToNeg()->isOverlay());
     REQUIRE_FALSE(dissolve()->isOverlay());
 }
 
-TEST_CASE("an overlay loops over Main and never swaps (Ruling 27)", "[switcher][overlay]") {
-    const auto ov = load("4.2/Effects/4000FX/Overlays/Snowfall Loop");
+TEST_CASE("an overlay loops over Main and never swaps (Rulings 27, 32)", "[switcher][overlay]") {
+    // Snowfall Loop: a soft matte, B = its effect colour (White); Glitch Roll Screen: a DVE move,
+    // B = Main. Both have loop frames that differ.
+    const char* src = GENERATE("4.2/Effects/4000FX/Overlays/Snowfall Loop",
+                               "4.2/Effects/4000FX/Overlays/Glitch Roll Screen");
+    INFO(src);
+    const auto ov = load(src);
     REQUIRE(ov->isOverlay());
+    const bool dve = ov->usesDvMemory();
+    REQUIRE(dve == (std::string(src).find("Glitch") != std::string::npos));
+    REQUIRE((dve || ov->effectColour() == vt::EffectColour::of(vt::BkgColour::White)));
+    const vt::Frame colour = solid(ov->effectColour().rgb());
     const int n = ov->frameCount();
     REQUIRE(n > 2);
     const vt::Speed speed = ov->timing().resolve(ov->timing().defaultSpeed);
@@ -880,7 +905,7 @@ TEST_CASE("an overlay loops over Main and never swaps (Ruling 27)", "[switcher][
         ctx.frameNumber = k;
         ctx.speed = speed;
         ctx.animFrame = int(k / uint32_t(fpf) % uint32_t(n));
-        ov->render(tbar, r.in3, r.in3, out, ctx);
+        ov->render(tbar, r.in3, dve ? r.in3 : colour, out, ctx);
         return out;
     };
 
@@ -905,13 +930,21 @@ TEST_CASE("an overlay loops over Main and never swaps (Ruling 27)", "[switcher][
         const vt::Frame first = expected(r, 511, 0);
         const uint32_t loop = uint32_t(n * fpf);
         for (; k % loop != 0; ++k) r.sw.tick();
+        int changes = 0, unlikeMain = 0;
+        vt::Frame prev = first;
         for (uint32_t i = 0; i < 2 * loop + 3; ++i, ++k) {
             INFO("tick " << k);
             const vt::Frame shown = r.render();
             REQUIRE(shown.px == expected(r, 511, k).px);
             if (i % loop == 0) REQUIRE(shown.px == first.px);
+            changes += shown.px != prev.px;
+            unlikeMain += shown.px != r.in3.px;
+            prev = shown;
             r.sw.tick();
         }
+        // it really is animated, and it really is laid over Main
+        REQUIRE(changes >= 2);
+        REQUIRE(unlikeMain == int(2 * loop + 3));
         // T-bar 0 ends it, still without a swap
         r.sw.setTBar(0);
         REQUIRE_FALSE(r.sw.overlayEngaged());
@@ -961,4 +994,99 @@ TEST_CASE("an overlay loops over Main and never swaps (Ruling 27)", "[switcher][
         REQUIRE_FALSE(r.sw.transitionActive());
         REQUIRE(r.sw.selected(Bus::Main) == Source::In1);
     }
+}
+
+TEST_CASE("an animated matte overlay shows its effect colour, Snow as noise (Ruling 32)", "[switcher][overlay]") {
+    const auto ov = load("4.2/Effects/4000FX/Overlays/Snowfall Loop");
+    Rig r;
+    REQUIRE(r.sw.setEffect(ov));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.setTBar(1);
+    const vt::Frame white = r.render();
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Red));
+    const vt::Frame red = r.render();
+    REQUIRE(white.px != red.px);
+    vt::RenderCtx ctx;
+    ctx.background = vt::bkgColour(vt::BkgColour::Red);
+    ctx.speed = r.sw.effect().timing().resolve(r.sw.speed());
+    ctx.animFrame = 0;
+    vt::Frame expect;
+    ov->render(1, r.in3, solid(vt::bkgColour(vt::BkgColour::Red)), expect, ctx);
+    REQUIRE(red.px == expect.px);
+    // Snow: B is the noise of the current tick, so the flakes change from tick to tick
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Snow));
+    vt::Frame noise;
+    vt::renderSnow(noise, 0);
+    ctx.background = vt::Rgba8{0, 0, 0, 255};
+    ov->render(1, r.in3, noise, expect, ctx);
+    REQUIRE(r.render().px == expect.px);
+}
+
+TEST_CASE("gradient overlays are split screens with Preview, held by the T-bar (Ruling 32)", "[switcher][overlay]") {
+    const auto split = load("4.2/Effects/4000FX/Overlays/Split1 !");
+    REQUIRE(split->isOverlay());
+    REQUIRE(split->frameCount() == 1);
+    Rig r;
+    REQUIRE(r.sw.setEffect(split));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    r.sw.setTBar(256);
+    REQUIRE(r.sw.overlayEngaged());
+    vt::Frame expect;
+    vt::RenderCtx ctx;
+    ctx.background = split->effectColour().rgb();
+    split->render(256, r.in3, r.in4, expect, ctx);
+    const vt::Frame shown = r.render();
+    REQUIRE(shown.px == expect.px);
+    REQUIRE(shown.px != r.in3.px);
+    REQUIRE(shown.px != r.in4.px);
+    for (int i = 0; i < 30; ++i) r.sw.tick();  // held
+    REQUIRE(r.render().px == expect.px);
+    // Auto runs to the end like a wipe, but never swaps and stays engaged
+    r.sw.autoTransition(vt::Speed::Fast);
+    while (r.sw.autoRunning()) r.sw.tick();
+    REQUIRE(r.sw.overlayEngaged());
+    REQUIRE(r.sw.tbar() == 511);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+    // Take ends it without a cut
+    r.sw.take();
+    REQUIRE_FALSE(r.sw.overlayEngaged());
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+    REQUIRE(r.render().px == r.in3.px);
+}
+
+TEST_CASE("every Overlays-drawer effect shows something over a textured Main within one loop (Ruling 32)",
+          "[switcher][overlay][corpus]") {
+    std::vector<std::string> identity;
+    int checked = 0;
+    for (const char* drawer : {"4.2/Effects/2000FX/OverLays", "4.2/Effects/4000FX/Overlays"}) {
+        for (const auto& ent : std::filesystem::directory_iterator(dataRoot() / drawer)) {
+            const auto ext = ent.path().extension().string();
+            if (ext == ".i" || ext == ".I") continue;
+            std::shared_ptr<const vt::Effect> e = vt::loadEffect(ent.path());
+            if (!e) continue;
+            ++checked;
+            Rig r;  // Main = In3, Preview = In4: two different textured pictures
+            REQUIRE(r.sw.setEffect(e));
+            r.sw.select(Bus::Main, Source::In3);
+            r.sw.select(Bus::Preview, Source::In4);
+            r.sw.autoTransition(r.sw.speed());
+            const vt::Timing t = e->timing();
+            const int s = int(t.resolve(r.sw.speed()));
+            const int ticks = std::max({1, t.durationTicks[size_t(s)], t.fieldsPerFrame[size_t(s)] * e->frameCount()});
+            // one loop (or the whole Auto run) and the frame after it, where Auto has finished
+            bool shows = false;
+            for (int k = 0; k <= ticks && !shows; ++k) {
+                shows = r.render().px != r.in3.px;
+                r.sw.tick();
+            }
+            const auto u8 = ent.path().filename().u8string();
+            if (!shows) identity.emplace_back(u8.begin(), u8.end());
+        }
+    }
+    std::string list;
+    for (const auto& n : identity) list += n + "; ";
+    INFO("plain Main for the whole loop: " << list);
+    REQUIRE(checked >= 40);
+    REQUIRE(identity.empty());
 }

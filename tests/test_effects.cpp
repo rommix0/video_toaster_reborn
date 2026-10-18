@@ -447,15 +447,16 @@ const Mix& mixRecords() {
 }
 
 // Expected pixel for a golden mixtables record (first palette only: use it for effects whose
-// palette does not change).
+// palette does not change). An Overlays-drawer effect of the matte-less kind shows A under its
+// art (Ruling 32; the converter knows nothing of drawers).
 vt::Rgba8 goldenPixel(const golden::Record& r, int idx, int frame, int tbar, vt::Rgba8 pa = kA,
-                      vt::Rgba8 pb = kB) {
+                      vt::Rgba8 pb = kB, bool drawerOverlay = false) {
     const std::string& kind = str(r, "kind");
     const auto& over_rgba = arr(r, "over_rgba");
     int level;
     if (kind == "overlay") {
         const int peak = int(num(r, "flash_peak"));
-        level = peak >= 0 ? (frame >= peak ? 255 : 0) : (tbar >= 256 ? 255 : 0);
+        level = drawerOverlay ? 0 : peak >= 0 ? (frame >= peak ? 255 : 0) : (tbar >= 256 ? 255 : 0);
     } else {
         level = int(arr(r, "lut").at(size_t(idx)));
     }
@@ -486,7 +487,7 @@ void requireAnimGolden(const std::string& source, int tbar) {
         const int line = ctl.line(y);
         if (line < 0) return kBlack;
         const int idx = f.px[size_t(line) * size_t(f.w) + size_t(ctl.x(x))];
-        return goldenPixel(rec, idx, frame, tbar);
+        return goldenPixel(rec, idx, frame, tbar, kA, kB, e->isOverlay());
     });
 }
 
@@ -681,7 +682,8 @@ void requireAnimModel(const AnimFile& af, const vt::Effect& e, int tbar) {
         if (line < 0) return kBlack;
         const auto& en = table[f.px[size_t(line) * size_t(f.w) + size_t(ctl.x(x))]];
         int level = en.bLevel;
-        if (af.plan.kind == vt::AnimKind::Overlay) level = peak >= 0 ? (frame >= peak ? 255 : 0) : (tbar >= 256 ? 255 : 0);
+        if (af.plan.kind == vt::AnimKind::Overlay)  // a drawer overlay shows A under its art (Ruling 32)
+            level = e.isOverlay() ? 0 : peak >= 0 ? (frame >= peak ? 255 : 0) : (tbar >= 256 ? 255 : 0);
         vt::Rgba8 m = lerpPx(kA, kB, level);
         if (en.src == vt::MixSrc::Colour) m = over(m, en.colour);
         return m;
@@ -869,4 +871,17 @@ TEST_CASE("engine warnings go to the log sink (setLogSink)", "[effect][log]") {
     REQUIRE(ok);
     REQUIRE(ok->sound() != nullptr);
     REQUIRE(got.empty());
+}
+
+TEST_CASE("a matte-less Overlays-drawer effect shows A under its art at every T-bar (Ruling 32)", "[effect][anim]") {
+    // 20 OFF ! has no matte (overlay kind); in the drawer its B (the effect-colour fill) never shows
+    auto e = load("4.2/Effects/4000FX/Overlays/20 OFF !");
+    REQUIRE(e);
+    REQUIRE(e->isOverlay());
+    auto af = openAnim("4.2/Effects/4000FX/Overlays/20 OFF !");
+    REQUIRE(af.plan.kind == vt::AnimKind::Overlay);
+    for (int t : {0, 256, 511}) {
+        const vt::Frame out = renderAt(*e, t, solid(kA), solid(kB));
+        REQUIRE(std::none_of(out.px.begin(), out.px.end(), [](vt::Rgba8 p) { return same(p, kB); }));
+    }
 }

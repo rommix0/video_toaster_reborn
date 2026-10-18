@@ -48,7 +48,8 @@ public:
     //   same formula: out = mix + (colour - mix) * colour.a / 255.
     // Overlay plans have no matte: a flash (flashPeak) shows A in animation frames before the peak
     // and B from it, with the overlay on top; other overlay-only effects have no peak, so their
-    // clip is cut A -> B at the T-bar midpoint (tbar 256), like the cut (GUESS).
+    // clip is cut A -> B at the T-bar midpoint (tbar 256), like the cut (GUESS). An Overlays-drawer
+    // effect of this kind always shows A under its art (Ruling 32).
     // Video under a glow Colour entry (alpha < 255) is A (bLevel 0 for roles), not the nearest A/B
     // pixel's matte as in the converter: Ruling 14, a v1 limitation.
     // A raster line with no control line is black.
@@ -59,7 +60,11 @@ public:
         const Table& table = set->t[size_t(segOf_[size_t(frame)])];
         const IndexImage& f = an_.frames[size_t(frame)];
         int forced = -1;  // -1: use each entry's own level
-        if (plan_.kind == AnimKind::Overlay) forced = peak_ >= 0 ? (frame >= peak_ ? 255 : 0) : (t >= 256 ? 255 : 0);
+        if (plan_.kind == AnimKind::Overlay) {
+            // A drawer overlay (Ruling 32) lies over Main (A): its B is only a colour fill.
+            if (isOverlay()) forced = 0;
+            else forced = peak_ >= 0 ? (frame >= peak_ ? 255 : 0) : (t >= 256 ? 255 : 0);
+        }
         for (int y = 0; y < kRasterH; ++y) {
             Rgba8* dst = &out.at(0, y);
             const int line = map_.line(y);
