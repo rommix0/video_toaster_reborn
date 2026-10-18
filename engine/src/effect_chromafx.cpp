@@ -23,6 +23,8 @@ public:
     int frameCount() const override { return 1; }
     const Sound* sound() const override { return sound_ ? &*sound_ : nullptr; }
     bool usesDvMemory() const override { return true; }
+    bool isChromaFx() const override { return true; }
+    bool isChromaFilter() const override { return s_.mode == ChromaMode::Filter; }
 
     void render(int tbar, const Frame&, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         // Ruling 20: while cycling the row position comes from the cycle alone (DummyTBar).

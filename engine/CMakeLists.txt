@@ -19,6 +19,7 @@ add_library(vt_engine STATIC
     src/ilbm.cpp
     src/mix.cpp
     src/sound.cpp
+    src/switcher.cpp
     src/timing.cpp
 )
 target_include_directories(vt_engine PUBLIC include)

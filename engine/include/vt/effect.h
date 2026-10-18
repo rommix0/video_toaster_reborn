@@ -36,6 +36,12 @@ public:
     virtual const Sound* sound() const { return nullptr; }
     // True for effects that use the DV memory (DVE moves, ChromaFX): at most one can run at a time.
     virtual bool usesDvMemory() const { return false; }
+    // True for ChromaFX effects. The Switcher keeps one engaged after its T-bar run instead of
+    // swapping Main and Preview (Ruling 21).
+    virtual bool isChromaFx() const { return false; }
+    // True for a ChromaFX effect in Filter mode (its picture is meaningful at T-bar 0, so moving
+    // the T-bar home does not disengage it). False for everything else.
+    virtual bool isChromaFilter() const { return false; }
 };
 
 // Cut: A below tbar 256, B from 256. Dissolve: per-channel linear mix
