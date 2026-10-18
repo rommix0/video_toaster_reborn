@@ -53,9 +53,10 @@ std::array<MixEntry, 256> mixTable(const Anim&, const AnimPlan&, const std::vect
                                    Rgba8 background);
 
 // Overlay-only effects (no matte) whose overlay covers >= 97 % of the frame at its peak are a
-// transition: the Toaster cuts from A to B under the peak. Returns that peak as an index into the
-// frames expanded by reltime (each frame repeated max(reltime, 1) times, like the converter's
-// output frames), else -1. Always -1 for other kinds.
+// transition: the Toaster cuts from A to B under the peak. Returns that frame's index into
+// Anim::frames (reltimes are ignored: the engine's timing comes from the crouton tags), else -1.
+// The converter's golden flash_peak counts frames repeated by reltime; the two agree while every
+// reltime is 1. Always -1 for other kinds.
 int flashPeak(const Anim&, const AnimPlan&);
 
 }  // namespace vt

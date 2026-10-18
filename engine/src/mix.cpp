@@ -151,7 +151,7 @@ int flashPeak(const Anim& an, const AnimPlan& plan) {
     auto rgba = overlayColours(an, plan, an.bm.cmap, used, white);
     if (!anyOverlay(rgba, used)) return -1;
     double best = -1;
-    int peak = 0, pos = 0;
+    int peak = 0;
     for (size_t k = 0; k < an.frames.size(); ++k) {
         if (k > 0 && k < an.cmaps.size() && an.cmaps[k])  // the palette changes mid-effect
             rgba = overlayColours(an, plan, *an.cmaps[k], used, white);
@@ -159,13 +159,15 @@ int flashPeak(const Anim& an, const AnimPlan& plan) {
         double sum = 0;
         size_t cnt = 0;
         for (int y = 0; y < f.h; y += 4)
-            for (int x = 0; x < f.w; x += 4, ++cnt) sum += rgba[f.px[size_t(y) * size_t(f.w) + size_t(x)]].a;
+            for (int x = 0; x < f.w; x += 4, ++cnt) {
+                const size_t v = f.px[size_t(y) * size_t(f.w) + size_t(x)];
+                if (v < rgba.size()) sum += rgba[v].a;  // an index past the palette covers nothing
+            }
         const double cover = cnt ? sum / double(cnt) : 0.0;
         if (cover > best) {  // first maximum wins, as np.argmax
             best = cover;
-            peak = pos;
+            peak = int(k);
         }
-        pos += std::max(k < an.reltimes.size() ? an.reltimes[k] : 1, 1);
     }
     return best >= 0.97 * 255 ? peak : -1;
 }
