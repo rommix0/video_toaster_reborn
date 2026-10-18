@@ -1,5 +1,6 @@
 // loadEffect: crouton file -> Effect.
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <exception>
 
@@ -30,6 +31,21 @@ constexpr uint32_t kTagMode = 0x80000022;
 constexpr uint32_t kTagColour = 0x80000023;        // Effect Color preset (vt/background.h)
 constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
 
+// Ruling 27: an Overlays drawer (4.2/Effects/2000FX/OverLays, 4.2/Effects/4000FX/Overlays). No
+// crouton tag separates these effects from the rest: tag 0x80000011 is missing from seven of
+// them, and "Wedding Bells !" sits byte for byte in both Overlays and Weddings.
+bool inOverlaysDrawer(const std::filesystem::path& p) {
+    std::error_code ec;
+    const auto abs = std::filesystem::absolute(p, ec);
+    for (const auto& part : (ec ? p : abs).parent_path()) {
+        const auto u8 = part.u8string();
+        std::string s(u8.begin(), u8.end());
+        for (auto& ch : s) ch = char(std::tolower(static_cast<unsigned char>(ch)));
+        if (s == "overlays") return true;
+    }
+    return false;
+}
+
 const Form* firstForm(const Crouton& c, std::array<char, 4> type) {
     for (const auto& f : c.forms)
         if (f.type == type) return &f;
@@ -50,10 +66,12 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         const auto u8 = path.filename().u8string();
         const std::string name(u8.begin(), u8.end());
 
-        // Name, timing, sound and colour; the sound is read only for effects that get built.
+        // Name, timing, sound, colour, drawer; the sound is read only for effects that get built.
+        // A ChromaFX crouton is never an overlay (none is in an Overlays drawer).
         auto basics = [&](Timing t) {
             return detail::CroutonBasics{name, t, detail::loadSound(*c, name),
-                                         effectColourFromTags(c->tag(kTagColour), c->tag(kTagCustomColour))};
+                                         effectColourFromTags(c->tag(kTagColour), c->tag(kTagCustomColour)),
+                                         c->type != CroutonType::Crfx && inOverlaysDrawer(path)};
         };
 
         switch (c->type) {

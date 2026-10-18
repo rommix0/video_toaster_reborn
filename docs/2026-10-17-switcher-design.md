@@ -64,7 +64,9 @@ Must work in version 1:
    croutons and banks.
    *Builder's call:* in version 1 the Overlay row is present and selectable, and
    overlay-type effects use it where the original did; it has no keying until keys
-   arrive. DV1/DV2 are real framebuffers used as the working memory of DVE moves and
+   arrive. Effects from the Overlays drawers (manual PDF 181) are not transitions: once
+   the T-bar leaves 0 or Auto starts they loop over Main until the T-bar returns to 0,
+   Take or another effect ends them, and they never switch sources. DV1/DV2 are real framebuffers used as the working memory of DVE moves and
    ChromaFX; selected on a bus they show their contents (black until freeze/framestores
    exist).
 6. **A basic original-look Switcher screen:** effects bank grid with the original

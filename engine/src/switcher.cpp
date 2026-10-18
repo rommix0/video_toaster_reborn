@@ -29,10 +29,10 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     };
     if (!e) return refuse("no effect given");
     // Ruling 23: a ChromaFX replaces an engaged ChromaFX (the old one disengages below).
-    const bool replacingChroma = chromaEngaged_ && e->isChromaFx();
+    const bool replacingChroma = chromaEngaged() && e->isChromaFx();
     if (e->usesDvMemory() && !replacingChroma) {
         // ChromaFX and the DVE moves share the DV memory (spec 5.8): only one can use it at a time.
-        if (chromaEngaged_) return refuse("a ChromaFX effect is engaged: press Take or return the T-bar to 0 first");
+        if (chromaEngaged()) return refuse("a ChromaFX effect is engaged: press Take or return the T-bar to 0 first");
         if (effect_->usesDvMemory() && transitionActive())
             return refuse("a DVE move is running: finish it before choosing another DV-memory effect");
     }
@@ -51,23 +51,29 @@ void Switcher::beginTransitionIfIdle() {
     if (!transitionActive()) soundPending_ = effect_->sound() != nullptr;
 }
 
+void Switcher::engage() {
+    if (engaged_) return;
+    engaged_ = true;
+    engagedTicks_ = 0;
+}
+
 void Switcher::disengage() {
-    chromaEngaged_ = false;
-    chromaFrames_ = 0;
+    engaged_ = false;
+    engagedTicks_ = 0;
 }
 
 void Switcher::finishAt511() {
     auto_ = false;
-    if (effect_->isChromaFx()) {
-        tbar_ = kTBarEnd;  // stays engaged, no swap (Ruling 21)
+    if (staysEngaged()) {
+        tbar_ = kTBarEnd;  // stays engaged, no swap (Rulings 21, 27)
     } else {
         std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);
         tbar_ = 0;  // the effect is finished; the T-bar counts as back at 0
     }
 }
 
-// The T-bar is back at 0 (by hand or by a reverse Auto): nothing swaps; a Transition-mode
-// ChromaFX disengages, a Filter-mode one stays engaged.
+// The T-bar is back at 0 (by hand or by a reverse Auto): nothing swaps; an overlay ends; a
+// Transition-mode ChromaFX disengages, a Filter-mode one stays engaged.
 void Switcher::arriveAt0() {
     auto_ = false;
     tbar_ = 0;
@@ -78,29 +84,22 @@ void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
     auto_ = false;             // the hand takes over
-    const bool chroma = effect_->isChromaFx();
     if (tbar_ == 0 && pos > 0) {
         beginTransitionIfIdle();
-        if (chroma && !chromaEngaged_) {
-            chromaEngaged_ = true;
-            chromaFrames_ = 0;
-        }
+        if (staysEngaged()) engage();
     }
     tbar_ = pos;
     if (pos == 0) arriveAt0();
-    else if (pos == kTBarEnd && !chroma) finishAt511();
+    else if (pos == kTBarEnd && !staysEngaged()) finishAt511();
 }
 
 void Switcher::autoTransition(Speed speed, Direction dir) {
     speed_ = speed;
     const Timing t = effect_->timing();
     if (dir == Direction::Forward) {
-        if (tbar_ >= kTBarEnd) return;  // only a ChromaFX can rest at 511
+        if (tbar_ >= kTBarEnd) return;  // only a ChromaFX or an overlay can rest at 511
         beginTransitionIfIdle();
-        if (effect_->isChromaFx() && !chromaEngaged_) {
-            chromaEngaged_ = true;
-            chromaFrames_ = 0;
-        }
+        if (staysEngaged()) engage();
     } else if (tbar_ == 0 && !auto_) {
         return;  // nothing to run back
     }
@@ -119,16 +118,17 @@ void Switcher::autoTransition(Speed speed, Direction dir) {
 }
 
 void Switcher::take() {
+    const bool overlay = overlayEngaged();
     auto_ = false;
     tbar_ = 0;
     disengage();
     soundPending_ = false;
-    std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);
+    if (!overlay) std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);  // Ruling 27
 }
 
 void Switcher::tick() {
     ++tickCount_;
-    if (chromaEngaged_) ++chromaFrames_;
+    if (engaged_) ++engagedTicks_;
     if (!auto_) return;
     if (autoDir_ == Direction::Forward) {
         autoAcc_ += kTBarEnd;
@@ -191,13 +191,17 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     if (!transitionActive()) {
         out.px = a.px;
     } else {
-        const Frame& b = pick(sel_[busIndex(Bus::Preview)]);
+        const bool overlay = overlayEngaged();
+        const Frame& b = overlay ? a : pick(sel_[busIndex(Bus::Preview)]);  // overlays lie over Main
+        const Timing timing = effect_->timing();
+        const Speed speed = timing.resolve(speed_);
         RenderCtx ctx;
         ctx.background = effectColour_.rgb();  // the effect's own colour, not BKG's (Ruling 26)
-        // Only ChromaFX uses the frame counter (cycling). Other effects are rendered from the
-        // T-bar position alone, so a T-bar moved back looks like a fresh render there.
-        ctx.frameNumber = chromaEngaged_ ? chromaFrames_ : 0;
-        ctx.speed = effect_->timing().resolve(speed_);
+        // The frame counter runs while a ChromaFX (cycling) or an overlay is engaged. Other
+        // effects are rendered from the T-bar position alone, so a T-bar moved back looks like a
+        // fresh render there.
+        ctx.frameNumber = engaged_ ? engagedTicks_ : 0;
+        ctx.speed = speed;
         ctx.guesses = guesses_;
         // Auto: the exact animation frame for the elapsed ticks (Ruling 25). Forward shows
         // elapsed ticks 0 .. total-1, reverse total-1 .. 0, each frame for autoFpf_ ticks.
@@ -206,6 +210,10 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
                                                                    : std::max<int64_t>(0, autoAcc_ - 1) / kTBarEnd;
             ctx.animFrame = static_cast<int>(std::min<int64_t>(elapsed / autoFpf_, INT_MAX));
         }
+        // An engaged overlay loops its animation whatever the T-bar or Auto does (Ruling 27).
+        const int fpf = timing.fieldsPerFrame[static_cast<size_t>(speed)];
+        if (overlay && fpf > 0 && effect_->frameCount() > 0)
+            ctx.animFrame = static_cast<int>(engagedTicks_ / uint32_t(fpf) % uint32_t(effect_->frameCount()));
         effect_->render(tbar_, a, b, out, ctx);
     }
     program.px.swap(out.px);

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <array>
 #include <memory>
 #include <string>
@@ -839,4 +840,125 @@ TEST_CASE("render may write into an input frame", "[switcher]") {
     const vt::Frame expect = r.render();
     r.sw.render(r.src, r.in1);  // Program lands in the A source's own frame
     REQUIRE(r.in1.px == expect.px);
+}
+
+TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Ruling 27)", "[switcher][overlay]") {
+    int loaded = 0;
+    for (const char* drawer : {"4.2/Effects/2000FX/OverLays", "4.2/Effects/4000FX/Overlays"}) {
+        for (const auto& ent : std::filesystem::directory_iterator(dataRoot() / drawer)) {
+            const auto ext = ent.path().extension().string();
+            if (ext == ".i" || ext == ".I") continue;  // icons
+            auto e = vt::loadEffect(ent.path());
+            if (!e) continue;  // bar pictures and the like
+            INFO(ent.path().string());
+            REQUIRE(e->isOverlay());
+            ++loaded;
+        }
+    }
+    REQUIRE(loaded >= 30);
+    // the same bytes outside the drawer are an ordinary effect
+    REQUIRE_FALSE(load("4.2/Effects/4000FX/Weddings/Wedding Bells !")->isOverlay());
+    REQUIRE(load("4.2/Effects/4000FX/Overlays/Wedding Bells !")->isOverlay());
+    REQUIRE_FALSE(pagePeel()->isOverlay());
+    REQUIRE_FALSE(fadeToNeg()->isOverlay());
+    REQUIRE_FALSE(dissolve()->isOverlay());
+}
+
+TEST_CASE("an overlay loops over Main and never swaps (Ruling 27)", "[switcher][overlay]") {
+    const auto ov = load("4.2/Effects/4000FX/Overlays/Snowfall Loop");
+    REQUIRE(ov->isOverlay());
+    const int n = ov->frameCount();
+    REQUIRE(n > 2);
+    const vt::Speed speed = ov->timing().resolve(ov->timing().defaultSpeed);
+    const int fpf = ov->timing().fieldsPerFrame[size_t(speed)];
+    REQUIRE(fpf > 0);
+    // what Program must show k ticks after engagement: the overlay over Main, frame (k / fpf) mod n
+    auto expected = [&](const Rig& r, int tbar, uint32_t k) {
+        vt::Frame out;
+        vt::RenderCtx ctx;
+        ctx.background = ov->effectColour().rgb();
+        ctx.frameNumber = k;
+        ctx.speed = speed;
+        ctx.animFrame = int(k / uint32_t(fpf) % uint32_t(n));
+        ov->render(tbar, r.in3, r.in3, out, ctx);
+        return out;
+    };
+
+    SECTION("Auto engages it, runs the T-bar to 511 and leaves it running; T-bar 0 ends it") {
+        Rig r;
+        REQUIRE(r.sw.setEffect(ov));
+        r.sw.select(Bus::Main, Source::In3);
+        r.sw.select(Bus::Preview, Source::In4);
+        r.sw.autoTransition(speed);
+        REQUIRE(r.sw.overlayEngaged());
+        uint32_t k = 0;
+        for (; r.sw.autoRunning(); ++k) {
+            REQUIRE(r.render().px == expected(r, r.sw.tbar(), k).px);
+            r.sw.tick();
+        }
+        REQUIRE(k == uint32_t(ov->timing().durationTicks[size_t(speed)]));
+        REQUIRE(r.sw.overlayEngaged());
+        REQUIRE(r.sw.tbar() == 511);
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);  // no swap
+        REQUIRE(r.sw.selected(Bus::Preview) == Source::In4);
+        // it loops: the frame wraps after n * fpf ticks
+        const vt::Frame first = expected(r, 511, 0);
+        const uint32_t loop = uint32_t(n * fpf);
+        for (; k % loop != 0; ++k) r.sw.tick();
+        for (uint32_t i = 0; i < 2 * loop + 3; ++i, ++k) {
+            INFO("tick " << k);
+            const vt::Frame shown = r.render();
+            REQUIRE(shown.px == expected(r, 511, k).px);
+            if (i % loop == 0) REQUIRE(shown.px == first.px);
+            r.sw.tick();
+        }
+        // T-bar 0 ends it, still without a swap
+        r.sw.setTBar(0);
+        REQUIRE_FALSE(r.sw.overlayEngaged());
+        REQUIRE_FALSE(r.sw.transitionActive());
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+        REQUIRE(r.render().px == r.in3.px);
+    }
+
+    SECTION("a T-bar run by hand engages it; 511 does not swap") {
+        Rig r;
+        REQUIRE(r.sw.setEffect(ov));
+        r.sw.select(Bus::Main, Source::In3);
+        r.sw.select(Bus::Preview, Source::In4);
+        r.sw.setTBar(100);
+        REQUIRE(r.sw.overlayEngaged());
+        REQUIRE(r.render().px == expected(r, 100, 0).px);
+        r.sw.tick();
+        r.sw.setTBar(511);
+        REQUIRE(r.sw.overlayEngaged());
+        REQUIRE(r.sw.tbar() == 511);
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+        REQUIRE(r.render().px == expected(r, 511, 1).px);
+        // Take only ends it: no cut
+        r.sw.take();
+        REQUIRE_FALSE(r.sw.overlayEngaged());
+        REQUIRE(r.sw.tbar() == 0);
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
+        REQUIRE(r.sw.selected(Bus::Preview) == Source::In4);
+        REQUIRE(r.render().px == r.in3.px);
+        // with nothing engaged, Take is the ordinary cut again
+        r.sw.take();
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
+    }
+
+    SECTION("reverse Auto and setEffect end it") {
+        Rig r;
+        REQUIRE(r.sw.setEffect(ov));
+        r.sw.autoTransition(speed);
+        for (int i = 0; i < 5; ++i) r.sw.tick();
+        r.sw.autoTransition(speed, vt::Direction::Reverse);
+        while (r.sw.autoRunning()) r.sw.tick();
+        REQUIRE_FALSE(r.sw.overlayEngaged());
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In1);
+        r.sw.setTBar(50);
+        REQUIRE(r.sw.overlayEngaged());
+        REQUIRE(r.sw.setEffect(dissolve()));
+        REQUIRE_FALSE(r.sw.transitionActive());
+        REQUIRE(r.sw.selected(Bus::Main) == Source::In1);
+    }
 }

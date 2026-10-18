@@ -85,6 +85,8 @@ public:
     // then (otherwise its next setTBar(510) starts a new transition).
     // ChromaFX: leaving 0 engages it (see render); 511 does not swap; returning to 0
     // disengages a Transition-mode crouton (a Filter-mode one stays engaged).
+    // Overlays (effect().isOverlay(), Ruling 27): leaving 0 engages it; 511 does not swap;
+    // returning to 0 ends it.
     void setTBar(int pos);
     int tbar() const { return tbar_; }
     // Sets the speed button to `speed` and runs the T-bar from where it is to 511 (Forward) or
@@ -99,17 +101,19 @@ public:
     // elapsed / fieldsPerFrame (RenderCtx::animFrame), so each frame is shown for exactly
     // fieldsPerFrame ticks and none is skipped or repeated. A hand-driven T-bar maps to frames
     // by animFrameForTBar instead.
-    // Forward ends as a T-bar run to 511 does (swap, or an engaged ChromaFX stays at 511);
-    // Reverse ends as a return to 0 does: no swap, and a Transition-mode ChromaFX disengages
-    // (a Filter-mode one stays engaged).
+    // Forward ends as a T-bar run to 511 does (swap, or an engaged ChromaFX or overlay stays
+    // at 511); Reverse ends as a return to 0 does: no swap, an overlay ends, a Transition-mode
+    // ChromaFX disengages (a Filter-mode one stays engaged).
     void autoTransition(Speed speed, Direction dir = Direction::Forward);
     bool autoRunning() const { return auto_; }
     // True from the moment the T-bar leaves 0 or Auto starts until the transition finishes (or,
-    // for ChromaFX, until it is disengaged).
-    bool transitionActive() const { return auto_ || tbar_ > 0 || chromaEngaged_; }
-    bool chromaEngaged() const { return chromaEngaged_; }
+    // for ChromaFX and overlays, until it is disengaged).
+    bool transitionActive() const { return auto_ || tbar_ > 0 || engaged_; }
+    bool chromaEngaged() const { return engaged_ && effect_->isChromaFx(); }
+    bool overlayEngaged() const { return engaged_ && effect_->isOverlay(); }
     // Cut: swaps the Main and Preview selections. Ends any transition (T-bar 0, Auto stopped,
-    // ChromaFX disengaged) and drops a sound pendingSound() has not handed over.
+    // ChromaFX disengaged) and drops a sound pendingSound() has not handed over. On an engaged
+    // overlay it only ends the overlay, without a cut (overlays never switch sources).
     void take();
 
     // --- background (BKG source) ---
@@ -119,14 +123,17 @@ public:
     EffectColour background() const { return bkg_; }
 
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
-    // Auto and (while engaged) the ChromaFX frame counter.
+    // Auto and (while engaged) the ChromaFX / overlay frame counter.
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
     //  * no transition (T-bar 0, ChromaFX not engaged): Program = A;
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
-    //    (Program shows the recoloured Preview), frameNumber = ticks since engagement.
+    //    (Program shows the recoloured Preview), frameNumber = ticks since engagement;
+    //  * engaged overlay: the effect with A = B = Main source, its animation looping: frame
+    //    (ticks since engagement / fieldsPerFrame) mod frameCount at the speed button
+    //    (RenderCtx::animFrame), so frame 0 again after frameCount x fieldsPerFrame ticks.
     // RenderCtx::background is effectColour().rgb() (black for Snow), whatever BKG shows. Never
     // reads or writes `program` before it is finished, so it may alias an input frame.
     void render(const SourceFrames&, Frame& program) const;
@@ -140,7 +147,9 @@ private:
     void beginTransitionIfIdle();
     void finishAt511();
     void arriveAt0();
+    void engage();
     void disengage();
+    bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::Bkg};
     std::shared_ptr<const Effect> effect_;
@@ -152,8 +161,8 @@ private:
     Direction autoDir_ = Direction::Forward;
     Speed speed_ = Speed::Medium;
     HardwareGuesses guesses_;
-    bool chromaEngaged_ = false;
-    uint32_t chromaFrames_ = 0;  // ticks since engagement
+    bool engaged_ = false;        // a ChromaFX or overlay is engaged
+    uint32_t engagedTicks_ = 0;  // ticks since engagement
     bool soundPending_ = false;
     uint32_t tickCount_ = 0;
     EffectColour bkg_;           // the BKG source
