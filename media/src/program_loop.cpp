@@ -112,6 +112,7 @@ void ProgramLoop::postChecked(std::function<bool(vt::Switcher&, std::string& why
             work_.lastRefusal.clear();
         } else {
             work_.lastRefusal = why.empty() ? "refused" : std::move(why);
+            ++work_.refusalCount;
         }
     });
 }

@@ -309,11 +309,11 @@ private:
 SettingsDialog::SettingsDialog(const AppSettings& current, DeviceLists devices, QWidget* parent)
     : QDialog(parent), base_(current) {
     setWindowTitle(tr("Settings"));
-    auto* pages = new QListWidget(this);
-    pages->setFixedWidth(130);
+    pages_ = new QListWidget(this);
+    pages_->setFixedWidth(130);
     auto* stack = new QStackedWidget(this);
     auto add = [&](const QString& name, QWidget* page) {
-        pages->addItem(name);
+        pages_->addItem(name);
         stack->addWidget(page);
     };
     add(tr("Inputs"), makeInputsPage(devices));
@@ -321,8 +321,8 @@ SettingsDialog::SettingsDialog(const AppSettings& current, DeviceLists devices, 
     add(tr("Audio"), makeAudioPage(devices));
     add(tr("Toaster data"), makeToasterPage());
     add(tr("Display"), makeDisplayPage());
-    connect(pages, &QListWidget::currentRowChanged, stack, &QStackedWidget::setCurrentIndex);
-    pages->setCurrentRow(0);
+    connect(pages_, &QListWidget::currentRowChanged, stack, &QStackedWidget::setCurrentIndex);
+    pages_->setCurrentRow(InputsPage);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     ok_ = buttons->button(QDialogButtonBox::Ok);
@@ -330,7 +330,7 @@ SettingsDialog::SettingsDialog(const AppSettings& current, DeviceLists devices, 
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     auto* body = new QHBoxLayout;
-    body->addWidget(pages);
+    body->addWidget(pages_);
     body->addWidget(stack, 1);
     auto* lay = new QVBoxLayout(this);
     lay->addLayout(body, 1);
@@ -406,6 +406,8 @@ void SettingsDialog::checkRoot() {
                                : tr("Not a Toaster data folder: 4.2/Programs/switcher.main is missing."));
     ok_->setEnabled(valid);
 }
+
+void SettingsDialog::showPage(Page p) { pages_->setCurrentRow(p); }
 
 AppSettings SettingsDialog::settings() const {
     AppSettings s = base_;

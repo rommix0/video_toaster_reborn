@@ -55,6 +55,7 @@ struct DeviceLists {
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QListWidget;
 class QPushButton;
 
 // Edits the settings the pages cover (inputs, recording, audio output, Toaster data root, panel
@@ -62,8 +63,11 @@ class QPushButton;
 class SettingsDialog : public QDialog {
     Q_OBJECT
 public:
+    enum Page { InputsPage, RecordingPage, AudioPage, ToasterPage, DisplayPage };  // in list order
+
     SettingsDialog(const AppSettings& current, DeviceLists devices, QWidget* parent = nullptr);
     AppSettings settings() const;  // `current` with what the pages hold now
+    void showPage(Page);
 
 private:
     class InputPage;
@@ -75,6 +79,7 @@ private:
     void checkRoot();  // shows whether the root is valid; OK needs a valid one
 
     AppSettings base_;
+    QListWidget* pages_ = nullptr;
     std::array<InputPage*, 4> inputPages_{};
     QComboBox* format_ = nullptr;
     QLineEdit *recordingPath_ = nullptr, *root_ = nullptr;

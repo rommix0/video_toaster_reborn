@@ -16,6 +16,7 @@ std::unique_ptr<QObject> makeProjectGridTests();
 std::unique_ptr<QObject> makeMonitorTests();
 std::unique_ptr<QObject> makeMixerDockTests();
 std::unique_ptr<QObject> makeSettingsTests();
+std::unique_ptr<QObject> makeAppE2eTests();
 
 namespace {
 
@@ -65,6 +66,7 @@ int main(int argc, char** argv) {
     tests.push_back(makeMonitorTests());
     tests.push_back(makeMixerDockTests());
     tests.push_back(makeSettingsTests());
+    tests.push_back(makeAppE2eTests());
 
     QByteArrayList options, selectors;
     for (int i = 1; i < argc; ++i) {

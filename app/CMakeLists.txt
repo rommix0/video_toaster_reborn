@@ -2,6 +2,7 @@ qt_standard_project_setup() # AUTOMOC
 
 # Everything except main.cpp, so tests can link the app's code.
 add_library(vt_app_lib STATIC
+    src/controller.cpp
     src/main_window.cpp
     src/mixer_dock.cpp
     src/monitor_window.cpp

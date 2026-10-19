@@ -646,3 +646,24 @@ TEST_CASE("postChecked: a refusal's reason lands in lastRefusal until a checked 
     CHECK(s.lastRefusal.empty());
     CHECK(s.effectName == vt::makeDissolve()->name());
 }
+
+TEST_CASE("postChecked: every refusal counts in refusalCount, also a repeat of the same one") {
+    ProgramLoop loop({});
+    CHECK(loop.switcherState().refusalCount == 0);
+    auto refuse = [](vt::Switcher&, std::string& why) { why = "no"; return false; };
+    loop.postChecked(refuse);
+    loop.runOffline(1);
+    CHECK(loop.switcherState().refusalCount == 1);
+    loop.postChecked(refuse);
+    loop.postChecked(refuse);   // two in one tick: both count
+    loop.runOffline(1);
+    SwitcherSnapshot s = loop.switcherState();
+    CHECK(s.refusalCount == 3);
+    CHECK(s.lastRefusal == "no");
+    loop.postChecked([](vt::Switcher&, std::string&) { return true; });   // a success clears the reason only
+    loop.post([](vt::Switcher& sw) { sw.setTBar(1); });
+    loop.runOffline(2);
+    s = loop.switcherState();
+    CHECK(s.refusalCount == 3);
+    CHECK(s.lastRefusal.empty());
+}

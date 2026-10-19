@@ -14,7 +14,8 @@ namespace vt::media {
 // The Switcher as it stood after tick `tick` (the one just finished; -1 before the first tick).
 // `transition` is Switcher::transitionActive(), `chroma` chromaEngaged(), `overlayEngaged`
 // overlayEngaged(). `lastRefusal` is the reason of the most recent refused postChecked, kept until
-// the next refusal or until a postChecked succeeds; empty = none.
+// the next refusal or until a postChecked succeeds; empty = none. `refusalCount` counts every
+// refused postChecked since the loop was made, so a repeat of the same refusal is visible too.
 struct SwitcherSnapshot {
     vt::Source main = vt::Source::In1, preview = vt::Source::In2, overlay = vt::Source::Bkg;
     int tbar = 0;
@@ -24,6 +25,7 @@ struct SwitcherSnapshot {
     vt::EffectColour effectColour, background;
     int64_t tick = -1;
     std::string lastRefusal;
+    uint64_t refusalCount = 0;
 };
 
 class MonitorSink {   // called on the loop thread; must copy and return quickly

@@ -94,8 +94,9 @@ public:
 
     void post(std::function<void(vt::Switcher&)>);    // runs once, at the start of the next tick
     // Like post, for a call that can be refused (Switcher::setEffect): when `f` returns false, `why`
-    // becomes SwitcherSnapshot::lastRefusal (an empty `why` reads "refused"), in that tick's
-    // snapshot; when it returns true, lastRefusal is cleared. A plain post never touches it.
+    // becomes SwitcherSnapshot::lastRefusal (an empty `why` reads "refused") and refusalCount goes
+    // up by one, in that tick's snapshot; when it returns true, lastRefusal is cleared. A plain
+    // post never touches either.
     void postChecked(std::function<bool(vt::Switcher&, std::string& why)>);
     void setInput(int index, const InputConfig&);     // replaces input index (0..3) at the next tick
     AudioMixer& mixer() { return mixer_; }            // its setters are thread-safe
