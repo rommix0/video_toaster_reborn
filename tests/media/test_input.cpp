@@ -158,6 +158,59 @@ TEST_CASE("looping restarts the picture and the sound") {
     }
 }
 
+TEST_CASE("real time, Wait::No: pictures follow the clock") {
+    // As the real-time loop reads: Wait::No, 100 ms behind the clock, once per tick.
+    SessionClock clock = SessionClock::realtime();
+    auto in = std::make_shared<Input>(fileConfig(fixture("f30.mkv")), MediaGeometry{}, clock);
+    struct Read { SessionTime t; int index; };
+    auto reads = std::async(std::launch::async, [in, clock] {
+        std::vector<Read> got;
+        vt::Frame f;
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int n = 1; n <= 90; ++n) { // 1.5 s
+            std::this_thread::sleep_until(t0 + std::chrono::microseconds(int64_t(n) * 1001000 / 60));
+            const SessionTime t = clock.now() - 24000;
+            if (in->videoAt(t, f, Wait::No)) got.push_back({t, frameIndexOf(f)});
+        }
+        return got;
+    });
+    REQUIRE(reads.wait_for(std::chrono::seconds(10)) == std::future_status::ready); // no deadlock
+    const std::vector<Read> got = reads.get();
+    // Pictures from about 0.1 s (+ the open) on: most of the 1.5 s, advancing at 29.97 fps.
+    REQUIRE(got.size() >= 60);
+    int frame = got.front().index, unwrapped = 0;
+    for (size_t i = 1; i < got.size(); ++i) {
+        const int d = (got[i].index - frame + 40) % 40; // indexes count mod 40
+        CHECK(d <= 2);                                   // never back (reads are ~1/2 frame apart)
+        unwrapped += d;
+        frame = got[i].index;
+    }
+    const double seconds = double(got.back().t - got.front().t) / 240000.0;
+    INFO(got.size() << " pictures over " << seconds << " s, " << unwrapped << " frames on");
+    CHECK(std::abs(unwrapped - seconds * 30000.0 / 1001.0) <= 2.0);
+    const InputStatus st = in->status();
+    CHECK(st.state == State::Running);
+    CHECK(st.framesLate == 0);
+}
+
+TEST_CASE("real time: a file's first picture and first sample start on one tick") {
+    SessionClock clock = SessionClock::realtime();
+    std::this_thread::sleep_for(std::chrono::milliseconds(7)); // open off a tick boundary
+    Input in(fileConfig(fixture("f30.mkv")), {}, clock);
+    REQUIRE(waitForState(in, State::Running, std::chrono::seconds(2)));
+    // The first tick with a picture.
+    vt::Frame f;
+    int64_t k = 0;
+    while (k < 120 && !in.videoAt(tickTime(k), f, Wait::Block)) ++k;
+    REQUIRE(k > 0);
+    REQUIRE(k < 120);
+    CHECK(frameIndexOf(f) == 0);
+    // Its sound starts at that tick's first sample: the tick before is silent, this one sounds
+    // from its first millisecond on.
+    CHECK(peak(audioAt(in, samplesBefore(k - 1), samplesInTick(k - 1))) == 0.0f);
+    CHECK(peak(audioAt(in, samplesBefore(k), 48)) > 0.05f);
+}
+
 TEST_CASE("missing, truncated and wrong files fail cleanly") {
     QuietLog quiet;
     {

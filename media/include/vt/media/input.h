@@ -49,7 +49,8 @@ enum class Wait { No, Block };
 
 class Input {
 public:
-    // A File input starts opening at once, on its own thread. Its first frame is due at
+    // A File input starts opening at once, on its own thread. Its first frame (and first
+    // sample) is due at the first tick boundary (a multiple of tickTime(1)) at or after
     // clock.now() as measured when the file opens; the stream's timestamps count from there.
     // A Device or Screen input captures on its own thread as fast as the source delivers, never
     // waiting for readers (a full queue drops its oldest picture, counted in framesLate). Each

@@ -338,7 +338,9 @@ private:
 // Plays an opened file until it ends (loop off), fails, or the input stops. Returns the error
 // text when the input should retry, or "" when the thread is done.
 std::string playFile(Input::Shared& s, Pump& pump, Source& src) {
-    SessionTime base = s.clock.now();
+    // The first tick boundary from now on: in real time the first picture and the first sample
+    // then land on the same tick (offline the clock already stands on one).
+    SessionTime base = -floorDiv(-s.clock.now(), tickTime(1)) * tickTime(1);
     for (;;) {
         if (!pump.play(src, base)) return pump.failure(); // "" when stopping
         if (pump.length() <= 0) return "no playable frames";
