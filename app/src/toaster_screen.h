@@ -59,6 +59,8 @@ public:
 
     // Zoom = device pixels per Toaster pixel (whole numbers >= 1), so one Toaster pixel is exactly
     // zoom x zoom device pixels at any devicePixelRatio; sizeHint() is 768x481 x zoom device pixels.
+    // A change of the device pixel ratio (another display) updates the geometry and moves an open
+    // BKG list along.
     void setZoom(int);
     int zoom() const { return zoom_; }
     void setPanelPalette(bool previewMode);             // false: RGB mode 000 555 999 DDD
@@ -87,7 +89,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent*) override;
     void mouseDoubleClickEvent(QMouseEvent*) override;
     void wheelEvent(QWheelEvent*) override;
-    bool event(QEvent*) override;  // tool tips: a crouton's name
+    bool event(QEvent*) override;  // tool tips: a crouton's name; DevicePixelRatioChange
     void keyPressEvent(QKeyEvent*) override;
 
 private:

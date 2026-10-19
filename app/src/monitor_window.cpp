@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QEvent>
 #include <QPainter>
 #include <algorithm>
 #include <cmath>
@@ -97,6 +98,14 @@ QSize MonitorWindow::sizeHint() const {
     const vt::Rect a = shownArea();
     const double dpr = devicePixelRatioF();
     return {int(std::ceil(a.w * zoom_ / dpr)), int(std::ceil(a.h * zoom_ / dpr))};
+}
+
+bool MonitorWindow::event(QEvent* e) {
+    if (e->type() == QEvent::DevicePixelRatioChange) {
+        rebuild();
+        resize(sizeHint());
+    }
+    return QWidget::event(e);
 }
 
 void MonitorWindow::paintEvent(QPaintEvent*) {

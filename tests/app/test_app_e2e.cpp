@@ -145,6 +145,7 @@ private slots:
     void logLinesFromOtherThreads();
     void menus();
     void zoomMenu();
+    void zoomFollowsADevicePixelRatioChange();
     void realtimeRecordingWithLiveInputs();  // live: tools/live.bat (VT_APP_LIVE=1)
 };
 
@@ -447,6 +448,22 @@ void TestAppE2e::zoomMenu() {
     fit->trigger();
     QCOMPARE(settings.screenZoom, 0);
     QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
+}
+
+// Moved to another display: with Fit (screenZoom 0) the zoom is picked anew for the display the
+// window is on, and the window takes the new size.
+void TestAppE2e::zoomFollowsADevicePixelRatioChange() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    settings.screenZoom = 0;
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
+    c.screen()->setZoom(3);           // as fitted on the display the window came from
+    apptest::sendRatioChange(c.window());
+    QTRY_COMPARE(c.screen()->zoom(), 1);
+    QCOMPARE(c.window().size(), c.window().sizeHint());
+    QCOMPARE(settings.screenZoom, 0);
 }
 
 // Review Focus 4 in real time: In1 = the desktop, In2 = the first video device, the audio output

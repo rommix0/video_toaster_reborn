@@ -1,5 +1,6 @@
 #include "toaster_screen.h"
 
+#include <QVBoxLayout>
 #include <QtTest>
 #include <functional>
 #include <memory>
@@ -96,6 +97,7 @@ private slots:
     void bkgNameFollowsTheSnapshot();
     void paletteAndExactZoom();
     void rejectsALayoutWithMissingArt();
+    void followsADevicePixelRatioChange();
 };
 
 void TestToasterScreen::defaultScreenIsTheOriginalWithTheActiveButtonsSelected() {
@@ -331,6 +333,49 @@ void TestToasterScreen::rejectsALayoutWithMissingArt() {
     for (auto& n : small.nodes)
         if (n.id == "take") n.image = {16, 4, std::vector<uint8_t>(64)};
     QVERIFY_THROWS_EXCEPTION(std::runtime_error, ToasterScreen(small, font(), fake));
+}
+
+// Moved to a display at 150 %: sizeHint() becomes 768x481 x 3 / 1.5 logical pixels, the layout
+// holding the screen learns it (updateGeometry), an open BKG list follows, and every Toaster pixel is
+// still exactly 3 x 3 device pixels.
+void TestToasterScreen::followsADevicePixelRatioChange() {
+    FakeActions fake;
+    QWidget holder;
+    auto* box = new QVBoxLayout(&holder);
+    box->setContentsMargins(0, 0, 0, 0);
+    auto* w = new WithRatio<ToasterScreen>(layout(), font(), fake);
+    box->addWidget(w);
+    w->setZoom(3);
+    QCOMPARE(holder.sizeHint(), QSize(768 * 3, 481 * 3));
+    holder.resize(holder.sizeHint());
+    holder.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&holder));
+    expectPopupWarnings();
+    QTest::mouseClick(w, Qt::LeftButton, {}, centre(node("bkg_popup").hitRect) * 3);
+    auto* popup = w->findChild<BkgPopup*>();
+    QVERIFY(popup && popup->isVisible());
+    QCOMPARE(popup->size(), QSize(popup->art().w * 3, popup->art().h * 3));
+
+    w->ratio = 1.5;
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");  // the new size hint
+    sendRatioChange(*w);
+    QCOMPARE(w->sizeHint(), QSize(768 * 2, 962));
+    QCOMPARE(holder.sizeHint(), QSize(768 * 2, 962));
+    QVERIFY(popup->isVisible());
+    QCOMPARE(popup->size(), QSize(popup->art().w * 2, popup->art().h * 2));
+    popup->close();
+
+    w->resize(w->sizeHint());
+    const QImage scr = w->renderRgbForTest();
+    QImage shown(768 * 3, 481 * 3, QImage::Format_RGB32);
+    shown.setDevicePixelRatio(1.5);
+    shown.fill(Qt::white);
+    w->render(&shown);
+    shown.setDevicePixelRatio(1.0);
+    for (int y = 0; y < shown.height(); ++y)
+        for (int x = 0; x < shown.width(); ++x)
+            if (shown.pixel(x, y) != scr.pixel(x / 3, y / 3))
+                QFAIL(qPrintable(QStringLiteral("device pixel (%1,%2)").arg(x).arg(y)));
 }
 
 std::unique_ptr<QObject> makeToasterScreenTests() { return std::make_unique<TestToasterScreen>(); }

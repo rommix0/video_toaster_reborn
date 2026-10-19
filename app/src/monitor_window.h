@@ -7,7 +7,9 @@
 // Pictures come from the loop thread through sink(): onPictures only copies the frame this
 // window shows under a short mutex and returns (the loop holds its own lock across the call).
 // A 60 Hz timer on the UI thread picks up the latest frame and repaints when there is a new one.
-// The context menu has the zoom and underscan choices.
+// The context menu has the zoom and underscan choices. When the window's device pixel ratio changes
+// (moved to a display with another scaling) it resizes to its new sizeHint(), so the picture stays
+// exactly zoom x zoom device pixels per picture pixel and fills the window.
 #include <QImage>
 #include <QTimer>
 #include <QWidget>
@@ -45,6 +47,7 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent*) override;
+    bool event(QEvent*) override;  // DevicePixelRatioChange
 
 private:
     // The one frame the loop thread leaves for the UI thread.

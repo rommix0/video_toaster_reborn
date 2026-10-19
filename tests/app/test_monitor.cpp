@@ -1,5 +1,7 @@
 #include "monitor_window.h"
 
+#include "test_support.h"
+
 #include <QAction>
 #include <QtTest>
 #include <memory>
@@ -49,6 +51,7 @@ private slots:
     void previewWindowShowsThePreviewPicture();
     void keepsOnlyTheLatestPicture();
     void contextMenuChoices();
+    void resizesOnADevicePixelRatioChange();
 };
 
 void TestMonitor::titles() {
@@ -147,6 +150,29 @@ void TestMonitor::contextMenuChoices() {
     QCOMPARE(w.zoom(), 4);
     w.setZoom(0);
     QCOMPARE(w.zoom(), 1);
+}
+
+// Moved to a display at 150 %: the window takes its new sizeHint (zoom 3 = 1280 x 864 logical pixels
+// there), and every picture pixel is still exactly 3 x 3 device pixels.
+void TestMonitor::resizesOnADevicePixelRatioChange() {
+    apptest::WithRatio<MonitorWindow> w(MonitorWindow::Kind::Program);
+    w.setZoom(3);
+    const vt::Frame f = checker();
+    w.sink().onPictures(0, f, flat(kA));
+    w.poll();
+    QCOMPARE(w.size(), QSize(1920, 1296));
+    w.ratio = 1.5;
+    apptest::sendRatioChange(w);
+    QCOMPARE(w.sizeHint(), QSize(1280, 864));
+    QCOMPARE(w.size(), QSize(1280, 864));
+
+    QImage shown(1920, 1296, QImage::Format_RGB32);
+    shown.setDevicePixelRatio(1.5);
+    shown.fill(Qt::white);
+    w.render(&shown);
+    shown.setDevicePixelRatio(1.0);
+    const QString bad = firstMismatch(shown, f, vt::kVisibleArea, 3);
+    QVERIFY2(bad.isEmpty(), qPrintable(bad));
 }
 
 std::unique_ptr<QObject> makeMonitorTests() { return std::make_unique<TestMonitor>(); }

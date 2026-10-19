@@ -134,6 +134,7 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
     windows->addAction(mixer_->toggleViewAction());
     zoomGroup_ = new QActionGroup(this);
     connect(window_->zoomMenu(), &QMenu::aboutToShow, this, &AppController::fillZoomMenu);
+    window_->installEventFilter(this);
 
     auto* logWindow = new QDialog(window_.get());
     logWindow->setWindowTitle(tr("Log"));
@@ -270,6 +271,13 @@ void AppController::showDataMessage(const QString& why) {
     window_->setSwitcherWidget(page);
     screen_ = nullptr;
     view_ = nullptr;
+}
+
+bool AppController::eventFilter(QObject* watched, QEvent* e) {
+    // Queued: the window's widgets get the event too, and the layout must see their new size hints.
+    if (watched == window_.get() && e->type() == QEvent::DevicePixelRatioChange)
+        QMetaObject::invokeMethod(this, [this] { if (!shutDown_) applyScreenZoom(); }, Qt::QueuedConnection);
+    return QObject::eventFilter(watched, e);
 }
 
 // ---- actions ----

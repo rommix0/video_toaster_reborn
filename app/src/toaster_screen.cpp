@@ -436,6 +436,11 @@ void ToasterScreen::wheelEvent(QWheelEvent* e) {
 }
 
 bool ToasterScreen::event(QEvent* e) {
+    if (e->type() == QEvent::DevicePixelRatioChange) {
+        rescaleAll();
+        updateGeometry();
+        if (bkgPopup_ && bkgPopup_->isVisible()) openBkgPopup();
+    }
     if (e->type() != QEvent::ToolTip) return QWidget::event(e);
     const auto* help = static_cast<QHelpEvent*>(e);
     if (const int i = project_.indexAt(toScreenPixel(help->pos())); i >= 0) {

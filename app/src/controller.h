@@ -54,6 +54,8 @@ namespace vt::media { class AudioOutput; class ProgramLoop; class Recorder; }
 // - The Switcher screen's zoom is settings.screenZoom, or with 0 the largest that fits the main
 //   window's display beside the mixer dock (defaultZoom); View -> Zoom offers Fit and 1x up to that
 //   fit (or the current zoom, if larger) and applies the choice at once, resizing the window to it.
+//   When the main window's device pixel ratio changes (another display), the zoom is applied again
+//   (with Fit, picked anew for that display) and the window resized to it.
 // - Toaster data root: while settings.toasterRoot is not valid (or its art does not load) the
 //   Switcher tab shows "Toaster data not found at <root>" with a button opening Settings on the
 //   Toaster data page; a valid root chosen there builds the panel at once.
@@ -109,6 +111,8 @@ public:
     void setBackground(vt::BkgColour) override;
     void loadCrouton(int index, bool run) override;
     void notImplemented(const QString& what) override;
+
+    bool eventFilter(QObject*, QEvent*) override;  // the main window's DevicePixelRatioChange
 
 signals:
     void finished();

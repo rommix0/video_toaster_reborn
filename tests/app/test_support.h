@@ -1,7 +1,10 @@
 #pragma once
 // Shared by the app's Qt tests: the original Switcher art and font from the Toaster data root, and
 // a SwitcherActions fake.
+#include <QCoreApplication>
+#include <QEvent>
 #include <QFile>
+#include <QWidget>
 #include <QStringList>
 #include <cstdlib>
 
@@ -41,6 +44,31 @@ inline const char* busName(vt::Bus b) { return b == vt::Bus::Main ? "Main" : b =
 inline const char* sourceName(vt::Source s) {
     static const char* const n[] = {"In1", "In2", "In3", "In4", "DV1", "DV2", "Bkg"};
     return n[int(s)];
+}
+
+// A widget whose device pixel ratio the test sets, standing in for a move to a display with another
+// scaling: devicePixelRatioF() reports `ratio` (the test then sends QEvent::DevicePixelRatioChange).
+template <class W>
+class WithRatio : public W {
+public:
+    using W::W;
+    double ratio = 1.0;
+
+protected:
+    int metric(QPaintDevice::PaintDeviceMetric m) const override {
+        switch (m) {
+        case QPaintDevice::PdmDevicePixelRatio: return int(ratio);
+        case QPaintDevice::PdmDevicePixelRatioScaled: return int(ratio * QPaintDevice::devicePixelRatioFScale());
+        case QPaintDevice::PdmDevicePixelRatioF_EncodedA:
+        case QPaintDevice::PdmDevicePixelRatioF_EncodedB: return QPaintDevice::encodeMetricF(m, ratio);
+        default: return W::metric(m);
+        }
+    }
+};
+
+inline void sendRatioChange(QWidget& w) {
+    QEvent e(QEvent::DevicePixelRatioChange);
+    QCoreApplication::sendEvent(&w, &e);
 }
 
 // Records every call as one readable line.
