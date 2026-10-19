@@ -1,4 +1,5 @@
 add_library(vt_media STATIC
+    src/audio_convert.cpp
     src/ffmpeg.cpp
     src/geometry.cpp
     src/time.cpp
