@@ -80,15 +80,22 @@ if(NOT rc EQUAL 0)
     message(FATAL_ERROR "vt_show --list-devices failed (${rc}): ${so}${se}")
 endif()
 
-# 3. Bad arguments fail with a message.
-foreach(bad "--in1;bogus:x;--out;${WORK_DIR}/bad.mkv"
-            "--in1;file:${FIXTURES}/f30.mkv;--effect;${VT_DATA_ROOT}/no/such/effect;--out;${WORK_DIR}/bad.mkv")
-    execute_process(COMMAND "${VT_SHOW}" ${bad}
+# 3. Bad arguments fail with the right exit code and reason (--seconds is given so that each case
+#    reaches the check it is about): a bad spec is a usage error (2), an unloadable effect a
+#    runtime failure (1).
+function(expect_failure want_rc want_text)
+    execute_process(COMMAND "${VT_SHOW}" ${ARGN}
         RESULT_VARIABLE rc OUTPUT_VARIABLE so ERROR_VARIABLE se)
-    if(rc EQUAL 0)
-        message(FATAL_ERROR "vt_show accepted: ${bad}")
+    if(NOT rc EQUAL want_rc)
+        message(FATAL_ERROR "vt_show ${ARGN}: exit code ${rc}, expected ${want_rc}: ${so}${se}")
     endif()
-    if("${so}${se}" STREQUAL "")
-        message(FATAL_ERROR "vt_show gave no reason for: ${bad}")
+    string(FIND "${so}${se}" "${want_text}" at)
+    if(at EQUAL -1)
+        message(FATAL_ERROR "vt_show ${ARGN}: expected '${want_text}' in: ${so}${se}")
     endif()
-endforeach()
+endfunction()
+
+expect_failure(2 "is not file:<path>"
+    --in1 bogus:x --seconds 1 --out "${WORK_DIR}/bad.mkv")
+expect_failure(1 "cannot load effect"
+    --in1 "file:${FIXTURES}/f30.mkv" --effect "${VT_DATA_ROOT}/no/such/effect" --seconds 1 --out "${WORK_DIR}/bad.mkv")
