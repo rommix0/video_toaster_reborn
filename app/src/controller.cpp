@@ -584,6 +584,8 @@ void AppController::shutdown() {
     if (shutDown_) return;
     shutDown_ = true;
     timer_.stop();
+    QCoreApplication::instance()->removeEventFilter(this);
+    window_->removeEventFilter(this);
     if (settingsDialog_) settingsDialog_->reject();
     // 1. The recording, finished and playable.
     loop_->removeSink(recorder_.get());
