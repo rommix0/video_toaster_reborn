@@ -27,6 +27,8 @@ void setLogSink(std::function<void(std::string_view)> s) {
     sink() = std::move(s);
 }
 
+void logWarning(std::string_view message) { detail::warn(message); }
+
 namespace detail {
 
 void warn(std::string_view message) {

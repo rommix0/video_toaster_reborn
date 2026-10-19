@@ -32,3 +32,5 @@ add_test(NAME vt_render_cli COMMAND ${CMAKE_COMMAND}
     -DVT_DATA_ROOT=${CMAKE_SOURCE_DIR}/..
     -DWORK_DIR=${CMAKE_BINARY_DIR}/vt_render_cli_work
     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_cli.cmake)
+
+add_subdirectory(media)
