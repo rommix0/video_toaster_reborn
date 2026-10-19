@@ -4,10 +4,11 @@ add_executable(vt_media_tests
     test_input.cpp
     test_mixer.cpp
     test_program_loop.cpp
+    test_recorder.cpp
     test_time_geometry.cpp
     test_video_convert.cpp
 )
-target_link_libraries(vt_media_tests PRIVATE vt_media catch2_amalgamated)
+target_link_libraries(vt_media_tests PRIVATE vt_media_testable catch2_amalgamated)
 target_compile_definitions(vt_media_tests PRIVATE
     VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."
     VT_MEDIA_FIXTURES="${CMAKE_BINARY_DIR}/media_fixtures")
