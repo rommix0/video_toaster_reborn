@@ -82,7 +82,7 @@ endif()
 
 # 3. Bad arguments fail with the right exit code and reason (--seconds is given so that each case
 #    reaches the check it is about): a bad spec is a usage error (2), an unloadable effect a
-#    runtime failure (1).
+#    runtime failure (1). Case 4 below uses the same check.
 function(expect_failure want_rc want_text)
     execute_process(COMMAND "${VT_SHOW}" ${ARGN}
         RESULT_VARIABLE rc OUTPUT_VARIABLE so ERROR_VARIABLE se)
@@ -99,3 +99,12 @@ expect_failure(2 "is not file:<path>"
     --in1 bogus:x --seconds 1 --out "${WORK_DIR}/bad.mkv")
 expect_failure(1 "cannot load effect"
     --in1 "file:${FIXTURES}/f30.mkv" --effect "${VT_DATA_ROOT}/no/such/effect" --seconds 1 --out "${WORK_DIR}/bad.mkv")
+
+# 4. An input that fails offline (a file that is not media): the show is still written, the
+#    input is named, and the exit code is 3.
+file(WRITE "${WORK_DIR}/not_media.mkv" "This is a text file, not a Matroska file.\n")
+expect_failure(3 "in2 failed"
+    --in1 "file:${FIXTURES}/f30.mkv" --in2 "file:${WORK_DIR}/not_media.mkv" --seconds 0.5 --out "${WORK_DIR}/partial.mkv")
+if(NOT EXISTS "${WORK_DIR}/partial.mkv")
+    message(FATAL_ERROR "vt_show wrote no file when an input failed")
+endif()

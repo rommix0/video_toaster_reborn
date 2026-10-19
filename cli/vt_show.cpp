@@ -50,7 +50,11 @@ void usage(std::ostream& o) {
          "the format to h264 (MKV). --auto-at runs an Auto transition and --take-at a Take at the\n"
          "given second of the show. Offline needs --seconds; the file holds exactly\n"
          "round(seconds x 60000/1001) frames and none are dropped. --realtime runs against the clock\n"
-         "until --seconds or Ctrl+C, and may drop frames if the encoder falls behind.\n";
+         "until --seconds or Ctrl+C (or a recording error), and may drop frames if the encoder falls\n"
+         "behind.\n"
+         "\n"
+         "Exit codes: 0 done; 1 the effect, the recording or the run failed; 2 bad arguments;\n"
+         "3 offline, the file was written but an input had failed (black and silent; each is named).\n";
 }
 
 // ---- command line ---------------------------------------------------------------------------
@@ -311,7 +315,9 @@ int run(const std::vector<std::string>& args) {
         size_t next = 0;
         const auto began = std::chrono::steady_clock::now();
         int printed = 0;
+        bool recFailed = false;
         while (!g_stop && loop.stats().ticks < total) {
+            if (!rec.status().error.empty()) { recFailed = true; break; } // nothing more is recorded
             const int64_t ticks = loop.stats().ticks;
             while (next < events.size() && events[next].tick <= ticks) fire(events[next++]);
             const int elapsed = int(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - began).count());
@@ -320,7 +326,7 @@ int run(const std::vector<std::string>& args) {
         }
         loop.stop();
         rec.stop();
-        std::printf("%s\n", g_stop ? "stopped" : "done");
+        std::printf("%s\n", recFailed || g_stop ? "stopped" : "done");
         printStatus(loop, cfg.inputs, rec, printed);
     }
     rec.stop();   // offline, or again after an error (no-op)
@@ -332,6 +338,17 @@ int run(const std::vector<std::string>& args) {
         return 1;
     }
     std::printf("wrote %lld frames to %s (%lld dropped)\n", (long long)rs.framesWritten, o.out.c_str(), (long long)rs.framesDropped);
+    if (!o.realtime) {
+        // Offline a failed input is black and silent in the file: say which, and exit 3.
+        bool inputFailed = false;
+        for (int i = 0; i < 4; ++i) {
+            const InputStatus s = loop.inputStatus(i);
+            if (cfg.inputs[size_t(i)].kind == InputKind::None || s.state != InputStatus::State::Error) continue;
+            std::cerr << "vt_show: warning: in" << i + 1 << " failed: " << s.message << "\n";
+            inputFailed = true;
+        }
+        if (inputFailed) return 3;
+    }
     return 0;
 }
 
