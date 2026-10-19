@@ -705,3 +705,12 @@ The Qt app will:
 - read `mixer().meters()` and `inputStatus()` for the mixer dock.
 
 Plan 3 must also decide how to display 10:11 pixels at whole-number zoom, since square-pixel display makes 4:3 look 10% too wide. That is an owner question for Plan 3.
+
+Interfaces and constraints Plan 3 inherits from Plan 2 (final review):
+- **Preview monitor.** `ProgramSink` carries only the Program picture. The Preview monitor needs the Preview source for each tick, so Plan 3 must add an interface for it, for example a sink variant that also receives the tick's `SourceFrames`, or a Preview render on the loop thread.
+- **Audio output drift.** The loop paces ticks on the steady clock; the sound card runs on its own clock. The audio output sink must absorb the drift between them (an elastic buffer that drops or repeats a few samples, or resamples slightly). Otherwise it will underrun or grow without bound over a long show.
+- **FFmpeg DLLs.** The Qt executable links `vt_media`, so it must call `vt_copy_ffmpeg_dlls(<target>)` like every other executable that does.
+- **Log sink.** `vt::setLogSink`'s callback runs under a global lock, from decoder, capture and recorder threads as well as the loop thread. The UI's log sink must not block on the UI thread (no blocking invoke); it should queue the line and return.
+- **Input status.** `inputStatus()` reads Idle until the first run opens the inputs (they open on the first tick after `start()`); poll it after starting. Every `start()` reopens the inputs on a fresh clock.
+- **Meters.** `mixer().meters()` returns the peak and the RMS since the previous call, so exactly one reader (the mixer dock's timer) should call it.
+- **Stopping a recording.** `Recorder::stop()` blocks while the queue drains (up to 120 frames), so call it off the UI thread or accept a short wait.
