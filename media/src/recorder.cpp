@@ -63,10 +63,14 @@ struct Recorder::Impl {
     RecorderSettings settings;
     vt::Rect rect{};
 
+    std::mutex startMu;                 // one start() at a time
+
     // Shared between the loop thread, stop() and the encoder thread.
     std::mutex mu;
     std::condition_variable cvWork;     // the encoder waits: an entry is queued, or stopping
     std::condition_variable cvSpace;    // a blocked producer waits: room in the queue, or not accepting
+    std::condition_variable cvStopped;  // start() and other stop() calls wait: the joining stop() is done
+    bool joining = false;               // a stop() has taken the thread and is joining it
     std::deque<std::unique_ptr<Entry>> queue;
     std::vector<std::unique_ptr<Entry>> freeList;
     int queuedVideo = 0;                // queue entries that carry a picture
@@ -418,11 +422,17 @@ Recorder::~Recorder() { stop(); }
 
 bool Recorder::start(const RecorderSettings& s, std::string* error) {
     Impl& m = *impl_;
+    std::lock_guard serial(m.startMu);
     std::string err;
+    bool failedRecording = false;
     {
-        std::lock_guard lk(m.mu);
-        if (m.thread.joinable()) err = "already recording";
+        std::unique_lock lk(m.mu);
+        m.cvStopped.wait(lk, [&] { return !m.joining; });
+        // A recording whose encoder failed is over: finish it (trailer, close) and start anew.
+        failedRecording = m.thread.joinable() && !m.status.error.empty();
+        if (m.thread.joinable() && !failedRecording) err = "already recording";
     }
+    if (failedRecording) stop();
     if (err.empty()) {
         m.headerWritten = m.failed = false;
         m.audioPts = 0;
@@ -455,17 +465,23 @@ bool Recorder::start(const RecorderSettings& s, std::string* error) {
 
 void Recorder::stop() {
     Impl& m = *impl_;
+    std::thread encoder;
     {
-        std::lock_guard lk(m.mu);
+        std::unique_lock lk(m.mu);
+        m.cvStopped.wait(lk, [&] { return !m.joining; }); // another stop() is finishing it
         if (!m.thread.joinable()) return;
         m.accepting = false;
         m.stopping = true;
+        m.joining = true;
         m.cvWork.notify_all();
         m.cvSpace.notify_all();
+        encoder = std::move(m.thread);
     }
-    m.thread.join();
+    encoder.join();
     std::lock_guard lk(m.mu);
     m.status.recording = false;
+    m.joining = false;
+    m.cvStopped.notify_all();
 }
 
 RecorderStatus Recorder::status() const {

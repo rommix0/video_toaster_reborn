@@ -438,6 +438,58 @@ TEST_CASE("stop returns a blocked producer promptly", "[recorder]") {
     fs::remove(path);
 }
 
+TEST_CASE("stop from several threads at once", "[recorder]") {
+    initMedia();
+    for (int round = 0; round < 5; ++round) {
+        INFO("round " << round);
+        const fs::path path = tempFile("stoppers.mkv");
+        Recorder rec;
+        std::string err;
+        REQUIRE(rec.start(settingsFor(path, RecordFormat::Ffv1Mkv), &err));
+        rec.setEncoderPausedForTest(true); // a queue to drain while they stop
+        feed(rec, 0, 30);
+        rec.setEncoderPausedForTest(false);
+        std::vector<std::future<void>> stoppers;
+        for (int i = 0; i < 3; ++i) stoppers.push_back(std::async(std::launch::async, [&] { rec.stop(); }));
+        for (auto& f : stoppers) REQUIRE_NOTHROW(f.get());
+        const RecorderStatus st = rec.status();
+        CHECK_FALSE(st.recording);
+        CHECK(st.error.empty());
+        CHECK(st.framesWritten == 30);
+        CHECK(probe(path).videoFrames == 30);
+        fs::remove(path);
+    }
+}
+
+TEST_CASE("start after an encoder failure starts a new recording", "[recorder]") {
+    initMedia();
+    const fs::path failing = tempFile("failed_first.mkv"), next = tempFile("after_failure.mkv");
+    RecorderSettings s = settingsFor(failing, RecordFormat::Ffv1Mkv);
+    s.blockWhenFull = true;
+    s.failAfterBytesForTest = 400000;
+    Recorder rec;
+    std::string err;
+    REQUIRE(rec.start(s, &err));
+    for (int64_t t = 0; t < 400 && rec.status().error.empty(); ++t) feed(rec, t, 1);
+    REQUIRE(eventually([&] { return !rec.status().error.empty(); }));
+    const int64_t written = rec.status().framesWritten;
+
+    REQUIRE(rec.start(settingsFor(next, RecordFormat::Ffv1Mkv), &err));
+    CHECK(rec.status().recording);
+    CHECK(rec.status().error.empty());
+    std::string again;
+    CHECK_FALSE(rec.start(settingsFor(tempFile("third.mkv"), RecordFormat::Ffv1Mkv), &again));
+    CHECK(again == "already recording");
+    feed(rec, 0, 30);
+    rec.stop();
+    CHECK(rec.status().error.empty());
+    CHECK(rec.status().framesWritten == 30);
+    CHECK(probe(next).videoFrames == 30);
+    CHECK(probe(failing).videoFrames == written); // the failed one got its trailer
+    fs::remove(failing);
+    fs::remove(next);
+}
+
 TEST_CASE("every format encodes well ahead of real time", "[recorder]") {
     // 59.94 fps is real time; the encoders must keep ahead with room to spare. They are
     // threaded: on one thread ProRes made ~48 fps and FFV1 ~99 fps at 720x480 (Ryzen 5600X),

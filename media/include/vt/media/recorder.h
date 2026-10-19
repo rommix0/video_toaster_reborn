@@ -52,11 +52,15 @@ public:
     Recorder& operator=(const Recorder&) = delete;
 
     // Opens the file and the encoders and starts the encoder thread. On failure returns false
-    // with the reason in *error (when given) and in status().error.
+    // with the reason in *error (when given) and in status().error. While a recording runs it
+    // returns false ("already recording"), unless that recording failed (status().error set):
+    // then it is finished first, as by stop(), and the new one starts.
     bool start(const RecorderSettings&, std::string* error);
-    // Drains the queue, flushes the encoders, writes the trailer and closes the file. Safe to
-    // call at any time, from any thread but the loop thread's onProgram; a producer blocked in
-    // onProgram returns at once. A no-op when not started.
+    // Drains the queue, flushes the encoders, writes the trailer and closes the file. It blocks
+    // until everything queued is encoded (up to 120 frames: about a second for H.264, more on a
+    // slow machine); a producer blocked in onProgram returns at once. Safe to call at any time,
+    // from any thread but the loop thread's onProgram, also from several at once (the others
+    // return once it has stopped). A no-op when not started.
     void stop();
     RecorderStatus status() const;
     // The loop thread, once per tick. The picture and audio are copied before it returns.
