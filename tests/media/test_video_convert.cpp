@@ -176,3 +176,21 @@ TEST_CASE("steady state does not reallocate") {
     c.convert(*g, out);
     CHECK(c.contextForTest() != nullptr);
 }
+
+TEST_CASE("same-size sources skip the scaling filter only without chroma subsampling") {
+    // Ruling 7: nearest-neighbour would upsample 4:2:0 chroma into blocky colour edges.
+    auto flagsFor = [](AVPixelFormat fmt) {
+        FramePtr f = makeFrame(fmt, 704, 480);
+        f->sample_aspect_ratio = {10, 11}; // fills inputRect at its own size
+        VideoConverter c;
+        vt::Frame out;
+        c.convert(*f, out);
+        REQUIRE(c.contextForTest() != nullptr);
+        return c.contextForTest()->flags;
+    };
+    CHECK(flagsFor(AV_PIX_FMT_BGR0) == SWS_POINT);
+    CHECK(flagsFor(AV_PIX_FMT_YUV444P) == SWS_POINT);
+    const unsigned bicubic = SWS_BICUBIC | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT;
+    CHECK(flagsFor(AV_PIX_FMT_YUV420P) == bicubic);
+    CHECK(flagsFor(AV_PIX_FMT_NV12) == bicubic);
+}

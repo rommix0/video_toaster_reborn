@@ -89,11 +89,15 @@ void VideoConverter::convert(const AVFrame& src, vt::Frame& out) {
         failed_ = false;
         ctx_.reset(sws_alloc_context());
         if (!ctx_ || !srcView_ || !dstView_) failed_ = true;
-        // Same size: only colour changes, so no resampling filter is wanted.
-        const bool sameSize = rect.w == src.width && rect.h == src.height;
-        ctx_->flags = sameSize ? SWS_POINT : (SWS_BICUBIC | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT);
         const AVPixFmtDescriptor* d = av_pix_fmt_desc_get(AVPixelFormat(src.format));
         hasAlpha_ = d && (d->flags & AV_PIX_FMT_FLAG_ALPHA);
+        // Same size without chroma subsampling (RGB, 4:4:4): only colour changes, so no
+        // resampling filter is wanted. Subsampled chroma still has to be upsampled smoothly.
+        const bool sameSize = rect.w == src.width && rect.h == src.height;
+        const bool fullChroma = d && d->log2_chroma_w == 0 && d->log2_chroma_h == 0;
+        if (ctx_)
+            ctx_->flags = sameSize && fullChroma ? SWS_POINT
+                                                 : (SWS_BICUBIC | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT);
     }
     if (rect.w <= 0 || rect.h <= 0) return;
     if (failed_) { blackRect(out, rect); return; }
