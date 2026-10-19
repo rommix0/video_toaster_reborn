@@ -5,7 +5,7 @@ add_library(vt_app_lib STATIC
     src/main_window.cpp
 )
 target_include_directories(vt_app_lib PUBLIC src)
-target_link_libraries(vt_app_lib PUBLIC Qt6::Widgets vt_media)
+target_link_libraries(vt_app_lib PUBLIC Qt6::Widgets vt_media vt_assets)
 if(MSVC)
     target_compile_options(vt_app_lib PRIVATE /W4 /utf-8)
     target_compile_options(vt_app_lib INTERFACE /utf-8)

@@ -16,6 +16,8 @@ JSON-lines files to vtoast_reborn/tests/golden/:
   chromafx.jsonl  ChromaFX LUTs from the croutons and the bank files
   chromafx_rows.jsonl  ChromaFX croutons: the 480 colour-map rows the Toaster builds
                   (tools/chromafx_rows_ref.py), one CRC per row of 96 RGBA bytes
+  hunk.jsonl      Amiga hunk executables and fonts laid out by tools/ref/hunk.py: hunk
+                  count, bases, sizes, kinds (0 CODE, 1 DATA, 2 BSS) and the flat image CRC
 
     python -P -E vtoast_reborn/tools/make_golden.py --only chromafx_rows
 
@@ -37,12 +39,18 @@ import toaster_fx_convert as C
 import chromafx_to_cube as X
 sys.path.insert(0, HERE)
 import chromafx_rows_ref as CR
+sys.path.insert(0, os.path.join(HERE, 'ref'))
+import hunk as H
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
 TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
 # Tag 0x55 is decoded through switcher.main's table at 0xe660c (Ruling 8):
 SPEED_BY_TAG55 = ('medium', 'fast', 'variable', 'slow')
 HUNK_MAGIC = b'\0\0\x03\xf3'
+HUNK_FILES = ('4.2/Programs/switcher.main', '4.2/Programs/edit',
+              '4.2/Programs/System_Support/Fonts/CGInterface/14.4C',
+              '4.2/Programs/System_Support/Fonts/InterfaceLG/11.8C')
+HUNK_KINDS = {'CODE': 0, 'DATA': 1, 'BSS': 2}
 
 
 def crc(b):
@@ -146,12 +154,20 @@ def lut_record(path):
     return None
 
 
+def hunk_record(rel):
+    img = H.load(os.path.join(ROOT, rel))
+    assert all(t in HUNK_KINDS for t, _, _ in img.hunks), rel
+    return dict(file=rel, n_hunks=len(img.hunks), bases=[b for _, b, _ in img.hunks],
+                sizes=[s for _, _, s in img.hunks], kinds=[HUNK_KINDS[t] for t, _, _ in img.hunks],
+                flat_crc32=crc(bytes(img.mem)))
+
+
 def main():
     only = None
     if '--only' in sys.argv:
         only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
     os.makedirs(OUT, exist_ok=True)
-    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows')}
+    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
             if r['status'] == 'converted']
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
@@ -229,6 +245,8 @@ def main():
             for name, t in X.from_bank(os.path.join(ROOT, bank)):
                 chroma(f'{bank} [{name}]', name, t, {})
                 nb += 1
+
+    files['hunk'] = [hunk_record(f) for f in HUNK_FILES]
 
     for name, recs in files.items():
         if only is not None and name not in only:

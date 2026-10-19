@@ -34,4 +34,5 @@ add_test(NAME vt_render_cli COMMAND ${CMAKE_COMMAND}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_cli.cmake)
 
 add_subdirectory(media)
+add_subdirectory(assets)
 add_subdirectory(app)
