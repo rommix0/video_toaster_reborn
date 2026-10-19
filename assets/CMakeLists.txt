@@ -1,5 +1,6 @@
 # vt_assets: Qt-free decoders for the original Toaster UI art, fonts and crouton icons.
 add_library(vt_assets STATIC
+    src/font.cpp
     src/hunk.cpp
     src/panel.cpp
 )

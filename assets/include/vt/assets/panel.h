@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "vt/assets/font.h"
 #include "vt/assets/hunk.h"
 #include "vt/assets/indexed.h"
 #include "vt/raster.h"
@@ -41,6 +42,7 @@ struct PanelLayout {
     std::vector<IndexedImage> tbarImages;  // 86, index = position / 6
     vt::Rect tbarRect;
     std::vector<PanelText> texts;
+    std::vector<std::string> bkgNames;     // the nine BKG pop-up strings, padded as stored ("Black  " ... "Snow   ")
     int clearColour = 1, clearMarginX = 8;
 };
 
@@ -52,7 +54,11 @@ PanelLayout loadPanel(const HunkImage& switcherMain);
 IndexedImage selectedLook(const PanelNode&, int state);
 
 // Draws the default (all nodes in state 0, none selected, hidden nodes skipped) Switcher screen as
-// palette indices, screenW x screenH. Without the run-time texts: they need the colour font (Task 4).
+// palette indices, screenW x screenH, without the run-time texts.
 IndexedImage renderDefaultScreen(const PanelLayout&);
+
+// The same with the visible run-time texts (default BKG name, key level) drawn in cgInterface14 (the
+// CGInterface 14 colour font), JAM2 with background pen 0, as render_layout.py's texts=True render.
+IndexedImage renderDefaultScreen(const PanelLayout&, const ColorFont& cgInterface14);
 
 }  // namespace vt::assets

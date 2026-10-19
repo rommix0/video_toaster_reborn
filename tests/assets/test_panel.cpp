@@ -1,3 +1,4 @@
+#include <sstream>
 #include <stdexcept>
 
 #include "catch_amalgamated.hpp"
@@ -129,6 +130,31 @@ TEST_CASE("default screen matches render_layout.py") {
     REQUIRE(scr.h == 481);
     REQUIRE(scr.px.size() == size_t(768) * 481);
     CHECK(vt::crc32(scr.px) == uint32_t(num(panelGolden().panel, "default_screen_crc32")));
+}
+
+TEST_CASE("BKG pop-up names are read from the string table") {
+    const auto& p = panel();
+    std::vector<std::string> want;
+    std::istringstream in(str(panelGolden().panel, "bkg_names"));
+    for (std::string name; std::getline(in, name, '|');) want.push_back(name);
+    REQUIRE(want.size() == 9);
+    CHECK(p.bkgNames == want);
+    CHECK(p.bkgNames[0] == "Black  ");
+    CHECK(p.bkgNames[8] == "Snow   ");
+    CHECK(p.texts[0].text == p.bkgNames[0]);
+}
+
+TEST_CASE("default screen with run-time texts matches render_layout.py") {
+    const auto& p = panel();
+    const auto font = vt::assets::loadColorFont(
+        vt::assets::loadHunks(readFile(dataRoot() / "4.2/Programs/System_Support/Fonts/CGInterface/14.4C")));
+    const auto scr = vt::assets::renderDefaultScreen(p, font);
+    REQUIRE(scr.w == 768);
+    REQUIRE(scr.h == 481);
+    CHECK(vt::crc32(scr.px) == uint32_t(num(panelGolden().panel, "default_screen_texts_crc32")));
+    const auto plain = vt::assets::renderDefaultScreen(p);
+    CHECK(vt::crc32(plain.px) == uint32_t(num(panelGolden().panel, "default_screen_crc32")));
+    CHECK(scr.px != plain.px);
 }
 
 TEST_CASE("selected look rotates colours inside the mask") {

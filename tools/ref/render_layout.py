@@ -19,6 +19,7 @@ Text drawn at run time (BKG pop-up, speed pop-up, key level) uses the real CGInt
 import json, os, struct, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hunk
+from amiga_font import load_font, draw_text
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MANUAL = None
@@ -258,53 +259,6 @@ def extract(path=''):
     return lay
 
 
-# ---------------------------------------------------------------- colour font
-def load_font(path=None):
-    h = hunk.load(path or FONT)
-    m = h.mem
-    b = h.hunks[0][1]
-    u16 = lambda a: struct.unpack('>H', m[a:a + 2])[0]
-    u32 = lambda a: struct.unpack('>I', m[a:a + 4])[0]
-    s16 = lambda a: struct.unpack('>h', m[a:a + 2])[0]
-    tf = b + 4 + 54                                   # moveq/rts + DiskFontHeader
-    f = dict(ysize=u16(tf + 20), style=m[tf + 22], xsize=u16(tf + 24), baseline=u16(tf + 26),
-             lo=m[tf + 32], hi=m[tf + 33], modulo=u16(tf + 38), charloc=u32(tf + 40),
-             charspace=u32(tf + 44), charkern=u32(tf + 48), m=m)
-    f['depth'] = m[tf + 54] if f['style'] & 0x40 else 1
-    f['planes'] = [u32(tf + 64 + 4 * i) for i in range(f['depth'])] if f['style'] & 0x40 else [u32(tf + 34)]
-    n = f['hi'] - f['lo'] + 2
-    f['loc'] = [(u16(f['charloc'] + 4 * i), u16(f['charloc'] + 4 * i + 2)) for i in range(n)]
-    f['space'] = [s16(f['charspace'] + 2 * i) for i in range(n)] if f['charspace'] else None
-    f['kern'] = [s16(f['charkern'] + 2 * i) for i in range(n)] if f['charkern'] else None
-    return f
-
-
-def draw_text(px, f, x, baseline, s, bgpen=0):
-    """Text() of a ColorTextFont in JAM2: colour-0 glyph pixels become bgpen."""
-    top = baseline - f['baseline']
-    for ch in s:
-        i = ord(ch) - f['lo']
-        if not 0 <= i <= f['hi'] - f['lo']:
-            i = f['hi'] - f['lo'] + 1
-        off, w = f['loc'][i]
-        kern = f['kern'][i] if f['kern'] else 0
-        adv = f['space'][i] if f['space'] else f['xsize']
-        for yy in range(f['ysize']):
-            for xx in range(max(w, adv - kern)):
-                c = bgpen
-                if xx < w:
-                    c = 0
-                    for p, pb in enumerate(f['planes']):
-                        bx = off + xx
-                        if f['m'][pb + yy * f['modulo'] + (bx >> 3)] >> (7 - (bx & 7)) & 1:
-                            c |= 1 << p
-                    c = c or bgpen
-                X, Y = x + kern + xx, top + yy
-                if 0 <= Y < len(px) and 0 <= X < len(px[0]):
-                    px[Y][X] = c
-        x += adv
-
-
 # ---------------------------------------------------------------- render
 def render_px(lay, texts=True):
     im = Img()
@@ -323,7 +277,7 @@ def render_px(lay, texts=True):
             for cc, v in enumerate(line):
                 if 0 <= x + cc < W and 0 <= y + r < H:
                     px[y + r][x + cc] = v
-    f = load_font() if texts else None
+    f = load_font(FONT) if texts else None
     for t in lay['texts'] if texts else []:
         if t.get('hidden_default'):
             continue

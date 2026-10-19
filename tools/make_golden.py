@@ -22,7 +22,10 @@ JSON-lines files to vtoast_reborn/tests/golden/:
                   one "node" line per panel node (rects, method, list index, state / selected-look /
                   mask CRCs), one "text" line per run-time text, then one "panel" line (T-bar image
                   CRCs, palettes as 12-bit words, screen clear, CRC of the default screen drawn
-                  without the run-time texts)
+                  without and with the run-time texts, the nine BKG pop-up strings joined by "|")
+  fonts.jsonl     the Amiga colour fonts of the interface (tools/ref/amiga_font.py): one "font" line
+                  per size file (metrics, colours as 12-bit words, strike CRC, CRC of the glyph
+                  width / advance / kern tables), "render" lines (JAM2 text drawn at (0, baseline))
 
     python -P -E vtoast_reborn/tools/make_golden.py --only chromafx_rows
 
@@ -31,7 +34,7 @@ writes just the named file(s) (comma-separated).
 All CRCs are zlib crc32. Index arrays are hashed as uint8, shape (h, w); the one
 9-plane bitmap (Warp To Globe !) is hashed as little-endian uint16 instead.
 """
-import csv, json, os, sys, zlib
+import csv, json, os, struct, sys, zlib
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,6 +50,7 @@ import chromafx_rows_ref as CR
 sys.path.insert(0, os.path.join(HERE, 'ref'))
 import hunk as H
 import render_layout as RL
+import amiga_font as AF
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
 TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
@@ -57,6 +61,11 @@ HUNK_FILES = ('4.2/Programs/switcher.main', '4.2/Programs/edit',
               '4.2/Programs/System_Support/Fonts/CGInterface/14.4C',
               '4.2/Programs/System_Support/Fonts/InterfaceLG/11.8C')
 HUNK_KINDS = {'CODE': 0, 'DATA': 1, 'BSS': 2}
+FONT_DIR = '4.2/Programs/System_Support/Fonts/'
+FONT_FILES = ('CGInterface/14.4C', 'CGInterface/12.4C', 'InterfaceDG/11.8C', 'InterfaceLG/11.8C',
+              'InterfaceTABS/11.8C', 'NewToaster/16.16C', 'TimeCodeDG/11.8C', 'TimeCodeLG/11.8C')
+FONT_TEXTS = {'CGInterface/14.4C': ('128', 'Black')}      # plus FONT_TEXTS_ALL for every font
+FONT_TEXTS_ALL = ('12:34', '\x011')                       # \x01 is below every font's lo: the "not found" glyph
 
 
 def crc(b):
@@ -202,12 +211,36 @@ def panel_records():
                          text=t.get('default', ''), hidden=int(bool(t.get('hidden_default')))))
     scr, clear = lay['screen'], lay['screen']['clear']
     assert clear['x_range'][1] == scr['width'] - clear['x_range'][0]
-    px = RL.render_px(lay, texts=False)          # Ruling 2 (a): the texts come with the font (Task 4)
+    px = RL.render_px(lay, texts=False)          # the text-free screen (renderDefaultScreen(layout))
+    px_texts = RL.render_px(lay, texts=True)     # Ruling 6: with the run-time texts
+    bkg = [im.cstr(im.u32(0x11448a + 4 * i)) for i in range(9)]      # pointer table in switcher.main
+    assert bkg == lay['texts'][0]['strings']
     recs.append(dict(rec='panel', screen=[scr['width'], scr['height']], tbar_crc32=tbar[0], tbar_rect=tbar[1],
                      palette_rgb_mode=[int(c, 16) for c in lay['palette']['rgb_mode']],
                      palette_preview_mode=[int(c, 16) for c in lay['palette']['preview_mode']],
                      clear_colour=clear['colour'], clear_margin_x=clear['x_range'][0],
-                     default_screen_crc32=crc(flat(px))))
+                     default_screen_crc32=crc(flat(px)), default_screen_texts_crc32=crc(flat(px_texts)),
+                     bkg_names='|'.join(bkg)))
+    return recs
+
+
+def font_records():
+    recs = []
+    for name in FONT_FILES:
+        rel = FONT_DIR + name
+        f = AF.load_font(os.path.join(ROOT, rel))
+        n = len(f['loc'])
+        tables = lambda *t: struct.pack('<%dh' % (len(t) * n), *[v for a in t for v in a])
+        recs.append(dict(rec='font', file=rel, ysize=f['ysize'], baseline=f['baseline'], lo=f['lo'], hi=f['hi'],
+                         depth=f['depth'], proportional=int(bool(f['flags'] & 0x20)), colours=f['colours'],
+                         strike_w=f['modulo'] * 8, strike_h=f['ysize'], strike_crc32=crc(AF.strike(f)),
+                         widths_crc32=crc(tables([w for _, w in f['loc']], f['space'], f['kern'])),
+                         offsets_crc32=crc(tables([o for o, _ in f['loc']]))))
+        for text in FONT_TEXTS.get(name, ()) + FONT_TEXTS_ALL:
+            w = AF.text_width(f, text)
+            px = [[0] * w for _ in range(f['ysize'])]
+            AF.draw_text(px, f, 0, f['baseline'], text)
+            recs.append(dict(rec='render', file=rel, text=text, width=w, crc32=crc(bytes(v for r in px for v in r))))
     return recs
 
 
@@ -216,7 +249,7 @@ def main():
     if '--only' in sys.argv:
         only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
     os.makedirs(OUT, exist_ok=True)
-    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel')}
+    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel', 'fonts')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
             if r['status'] == 'converted']
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
@@ -298,6 +331,8 @@ def main():
     files['hunk'] = [hunk_record(f) for f in HUNK_FILES]
     if only is None or 'panel' in only:
         files['panel'] = panel_records()
+    if only is None or 'fonts' in only:
+        files['fonts'] = font_records()
 
     for name, recs in files.items():
         if only is not None and name not in only:

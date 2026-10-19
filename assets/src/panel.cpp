@@ -13,7 +13,8 @@ constexpr uint32_t kA5 = 0x5d5c;                                   // small-data
 constexpr uint32_t kListHeads[9] = {0x158, 0x15c, 0x160, 0x164, 0x16c, 0x170, 0x174, 0x178, 0x17c};
 constexpr uint32_t kExtraNodes[2] = {0x4a15c, 0x4e328};           // speed pop-up, pop-up marker: not on a list
 constexpr uint32_t kPaletteRgb = 0x2bf3a, kPalettePreview = 0x2bf30;
-constexpr uint32_t kBkgStrings = 0x11448a;                         // BKG pop-up string table (0x114432)
+constexpr uint32_t kBkgStrings = 0x11448a;                         // BKG pop-up string pointer table (0x114432)
+constexpr int kBkgCount = 9;
 constexpr uint32_t kKeyLevelIText = 0x641b0;                       // key level IntuiText (0x064188)
 constexpr int kWordsPerColumn[6] = {4, 2, 2, 1, 4, 3};             // per draw method (+0x2c / 4)
 constexpr int kTbarStates = 86;
@@ -190,8 +191,9 @@ PanelLayout loadPanel(const HunkImage& switcherMain) {
 
     // Run-time texts (SCREEN.md section 3).
     const auto& bkg = findNode(l, "bkg_popup", 0x4815e);
+    for (int i = 0; i < kBkgCount; ++i) l.bkgNames.push_back(rd.cstr(rd.u32(kBkgStrings + 4u * uint32_t(i))));
     l.texts.push_back({"bkg_popup_text", bkg.rect.x + 6, bkg.rect.y + 15, true,  // Move(x+6, y+15), 0x114432
-                       rd.cstr(rd.u32(kBkgStrings)), false});
+                       l.bkgNames[0], false});
     const auto& speed = findNode(l, "speed_popup", 0x4a15c);
     l.texts.push_back({"speed_popup_text", speed.rect.x + 24, speed.rect.y + 15, true, "", true});  // 0x0622da
     // PrintIText(rp, IntuiText, 0, 0): LeftEdge/TopEdge are screen positions; the level (0..257,
@@ -239,6 +241,14 @@ IndexedImage renderDefaultScreen(const PanelLayout& l) {
             }
         }
     }
+    return scr;
+}
+
+IndexedImage renderDefaultScreen(const PanelLayout& l, const ColorFont& cgInterface14) {
+    IndexedImage scr = renderDefaultScreen(l);
+    for (const auto& t : l.texts)
+        if (!t.hiddenByDefault)
+            drawText(scr, cgInterface14, t.x, t.baseline ? t.y : t.y + cgInterface14.baseline, t.text, true, 0);
     return scr;
 }
 

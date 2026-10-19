@@ -1,4 +1,5 @@
 add_executable(vt_assets_tests
+    test_font.cpp
     test_hunk.cpp
     test_panel.cpp
 )
