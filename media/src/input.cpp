@@ -169,8 +169,8 @@ int64_t Input::Shared::dropAhead() {
 
 // ---- Input ----
 
-Input::Input(const InputConfig& cfg, const MediaGeometry& geo, SessionClock clock)
-    : s_(std::make_unique<Shared>(cfg, geo, std::move(clock))) {
+Input::Input(const InputConfig& cfg, const MediaGeometry& geo, SessionClock clock, int presentationDelayMs)
+    : s_(std::make_unique<Shared>(cfg, geo, std::move(clock), presentationDelayMs)) {
     switch (cfg.kind) {
     case InputKind::None:
         break; // Idle: no picture, silence

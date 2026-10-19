@@ -1,6 +1,7 @@
 #pragma once
 // What an Input shares with its decode thread. input.cpp owns it and serves the readers;
 // input_demux.cpp runs the thread (open, demux, decode, convert, publish).
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -23,6 +24,8 @@ inline constexpr SessionTime kPtsSlack = 120;   // 0.5 ms of container rounding 
 // How long a Wait::Block read of a live input waits (about 2 ticks): a live source never ends,
 // so the reader takes what has arrived by then.
 inline constexpr std::chrono::milliseconds kLiveBlockWait{35};
+// The least late limit of a live clock mapping (one tick), for very short presentation delays.
+inline constexpr SessionTime kMinLiveLate = 4004;
 
 // Floor division for possibly negative times.
 constexpr int64_t floorDiv(int64_t a, int64_t b) { return a / b - (a % b != 0 && (a < 0) != (b < 0)); }
@@ -41,13 +44,15 @@ std::string describeInput(const InputConfig&);
 std::string liveConfigError(const InputConfig&);
 
 struct Input::Shared {
-    Shared(const InputConfig& c, const MediaGeometry& g, SessionClock k)
+    Shared(const InputConfig& c, const MediaGeometry& g, SessionClock k, int presentationDelayMs)
         : cfg(c), name(describeInput(c)), live(c.kind == InputKind::Device || c.kind == InputKind::Screen),
+          liveLateLimit(std::max<SessionTime>(int64_t(std::max(presentationDelayMs, 0)) * 240 / 2, kMinLiveLate)),
           geo(g), clock(std::move(k)), reader(clock.now()) {}
 
     const InputConfig cfg;
     const std::string name;
     const bool live;              // a capture source: never ends, never waits for the reader
+    const SessionTime liveLateLimit; // half the reader's delay: when a live mapping moves later (live_clock.h)
     const MediaGeometry geo;
     SessionClock clock;
     AudioRing ring;               // written by the thread, read by audioAt (its own lock)

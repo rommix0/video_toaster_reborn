@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "input_internal.h"
+#include "live_clock.h"
 #include "vt/log.h"
 #include "vt/media/video_convert.h"
 
@@ -25,8 +26,8 @@ using Steady = std::chrono::steady_clock;
 using Options = std::map<std::string, std::string>;
 
 constexpr int64_t kResyncSamples = 960;                // Ruling 8: 20 ms of drift before audio jumps to its pts
-constexpr SessionTime kReanchor = 48000;               // 200 ms between a live timestamp and its arrival
-constexpr auto kLiveSilence = std::chrono::seconds(2); // a live source quiet this long is reopened
+constexpr auto kLiveSilence = std::chrono::seconds(2); // a live source quiet this long is reopened...
+constexpr auto kLiveFirst = std::chrono::seconds(5);   // ...or this long after opening, before its first packet
 constexpr int kLivePollMs = 3;                         // nap when no live source has a packet ready
 
 // One decoded stream of an open source.
@@ -44,9 +45,10 @@ struct Source {
     Stream video, audio;
     int64_t startUs = 0;             // file: its first timestamp (AV_TIME_BASE units)
     SessionTime start = 0;           // file: the same in session units; live: 0
-    SessionTime base = 0;            // file: when this pass starts; live: the device clock's offset
-    bool anchored = false;           // live: base has been taken from a packet's arrival
-    Steady::time_point lastPacket{}; // live: when it last delivered
+    SessionTime base = 0;            // file: when this pass starts; live: mapping.base()
+    LiveClock mapping;               // live: device clock -> session clock, shared by its streams
+    bool delivered = false;          // live: a packet has arrived since opening
+    Steady::time_point lastPacket{}; // live: when it last delivered (or opened)
 };
 
 #ifdef VT_MEDIA_TEST_SEAMS
@@ -202,12 +204,17 @@ public:
 
     // Captures from open live sources as fast as they deliver, never waiting for the reader (a
     // full picture queue drops its oldest picture instead). Returns why it stopped: a read error,
-    // or a source that delivered nothing for 2 s; "" when the input is stopping.
+    // or a source that delivered nothing for 2 s (5 s from opening to its first packet); "" when
+    // the input is stopping.
     // Each round takes what a source has ready up to one video packet, so a slow screen grab
     // cannot leave its audio device's packets waiting (their arrival times feed the clock mapping).
     std::string capture(std::vector<Source>& srcs) {
         begin();
-        for (Source& src : srcs) src.lastPacket = Steady::now();
+        for (Source& src : srcs) {
+            src.mapping = LiveClock(s_.liveLateLimit);
+            src.delivered = false;
+            src.lastPacket = Steady::now();
+        }
         for (;;) {
             if (failingForTest(s_)) return "simulated failure";
             bool got = false;
@@ -219,6 +226,7 @@ public:
                     if (err < 0) return err == AVERROR_EOF ? "capture stopped" : averr(err);
                     got = true;
                     video = pkt_->stream_index == src.video.index;
+                    src.delivered = true;
                     src.lastPacket = Steady::now();
                     anchor(src, *pkt_);
                     route(src, *pkt_);
@@ -226,8 +234,10 @@ public:
                 }
             }
             const auto now = Steady::now();
-            for (const Source& src : srcs)
-                if (now - src.lastPacket > kLiveSilence) return "nothing delivered for 2 s";
+            for (const Source& src : srcs) {
+                if (!src.delivered && now - src.lastPacket > kLiveFirst) return "nothing delivered within 5 s of opening";
+                if (src.delivered && now - src.lastPacket > kLiveSilence) return "nothing delivered for 2 s";
+            }
             if (!got && !s_.sleepFor(kLivePollMs)) return {};
         }
     }
@@ -242,20 +252,20 @@ private:
         synced_ = false;
     }
 
-    // Live timestamps run on the device's clock: the first packet's arrival on the session clock
-    // fixes the mapping, and a packet more than 200 ms off it moves the mapping (logged).
+    // Live timestamps run on the device's clock: each packet's arrival on the session clock
+    // feeds the source's mapping (live_clock.h). A move later is logged, and so is a large move
+    // earlier once the first packets have settled (a capture's first packets are often stale).
     void anchor(Source& src, const AVPacket& pkt) {
         if (pkt.pts == AV_NOPTS_VALUE || (pkt.stream_index != src.video.index && pkt.stream_index != src.audio.index))
             return;
-        const SessionTime arrival = s_.clock.now();
         const SessionTime ts = toSession(pkt.pts, src.fmt->streams[pkt.stream_index]->time_base);
-        const SessionTime off = src.base + ts - arrival;
-        if (src.anchored && std::abs(off) <= kReanchor) return;
-        if (src.anchored)
-            logWarning(s_.name + ": live clock re-anchored (timestamps were " + std::to_string(off / 240) +
-                       " ms off their arrival)");
-        src.base = arrival - ts;
-        src.anchored = true;
+        const LiveClock::Change change = src.mapping.update(ts, s_.clock.now());
+        const SessionTime shift = src.mapping.shift();
+        if (change == LiveClock::Change::Later ||
+            (change == LiveClock::Change::Earlier && src.mapping.settled() && -shift > src.mapping.lateLimit()))
+            logWarning(s_.name + ": live clock re-anchored (packets arrived " + std::to_string(std::abs(shift) / 240) +
+                       (shift > 0 ? " ms late)" : " ms early)"));
+        src.base = src.mapping.base();
     }
 
     void route(const Source& src, const AVPacket& pkt) {

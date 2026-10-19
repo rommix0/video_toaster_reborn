@@ -219,7 +219,7 @@ void ProgramLoop::runTick(bool realtime) {
     }
     for (size_t i = 0; i < 4; ++i) {
         if (!reopen[i]) continue;
-        auto fresh = std::make_unique<Input>(*reopen[i], geometry_, *clock_);
+        auto fresh = std::make_unique<Input>(*reopen[i], geometry_, *clock_, delayMs_);
         {
             std::lock_guard l(mu_);
             inputs_[i].swap(fresh);

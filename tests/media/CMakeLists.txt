@@ -3,6 +3,7 @@ add_executable(vt_media_tests
     test_devices.cpp
     test_ffmpeg.cpp
     test_input.cpp
+    test_live_clock.cpp
     test_mixer.cpp
     test_program_loop.cpp
     test_recorder.cpp
@@ -10,6 +11,8 @@ add_executable(vt_media_tests
     test_video_convert.cpp
 )
 target_link_libraries(vt_media_tests PRIVATE vt_media_testable catch2_amalgamated)
+# live_clock.h is internal to vt_media; its unit test reaches into media/src.
+target_include_directories(vt_media_tests PRIVATE ${CMAKE_SOURCE_DIR}/media/src)
 target_compile_definitions(vt_media_tests PRIVATE
     VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."
     VT_MEDIA_FIXTURES="${CMAKE_BINARY_DIR}/media_fixtures")

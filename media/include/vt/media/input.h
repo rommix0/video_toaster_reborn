@@ -28,7 +28,8 @@ struct InputConfig {
     // defaults to 100M) or the screen capture (framerate defaults to 60000/1001, draw_mouse to 1).
     // A screen's audio device gets only the defaults.
     std::map<std::string, std::string> options;
-    int retryMs = 2000;          // reopen interval after a failure (a live source: also after 2 s without data)
+    int retryMs = 2000;          // reopen interval after a failure (a live source: also after 2 s without
+                                 // data, or 5 s from opening without a first packet)
 #ifdef VT_MEDIA_TEST_SEAMS
     // While set, the open source fails ("simulated failure") at its next packet, as a device
     // that errors mid-capture would; each reopen then fails the same way.
@@ -54,10 +55,13 @@ public:
     // clock.now() as measured when the file opens; the stream's timestamps count from there.
     // A Device or Screen input captures on its own thread as fast as the source delivers, never
     // waiting for readers (a full queue drops its oldest picture, counted in framesLate). Each
-    // capture source maps its timestamps to the session clock at the first packet's arrival and
-    // re-anchors (with a warning) when one arrives more than 200 ms off that mapping; a device's
-    // video and audio share one mapping, a screen's audio device has its own.
-    Input(const InputConfig&, const MediaGeometry&, SessionClock clock);
+    // capture source maps its timestamps to the session clock: anchored at the first packet's
+    // arrival, moved earlier at once when a packet arrives more than 2 ms before its mapped time,
+    // and moved later (with a warning) when for 0.5 s every packet arrived more than half of
+    // `presentationDelayMs` (how far behind the clock it is read; at least one tick) after it.
+    // A device's video and audio share one mapping, a screen's audio device has its own. A
+    // source that delivers nothing for 2 s (5 s from opening to its first packet) is reopened.
+    Input(const InputConfig&, const MediaGeometry&, SessionClock clock, int presentationDelayMs = 100);
     ~Input();                                    // stops and joins the thread
     Input(const Input&) = delete;
     Input& operator=(const Input&) = delete;
