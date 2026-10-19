@@ -1,16 +1,17 @@
 #include "toaster_screen.h"
 
 #include <QKeyEvent>
-#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <stdexcept>
 
 namespace {
 
 constexpr int kTbarMax = 511;
+constexpr int kTbarImages = kTbarMax / 6 + 1;  // 86
 
 QRect toQRect(const vt::Rect& r) { return {r.x, r.y, r.w, r.h}; }
 
@@ -18,6 +19,20 @@ QList<QRgb> colourTable(const vt::assets::Palette& p) {
     QList<QRgb> t;
     for (const auto& c : p) t << qRgb(c.r, c.g, c.b);
     return t;
+}
+
+// Exact pixel replication of rect of src into dst: each Toaster pixel becomes zoom x zoom device
+// pixels. Any future pixel-aspect option belongs here (and in the Toaster <-> logical mappings).
+void replicate(const vt::assets::IndexedImage& src, const QRect& rect, int zoom, const QList<QRgb>& colours,
+               QImage& dst) {
+    std::vector<QRgb> row(size_t(rect.width()) * size_t(zoom));
+    for (int y = rect.top(); y <= rect.bottom(); ++y) {
+        const uint8_t* in = &src.px[size_t(y) * size_t(src.w) + size_t(rect.left())];
+        for (int x = 0; x < rect.width(); ++x) std::fill_n(row.begin() + x * zoom, zoom, colours[in[x]]);
+        for (int dy = 0; dy < zoom; ++dy)
+            std::memcpy(reinterpret_cast<QRgb*>(dst.scanLine(y * zoom + dy)) + rect.left() * zoom, row.data(),
+                        row.size() * sizeof(QRgb));
+    }
 }
 
 // Bus rows: node id prefix, and the button suffixes in Source order (In1..In4, DV1, DV2, BKG).
@@ -33,7 +48,78 @@ constexpr Stub kStubs[] = {
     {"key_off", "Key OFF"}, {"key_black", "Black key"}, {"key_white", "White key"}, {"key_level_popup", "Key level"},
 };
 
+constexpr int kEdge = 3;       // outline + 2-px bevel
+constexpr int kTextLeft = 6;   // as the BKG pop-up's own text: Move(x+6, ...)
+
 }  // namespace
+
+BkgPopup::BkgPopup(const vt::assets::ColorFont& font, const std::vector<std::string>& names, int minWidth,
+                   std::function<void(vt::BkgColour)> chosen, QWidget* parent)
+    : QWidget(parent, Qt::Popup), font_(font), count_(int(std::min<size_t>(names.size(), 9))), itemH_(font.ySize + 2),
+      chosen_(std::move(chosen)) {
+    std::vector<std::string> trimmed;
+    int textW = 0;
+    for (int i = 0; i < count_; ++i) {
+        const QString name = QString::fromStdString(names[size_t(i)]).trimmed();
+        trimmed.push_back(name.toStdString());
+        textW = std::max(textW, vt::assets::textWidth(font, trimmed.back()));
+    }
+    const int w = std::max(minWidth, kTextLeft + textW + kTextLeft), h = 2 * kEdge + count_ * itemH_;
+    art_ = {w, h, std::vector<uint8_t>(size_t(w) * size_t(h), 2)};  // face
+    auto set = [&](int x, int y, uint8_t c) { art_.px[size_t(y) * size_t(w) + size_t(x)] = c; };
+    for (int i = 1; i <= 2; ++i) {           // light bevel top/left, then shadow bottom/right over it
+        for (int x = 1; x < w - 1; ++x) set(x, i, 3);
+        for (int y = 1; y < h - 1; ++y) set(i, y, 3);
+    }
+    for (int i = 1; i <= 2; ++i) {
+        for (int x = i; x < w - 1; ++x) set(x, h - 1 - i, 1);
+        for (int y = i; y < h - 1; ++y) set(w - 1 - i, y, 1);
+    }
+    for (int x = 0; x < w; ++x) set(x, 0, 0), set(x, h - 1, 0);
+    for (int y = 0; y < h; ++y) set(0, y, 0), set(w - 1, y, 0);
+    for (int i = 0; i < count_; ++i) {
+        const QPoint pen = textPen(i);
+        vt::assets::drawText(art_, font, pen.x(), pen.y(), trimmed[size_t(i)], true, 0);
+    }
+}
+
+QRect BkgPopup::itemRect(int i) const { return {kEdge, kEdge + i * itemH_, art_.w - 2 * kEdge, itemH_}; }
+
+QPoint BkgPopup::textPen(int i) const { return {kTextLeft, kEdge + i * itemH_ + 1 + font_.baseline}; }
+
+void BkgPopup::open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours) {
+    zoom_ = zoom;
+    scaled_ = QImage(art_.w * zoom, art_.h * zoom, QImage::Format_RGB32);
+    replicate(art_, QRect(0, 0, art_.w, art_.h), zoom, colours, scaled_);
+    const double dpr = parentWidget() ? parentWidget()->devicePixelRatioF() : devicePixelRatioF();
+    setFixedSize(int(std::ceil(art_.w * zoom / dpr)), int(std::ceil(art_.h * zoom / dpr)));
+    move(globalTopLeft);
+    show();
+}
+
+void BkgPopup::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    scaled_.setDevicePixelRatio(devicePixelRatioF());  // device pixels, copied 1:1
+    p.drawImage(QPointF(0, 0), scaled_);
+}
+
+void BkgPopup::mousePressEvent(QMouseEvent* e) {
+    const QPointF pos = e->position() * devicePixelRatioF() / zoom_;
+    const QPoint px(int(std::floor(pos.x())), int(std::floor(pos.y())));
+    if (e->button() == Qt::LeftButton)
+        for (int i = 0; i < count_; ++i)
+            if (itemRect(i).contains(px)) {
+                close();
+                chosen_(vt::BkgColour(i + 1));
+                return;
+            }
+    QWidget::mousePressEvent(e);  // closes a popup when the click is outside it
+}
+
+void BkgPopup::keyPressEvent(QKeyEvent* e) {
+    if (e->key() == Qt::Key_Escape) close();
+    else QWidget::keyPressEvent(e);
+}
 
 ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::assets::ColorFont& cgInterface14,
                              SwitcherActions& actions, QWidget* parent)
@@ -72,13 +158,28 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     for (size_t i = 0; i < layout_.texts.size(); ++i)
         if (layout_.texts[i].id == "bkg_popup_text") bkgText_ = int(i);
 
-    // The BKG pop-up: a plain menu of the nine names (a stand-in for the original pop-up's look).
-    bkgMenu_ = new QMenu(this);
-    for (size_t i = 0; i < layout_.bkgNames.size() && i < 9; ++i) {
-        const auto colour = vt::BkgColour(int(i) + 1);
-        connect(bkgMenu_->addAction(QString::fromStdString(layout_.bkgNames[i]).trimmed()), &QAction::triggered, this,
-                [this, colour] { actions_.setBackground(colour); });
+    // Everything compose() and imageOf() index must be there.
+    auto check = [](bool ok, const std::string& what) {
+        if (!ok) throw std::runtime_error("ToasterScreen: " + what);
+    };
+    auto fits = [](const vt::assets::IndexedImage& img, const vt::Rect& r) {
+        return img.w == r.w && img.h == r.h && img.px.size() == size_t(r.w) * size_t(r.h);
+    };
+    for (int i : drawn_) {
+        const auto& n = nodes[size_t(i)];
+        check(fits(n.image, n.rect), "node " + n.id + ": image does not match its rect");
+        check(selected_[size_t(i)].px.empty() || fits(selected_[size_t(i)], n.rect),
+              "node " + n.id + ": selected look does not match its rect");
     }
+    if (tbarNode_ >= 0) {
+        check(layout_.tbarImages.size() >= size_t(kTbarImages), "the T-bar has fewer than 86 images");
+        for (const auto& img : layout_.tbarImages)
+            check(fits(img, nodes[size_t(tbarNode_)].rect), "a T-bar image does not match the T-bar rect");
+    }
+
+    if (bkgNode_ >= 0)
+        bkgPopup_ = new BkgPopup(font_, layout_.bkgNames, nodes[size_t(bkgNode_)].rect.w,
+                                 [this](vt::BkgColour c) { actions_.setBackground(c); }, this);
 
     colours_ = colourTable(layout_.rgbMode);
     screen_ = {layout_.screenW, layout_.screenH, std::vector<uint8_t>(size_t(layout_.screenW) * size_t(layout_.screenH))};
@@ -125,8 +226,8 @@ QSize ToasterScreen::sizeHint() const {
 }
 
 int ToasterScreen::lookOf(int node) const {
-    if (node == tbarNode_)  // the handler 0x5e000: state = position / 6
-        return std::clamp(dragTbar_ >= 0 ? dragTbar_ : state_.tbar, 0, kTbarMax) / 6;
+    if (node == tbarNode_)  // the handler 0x5e000: state = position / 6; always the engine's (Ruling 8)
+        return std::clamp(state_.tbar, 0, kTbarMax) / 6;
     if (node == pressed_) return 1;
     for (const auto& c : controls_)
         if (c.node == node) {
@@ -215,19 +316,7 @@ void ToasterScreen::compose(const QRect& clip) {
     }
 }
 
-// Exact pixel replication: each Toaster pixel becomes zoom_ x zoom_ device pixels. Any future
-// pixel-aspect option belongs here (and in toScreen / sizeHint).
-void ToasterScreen::scale(const QRect& rect) {
-    const int z = zoom_;
-    std::vector<QRgb> row(size_t(rect.width()) * size_t(z));
-    for (int y = rect.top(); y <= rect.bottom(); ++y) {
-        const uint8_t* src = &screen_.px[size_t(y) * size_t(screen_.w) + size_t(rect.left())];
-        for (int x = 0; x < rect.width(); ++x) std::fill_n(row.begin() + x * z, z, colours_[src[x]]);
-        for (int dy = 0; dy < z; ++dy)
-            std::memcpy(reinterpret_cast<QRgb*>(scaled_.scanLine(y * z + dy)) + rect.left() * z, row.data(),
-                        row.size() * sizeof(QRgb));
-    }
-}
+void ToasterScreen::scale(const QRect& rect) { replicate(screen_, rect, zoom_, colours_, scaled_); }
 
 void ToasterScreen::rescaleAll() {
     scaled_ = QImage(screen_.w * zoom_, screen_.h * zoom_, QImage::Format_RGB32);
@@ -261,7 +350,6 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
     if (tbarNode_ >= 0 && toQRect(layout_.tbarRect).contains(px)) {
         dragTbar_ = tbarFor(pos.y());
         actions_.setTBar(dragTbar_);
-        refresh();
         return;
     }
     for (const auto& c : controls_) {
@@ -271,7 +359,7 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
         case Control::Take: pressed_ = c.node; refresh(); actions_.take(); break;
         case Control::Auto: pressed_ = c.node; refresh(); actions_.autoTransition(vt::Direction::Forward); break;
         case Control::Speed: actions_.setSpeed(c.speed); break;
-        case Control::Bkg: openBkgMenu(); break;
+        case Control::Bkg: openBkgPopup(); break;
         case Control::Stub: pressed_ = c.node; refresh(); actions_.notImplemented(c.name); break;
         }
         return;
@@ -284,10 +372,8 @@ void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
     if (pos == dragTbar_) return;
     dragTbar_ = pos;
     actions_.setTBar(pos);
-    refresh();
 }
 
-// After a drag the display follows the snapshot again (after a hand-driven 511 the engine reads 0).
 void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return QWidget::mouseReleaseEvent(e);
     dragTbar_ = -1;
@@ -295,10 +381,12 @@ void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
     refresh();
 }
 
-void ToasterScreen::openBkgMenu() {
+// The list opens above the pop-up (it sits near the bottom of the screen), left edges aligned.
+void ToasterScreen::openBkgPopup() {
     const vt::Rect& r = layout_.nodes[size_t(bkgNode_)].rect;
-    const QPointF below = QPointF(r.x, r.y + r.h) * zoom_ / devicePixelRatioF();
-    bkgMenu_->popup(mapToGlobal(below.toPoint()));
+    const int top = std::max(0, r.y - bkgPopup_->art().h);
+    const QPointF at = QPointF(r.x, top) * zoom_ / devicePixelRatioF();
+    bkgPopup_->open(mapToGlobal(at.toPoint()), zoom_, colours_);
 }
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto, , . / = S M F,

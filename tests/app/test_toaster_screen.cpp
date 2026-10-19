@@ -1,12 +1,12 @@
 #include "controller.h"
 #include "toaster_screen.h"
 
-#include <QAction>
 #include <QFile>
-#include <QMenu>
 #include <QtTest>
 #include <cstdlib>
 #include <functional>
+#include <memory>
+#include <stdexcept>
 
 #include "vt/assets/font.h"
 #include "vt/assets/panel.h"
@@ -116,6 +116,13 @@ IndexedImage withTbarImage(int index) {
     });
 }
 
+// The offscreen platform warns when a popup shows; the popup works all the same.
+void expectPopupWarnings() {
+    if (QGuiApplication::platformName() != QLatin1String("offscreen")) return;
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support raise()");
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support grabbing the keyboard");
+}
+
 QList<QRgb> colourTable(const vt::assets::Palette& p) {
     QList<QRgb> t;
     for (const auto& c : p) t << qRgb(c.r, c.g, c.b);
@@ -131,11 +138,14 @@ private slots:
     void clickSelectsTheBusSourceAtZoom2();
     void keyboardMap();
     void tbarImageFollowsTheSnapshot();
-    void tbarDragShowsTheDraggedPositionThenTheSnapshot();
+    void tbarDragFollowsTheSnapshotNotTheHand();
+    void tbarDragDuringAutoFollowsTheSnapshot();
     void freezeIsNotImplemented();
     void displayFollowsTheSnapshotNotTheClick();
-    void bkgPopupMenuAndName();
+    void bkgPopupInTheToasterLook();
+    void bkgNameFollowsTheSnapshot();
     void paletteAndExactZoom();
+    void rejectsALayoutWithMissingArt();
 };
 
 void TestToasterScreen::defaultScreenIsTheOriginalWithTheActiveButtonsSelected() {
@@ -195,7 +205,8 @@ void TestToasterScreen::tbarImageFollowsTheSnapshot() {
     QVERIFY(!sameScreen(w.renderIndexedForTest(), withTbarImage(49), &why));
 }
 
-void TestToasterScreen::tbarDragShowsTheDraggedPositionThenTheSnapshot() {
+// Ruling 8: the T-bar image always comes from the snapshot; the hand only sends setTBar.
+void TestToasterScreen::tbarDragFollowsTheSnapshotNotTheHand() {
     FakeActions fake;
     ToasterScreen w(layout(), font(), fake);
     w.resize(w.sizeHint());
@@ -205,15 +216,40 @@ void TestToasterScreen::tbarDragShowsTheDraggedPositionThenTheSnapshot() {
     const QPoint top(r.x + r.w / 2, r.y), bottom(r.x + r.w / 2, r.y + r.h - 1);
     QTest::mousePress(&w, Qt::LeftButton, {}, top);
     QTest::mouseMove(&w, bottom);
-    // The engine has not caught up: the display shows the hand's position, not the snapshot's.
-    w.setState(SwitcherSnapshot{});
+    QTest::mouseMove(&w, bottom + QPoint(3, 20));  // still 511: not sent again
     QString why;
-    QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(511 / 6), &why), qPrintable(why));
+    QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(0), &why), qPrintable(why));
+    SwitcherSnapshot s;
+    s.tbar = 200;  // the engine has not caught up with the hand yet
+    w.setState(s);
+    QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(200 / 6), &why), qPrintable(why));
     QTest::mouseRelease(&w, Qt::LeftButton, {}, bottom);
     QCOMPARE(fake.calls, (QStringList{"tbar 0", "tbar 511"}));
-    // After a hand-driven 511 the engine reads 0 again, and the display follows it.
+    // After a hand-driven 511 the engine reads 0 again.
     w.setState(SwitcherSnapshot{});
     QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(0), &why), qPrintable(why));
+}
+
+void TestToasterScreen::tbarDragDuringAutoFollowsTheSnapshot() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    SwitcherSnapshot s;
+    s.autoRunning = true;
+    s.tbar = 400;
+    w.setState(s);
+    const vt::Rect r = layout().tbarRect;
+    QTest::mousePress(&w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 10));
+    QTest::mouseMove(&w, QPoint(r.x + r.w / 2, r.y + 20));
+    QString why;
+    QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(400 / 6), &why), qPrintable(why));
+    s.tbar = 450;
+    w.setState(s);
+    QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(450 / 6), &why), qPrintable(why));
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 20));
+    QCOMPARE(fake.calls.size(), 2);
 }
 
 void TestToasterScreen::freezeIsNotImplemented() {
@@ -248,27 +284,65 @@ void TestToasterScreen::displayFollowsTheSnapshotNotTheClick() {
     QVERIFY(region(scr, node("main_1").rect).px == node("main_1").image.px);
 }
 
-void TestToasterScreen::bkgPopupMenuAndName() {
+// Ruling 9: the colour list is drawn in CGInterface 14 at the screen's zoom.
+void TestToasterScreen::bkgPopupInTheToasterLook() {
     FakeActions fake;
     ToasterScreen w(layout(), font(), fake);
+    w.setZoom(2);
     w.resize(w.sizeHint());
     w.show();
     QVERIFY(QTest::qWaitForWindowExposed(&w));
-    if (QGuiApplication::platformName() == QLatin1String("offscreen")) {  // the menu pops up all the same
-        QTest::ignoreMessage(QtWarningMsg, "This plugin does not support raise()");
-        QTest::ignoreMessage(QtWarningMsg, "This plugin does not support grabbing the keyboard");
-    }
-    QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("bkg_popup").hitRect));
-    auto* menu = w.findChild<QMenu*>();
-    QVERIFY(menu && menu->isVisible());
-    QStringList names;
-    for (auto* a : menu->actions()) names << a->text();
-    QCOMPARE(names, (QStringList{"Black", "White", "Red", "Green", "Blue", "Yellow", "Magenta", "Cyan", "Snow"}));
-    menu->actions()[2]->trigger();
-    QCOMPARE(fake.calls, QStringList{"bkg 3"});
-    menu->hide();
+    const QPoint bkg = centre(node("bkg_popup").hitRect) * 2;
+    expectPopupWarnings();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, bkg);
+    auto* popup = w.findChild<BkgPopup*>();
+    QVERIFY(popup && popup->isVisible());
+    QVERIFY(QTest::qWaitForWindowExposed(popup));
+    QCOMPARE(popup->zoom(), 2);
 
-    // The pop-up names the snapshot's background, drawn as the original draws "Black".
+    // Every pixel of the "R" of item 3 ("Red") is the CGInterface glyph pixel, in the panel palette.
+    const auto& f = font();
+    const auto& art = popup->art();
+    const QPoint pen = popup->textPen(2);
+    const size_t c = size_t('R' - f.loChar);
+    const QImage shown = popup->grab().toImage().convertToFormat(QImage::Format_RGB32);
+    QCOMPARE(shown.size(), QSize(art.w * 2, art.h * 2));
+    const QList<QRgb> pal = colourTable(layout().rgbMode);
+    QSet<int> seen;
+    for (int gy = 0; gy < f.ySize; ++gy)
+        for (int gx = 0; gx < f.charWidth[c]; ++gx) {
+            const uint8_t glyph = f.strike.px[size_t(gy) * size_t(f.strike.w) + size_t(f.charLoc[c] + gx)];
+            const int x = pen.x() + f.charKern[c] + gx, y = pen.y() - f.baseline + gy;
+            QCOMPARE(art.px[size_t(y) * size_t(art.w) + size_t(x)], glyph);
+            QCOMPARE(shown.pixel(2 * x + 1, 2 * y + 1), pal[glyph]);
+            seen << glyph;
+        }
+    QVERIFY(seen.size() >= 2);  // strokes and cell background
+
+    // The third item chooses Red and closes the list.
+    QTest::mouseClick(popup, Qt::LeftButton, {}, popup->itemRect(2).center() * 2);
+    QCOMPARE(fake.calls, QStringList{"bkg 3"});
+    QVERIFY(!popup->isVisible());
+
+    // Esc, or a click outside the list, closes it without a choice.
+    expectPopupWarnings();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, bkg);
+    QVERIFY(popup->isVisible());
+    QTest::keyClick(popup, Qt::Key_Escape);
+    QVERIFY(!popup->isVisible());
+    expectPopupWarnings();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, bkg);
+    QVERIFY(popup->isVisible());
+    // A popup gets every click while open: one on the logo reaches it outside its own rect.
+    QTest::mouseClick(popup, Qt::LeftButton, {}, popup->mapFromGlobal(w.mapToGlobal(centre(node("logo").rect) * 2)));
+    QVERIFY(!popup->isVisible());
+    QCOMPARE(fake.calls, QStringList{"bkg 3"});
+}
+
+// The pop-up names the snapshot's background, drawn as the original draws "Black".
+void TestToasterScreen::bkgNameFollowsTheSnapshot() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
     SwitcherSnapshot s;
     s.background = vt::EffectColour::of(vt::BkgColour::Magenta);
     w.setState(s);
@@ -297,9 +371,18 @@ void TestToasterScreen::paletteAndExactZoom() {
                 QFAIL(qPrintable(QStringLiteral("device pixel (%1,%2)").arg(x).arg(y)));
 }
 
-int runToasterScreenTests(int argc, char** argv) {
-    TestToasterScreen t;
-    return QTest::qExec(&t, argc, argv);
+// Art the screen would index past is refused up front, with the reason.
+void TestToasterScreen::rejectsALayoutWithMissingArt() {
+    FakeActions fake;
+    PanelLayout few = layout();
+    few.tbarImages.resize(85);
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, ToasterScreen(few, font(), fake));
+    PanelLayout small = layout();
+    for (auto& n : small.nodes)
+        if (n.id == "take") n.image = {16, 4, std::vector<uint8_t>(64)};
+    QVERIFY_THROWS_EXCEPTION(std::runtime_error, ToasterScreen(small, font(), fake));
 }
+
+std::unique_ptr<QObject> makeToasterScreenTests() { return std::make_unique<TestToasterScreen>(); }
 
 #include "test_toaster_screen.moc"

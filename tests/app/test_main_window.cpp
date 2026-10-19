@@ -2,6 +2,7 @@
 
 #include <QTabWidget>
 #include <QtTest>
+#include <memory>
 
 class TestMainWindow : public QObject {
     Q_OBJECT
@@ -26,9 +27,6 @@ void TestMainWindow::title() {
     QCOMPARE(w.windowTitle(), QStringLiteral("vtoast — Video Toaster"));
 }
 
-int runMainWindowTests(int argc, char** argv) {
-    TestMainWindow t;
-    return QTest::qExec(&t, argc, argv);
-}
+std::unique_ptr<QObject> makeMainWindowTests() { return std::make_unique<TestMainWindow>(); }
 
 #include "test_main_window.moc"

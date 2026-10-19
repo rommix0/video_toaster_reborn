@@ -7,6 +7,7 @@
 #include <QList>
 #include <QRegion>
 #include <QWidget>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -15,11 +16,42 @@
 #include "vt/assets/panel.h"
 #include "vt/media/monitor.h"
 
-class QMenu;
+// The BKG colour list opened from the BKG pop-up. The original list's art and behaviour were not
+// found in switcher.main, so this look is a guess: the nine bkgNames (trimmed) in CGInterface 14,
+// JAM2 with background pen 0 like the pop-up's own text, on a box bevelled like the panel buttons
+// (colour-0 outline, 2-px colour-3 light top/left, 2-px colour-1 shadow bottom/right, colour-2 face),
+// shown at the screen's zoom with the same exact pixel replication. A click on a name chooses it;
+// a click outside or Esc closes the list.
+class BkgPopup : public QWidget {
+    Q_OBJECT
+public:
+    BkgPopup(const vt::assets::ColorFont& cgInterface14, const std::vector<std::string>& names, int minWidth,
+             std::function<void(vt::BkgColour)> chosen, QWidget* parent);
+    void open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours);
+    int zoom() const { return zoom_; }
+    const vt::assets::IndexedImage& art() const { return art_; }  // the list in Toaster pixels
+    QRect itemRect(int i) const;                                   // item i in art() pixels
+    QPoint textPen(int i) const;                                   // item i's text baseline pen in art()
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+
+private:
+    const vt::assets::ColorFont& font_;
+    int count_ = 0, itemH_ = 0;
+    std::function<void(vt::BkgColour)> chosen_;
+    vt::assets::IndexedImage art_;
+    int zoom_ = 1;
+    QImage scaled_;
+};
 
 class ToasterScreen : public QWidget {
     Q_OBJECT
 public:
+    // Throws std::runtime_error naming the node when a drawn node's art does not fill its rect or
+    // the T-bar has fewer than 86 images.
     ToasterScreen(const vt::assets::PanelLayout&, const vt::assets::ColorFont& cgInterface14,
                   SwitcherActions&, QWidget* parent = nullptr);
 
@@ -63,7 +95,7 @@ private:
     void rescaleAll();
     QPointF toScreen(const QPointF& logical) const;
     int tbarFor(double screenY) const;
-    void openBkgMenu();
+    void openBkgPopup();
 
     vt::assets::PanelLayout layout_;
     vt::assets::ColorFont font_;
@@ -74,11 +106,11 @@ private:
     std::vector<Control> controls_;
     int tbarNode_ = -1, bkgNode_ = -1, bkgText_ = -1;
     vt::media::SwitcherSnapshot state_;
-    int dragTbar_ = -1;                              // the hand's T-bar position while dragging
+    int dragTbar_ = -1;                              // last setTBar of a drag (only to skip repeats)
     int pressed_ = -1;                               // node drawn pressed while the mouse holds it
     int zoom_ = 1;
     QList<QRgb> colours_;
     vt::assets::IndexedImage screen_;                // the indexed screen
     QImage scaled_;                                  // screen_ in device pixels, zoom_ x zoom_ each
-    QMenu* bkgMenu_ = nullptr;
+    BkgPopup* bkgPopup_ = nullptr;
 };
