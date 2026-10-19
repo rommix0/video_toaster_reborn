@@ -1,5 +1,6 @@
 set(VT_MEDIA_SOURCES
     src/audio_convert.cpp
+    src/audio_out.cpp
     src/devices.cpp
     src/ffmpeg.cpp
     src/geometry.cpp
@@ -19,6 +20,7 @@ foreach(lib vt_media vt_media_testable)
     target_include_directories(${lib} PUBLIC include)
     target_link_libraries(${lib} PUBLIC vt_engine vt::ffmpeg)
     target_link_libraries(${lib} PRIVATE winmm) # timeBeginPeriod, the program loop's fallback timer
+    target_link_libraries(${lib} PRIVATE ole32 avrt) # WASAPI (audio_out) and its MMCSS thread priority
     if(MSVC)
         target_compile_options(${lib} PRIVATE /W4)
     endif()

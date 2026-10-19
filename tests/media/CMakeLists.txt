@@ -1,5 +1,6 @@
 add_executable(vt_media_tests
     test_audio.cpp
+    test_audio_out.cpp
     test_devices.cpp
     test_ffmpeg.cpp
     test_input.cpp
