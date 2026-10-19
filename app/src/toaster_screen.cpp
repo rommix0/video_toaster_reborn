@@ -10,6 +10,8 @@
 #include <cstring>
 #include <stdexcept>
 
+#include "pixel_replicate.h"
+
 namespace {
 
 constexpr int kTbarMax = 511;
@@ -21,20 +23,6 @@ QList<QRgb> colourTable(const vt::assets::Palette& p) {
     QList<QRgb> t;
     for (const auto& c : p) t << qRgb(c.r, c.g, c.b);
     return t;
-}
-
-// Exact pixel replication of rect (Toaster pixels) into dst: each Toaster pixel (x, y) becomes
-// zoom x zoom device pixels of colourAt(x, y). The screen with its Project grid and the BKG list all
-// go through here. Any future pixel-aspect option belongs here (and in the Toaster <-> logical mappings).
-template <class ColourAt>
-void replicate(const QRect& rect, int zoom, const ColourAt& colourAt, QImage& dst) {
-    std::vector<QRgb> row(size_t(rect.width()) * size_t(zoom));
-    for (int y = rect.top(); y <= rect.bottom(); ++y) {
-        for (int x = 0; x < rect.width(); ++x) std::fill_n(row.begin() + x * zoom, zoom, colourAt(rect.left() + x, y));
-        for (int dy = 0; dy < zoom; ++dy)
-            std::memcpy(reinterpret_cast<QRgb*>(dst.scanLine(y * zoom + dy)) + rect.left() * zoom, row.data(),
-                        row.size() * sizeof(QRgb));
-    }
 }
 
 // Bus rows: node id prefix, and the button suffixes in Source order (In1..In4, DV1, DV2, BKG).
