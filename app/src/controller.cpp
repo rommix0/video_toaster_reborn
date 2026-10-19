@@ -13,6 +13,7 @@
 #include <QPushButton>
 #include <QStatusBar>
 #include <QVBoxLayout>
+#include <algorithm>
 #include <deque>
 #include <exception>
 #include <stdexcept>
@@ -264,16 +265,21 @@ void AppController::loadCrouton(int index, bool run) {
     const auto& croutons = screen_->project().croutons();
     if (index < 0 || index >= int(croutons.size())) return;
     const vt::assets::Crouton& c = croutons[size_t(index)];
-    auto& effect = effects_[c.effect];
-    if (!effect) {
+    std::shared_ptr<const vt::Effect> effect;
+    if (const auto hit = std::find_if(effects_.begin(), effects_.end(), [&](const auto& e) { return e.first == c.effect; });
+        hit != effects_.end()) {
+        effect = hit->second;
+        effects_.erase(hit);
+    } else {
         std::string why;
         effect = vt::loadEffect(c.effect, &why);
         if (!effect) {
-            effects_.erase(c.effect);
             message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
             return;
         }
     }
+    effects_.emplace_front(c.effect, effect);
+    if (effects_.size() > kEffectCache) effects_.pop_back();
     loop_->postChecked([this, e = effect, path = c.effect, run](vt::Switcher& sw, std::string& why) {
         if (!sw.setEffect(e, &why)) return false;
         {

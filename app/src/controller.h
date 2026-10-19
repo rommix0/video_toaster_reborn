@@ -6,10 +6,11 @@
 #include <QString>
 #include <QTimer>
 #include <filesystem>
+#include <deque>
 #include <future>
-#include <map>
 #include <memory>
 #include <mutex>
+#include <utility>
 
 #include "settings.h"
 #include "vt/background.h"
@@ -43,8 +44,8 @@ namespace vt::media { class AudioOutput; class ProgramLoop; class Recorder; }
 // Program sinks), the Program and Preview monitor windows, and the main window with the Switcher
 // screen, the mixer dock, the menus and the status bar.
 //
-// - Every action is a ProgramLoop::post; loading a crouton (vt::loadEffect, cached per path) is a
-//   postChecked, so a refusal shows in the status bar (each time SwitcherSnapshot::refusalCount
+// - Every action is a ProgramLoop::post; loading a crouton (vt::loadEffect; the kEffectCache most
+//   recently clicked stay loaded, keyed by path) is a postChecked, so a refusal shows in the status bar (each time SwitcherSnapshot::refusalCount
 //   changes) while the panel keeps showing the engine's state.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
 //   the log queue (the vt::setLogSink callback only queues: it runs under a global lock on worker
@@ -64,6 +65,9 @@ class AppController : public QObject, public SwitcherActions {
     Q_OBJECT
 public:
     enum class Mode { Realtime, Offline };
+    // Loaded croutons kept (an effect can be ~90 MB). An evicted effect the engine still uses stays
+    // alive through the engine's own shared_ptr.
+    static constexpr size_t kEffectCache = 12;
 
     AppController(AppSettings&, Mode, QObject* parent = nullptr);
     ~AppController() override;  // shutdown()
@@ -76,6 +80,7 @@ public:
     ToasterScreen* screen() const;     // null while the data root is not valid
     ProjectView* projectView() const;
     QPlainTextEdit* logView() const { return logView_; }
+    size_t cachedEffects() const { return effects_.size(); }
     void show();  // the main window and the monitors
 
     void runOffline(int64_t ticks);  // Mode::Offline: that many ticks, then poll()
@@ -129,7 +134,8 @@ private:
     QTimer timer_;
     std::shared_ptr<LogQueue> log_;
 
-    std::map<std::filesystem::path, std::shared_ptr<const vt::Effect>> effects_;  // loaded croutons
+    // Loaded croutons, the most recently clicked first (at most kEffectCache); UI thread only.
+    std::deque<std::pair<std::filesystem::path, std::shared_ptr<const vt::Effect>>> effects_;
     std::mutex effectMu_;
     std::filesystem::path currentEffect_;  // the crouton the loop last made current (set on the loop thread)
     uint64_t refusalsShown_ = 0;

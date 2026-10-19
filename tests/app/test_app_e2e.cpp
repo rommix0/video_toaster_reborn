@@ -136,6 +136,7 @@ class TestAppE2e : public QObject {
 private slots:
     void croutonThenAutoRunsTheEffect();
     void refusalShowsInTheStatusBar();
+    void effectCacheIsBounded();
     void invalidDataRootThenChosenInSettings();
     void recordingIsFinishedWhenTheWindowCloses();
     void stoppingARecordingDoesNotBlock();
@@ -233,6 +234,64 @@ void TestAppE2e::refusalShowsInTheStatusBar() {
     QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), dve));
     c.runOffline(1);
     QVERIFY2(bar->currentMessage().contains(QStringLiteral("ChromaFX")), qPrintable(bar->currentMessage()));
+}
+
+// The controller keeps the kEffectCache (12) most recently clicked croutons loaded. A DVE move
+// running from Auto drops out of that cache while 19 more DVE croutons are clicked (each refused: a
+// DVE move is running), and the engine still plays it to the end.
+void TestAppE2e::effectCacheIsBounded() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    // 20 DVE croutons (drawer, index), the drawers in picker order.
+    QComboBox* picker = c.projectView()->drawerPicker();
+    std::vector<std::pair<int, int>> dves;
+    std::shared_ptr<const vt::Effect> first;
+    for (int d = 0; d < picker->count() && dves.size() < 20; ++d) {
+        picker->setCurrentIndex(d);
+        const auto& croutons = c.screen()->project().croutons();
+        for (size_t i = 0; i < croutons.size() && dves.size() < 20; ++i)
+            if (auto e = vt::loadEffect(croutons[i].effect); e && e->usesDvMemory()) {
+                dves.emplace_back(d, int(i));
+                if (!first) first = std::move(e);
+            }
+    }
+    QCOMPARE(dves.size(), size_t(20));
+    auto load = [&](const std::pair<int, int>& at) {
+        picker->setCurrentIndex(at.first);
+        c.loadCrouton(at.second, false);
+    };
+    const vt::Timing timing = first->timing();
+    const int ticks = timing.durationTicks[size_t(timing.resolve(vt::Speed::Slow))];
+    QVERIFY(ticks > 3);
+
+    load(dves[0]);
+    c.setSpeed(vt::Speed::Slow);
+    c.autoTransition(vt::Direction::Forward);
+    c.runOffline(1);
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QVERIFY(s.autoRunning);
+    QCOMPARE(s.effectName, first->name());
+    const uint64_t refusals = s.refusalCount;
+    for (size_t k = 1; k < dves.size(); ++k) {
+        load(dves[k]);
+        QVERIFY(c.cachedEffects() <= AppController::kEffectCache);
+    }
+    QCOMPARE(c.cachedEffects(), AppController::kEffectCache);
+
+    c.runOffline(1);
+    s = c.loop().switcherState();
+    QCOMPARE(s.refusalCount, refusals + 19);
+    QCOMPARE(s.effectName, first->name());
+    QVERIFY(s.autoRunning);
+    c.runOffline(ticks - 3);
+    QVERIFY(c.loop().switcherState().autoRunning);
+    c.runOffline(1);
+    s = c.loop().switcherState();
+    QVERIFY(!s.autoRunning);
+    QCOMPARE(s.main, vt::Source::In2);
+    QCOMPARE(s.effectName, first->name());
 }
 
 // Review Focus 2: a stored data root that does not exist shows the message and a button that opens
