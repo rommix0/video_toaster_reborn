@@ -1,2 +1,3 @@
 build/
 .superpowers/
+__pycache__/
