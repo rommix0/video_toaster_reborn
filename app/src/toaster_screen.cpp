@@ -3,6 +3,8 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QToolTip>
+#include <QWheelEvent>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -21,14 +23,14 @@ QList<QRgb> colourTable(const vt::assets::Palette& p) {
     return t;
 }
 
-// Exact pixel replication of rect of src into dst: each Toaster pixel becomes zoom x zoom device
-// pixels. Any future pixel-aspect option belongs here (and in the Toaster <-> logical mappings).
-void replicate(const vt::assets::IndexedImage& src, const QRect& rect, int zoom, const QList<QRgb>& colours,
-               QImage& dst) {
+// Exact pixel replication of rect (Toaster pixels) into dst: each Toaster pixel (x, y) becomes
+// zoom x zoom device pixels of colourAt(x, y). The screen with its Project grid and the BKG list all
+// go through here. Any future pixel-aspect option belongs here (and in the Toaster <-> logical mappings).
+template <class ColourAt>
+void replicate(const QRect& rect, int zoom, const ColourAt& colourAt, QImage& dst) {
     std::vector<QRgb> row(size_t(rect.width()) * size_t(zoom));
     for (int y = rect.top(); y <= rect.bottom(); ++y) {
-        const uint8_t* in = &src.px[size_t(y) * size_t(src.w) + size_t(rect.left())];
-        for (int x = 0; x < rect.width(); ++x) std::fill_n(row.begin() + x * zoom, zoom, colours[in[x]]);
+        for (int x = 0; x < rect.width(); ++x) std::fill_n(row.begin() + x * zoom, zoom, colourAt(rect.left() + x, y));
         for (int dy = 0; dy < zoom; ++dy)
             std::memcpy(reinterpret_cast<QRgb*>(dst.scanLine(y * zoom + dy)) + rect.left() * zoom, row.data(),
                         row.size() * sizeof(QRgb));
@@ -90,7 +92,8 @@ QPoint BkgPopup::textPen(int i) const { return {kTextLeft, kEdge + i * itemH_ + 
 void BkgPopup::open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours) {
     zoom_ = zoom;
     scaled_ = QImage(art_.w * zoom, art_.h * zoom, QImage::Format_RGB32);
-    replicate(art_, QRect(0, 0, art_.w, art_.h), zoom, colours, scaled_);
+    replicate(QRect(0, 0, art_.w, art_.h), zoom,
+              [&](int x, int y) { return colours[art_.px[size_t(y) * size_t(art_.w) + size_t(x)]]; }, scaled_);
     const double dpr = parentWidget() ? parentWidget()->devicePixelRatioF() : devicePixelRatioF();
     setFixedSize(int(std::ceil(art_.w * zoom / dpr)), int(std::ceil(art_.h * zoom / dpr)));
     move(globalTopLeft);
@@ -220,6 +223,27 @@ QImage ToasterScreen::renderIndexedForTest() const {
     return img;
 }
 
+QImage ToasterScreen::renderRgbForTest() const {
+    QImage img(screen_.w, screen_.h, QImage::Format_RGB32);
+    replicate(QRect(0, 0, screen_.w, screen_.h), 1, [this](int x, int y) { return rgbAt(x, y); }, img);
+    return img;
+}
+
+void ToasterScreen::setCroutons(std::vector<vt::assets::Crouton> croutons) {
+    project_.setCroutons(std::move(croutons));
+    projectChanged(true);
+}
+
+void ToasterScreen::setScrollRow(int row) { projectChanged(project_.setScrollRow(row)); }
+void ToasterScreen::setLoaded(int index) { projectChanged(project_.setLoaded(index)); }
+void ToasterScreen::setNext(int index) { projectChanged(project_.setNext(index)); }
+
+void ToasterScreen::projectChanged(bool changed) {
+    if (!changed) return;
+    scale(ProjectGrid::area());
+    update(logicalRect(ProjectGrid::area()));
+}
+
 QSize ToasterScreen::sizeHint() const {
     const double dpr = devicePixelRatioF();
     return {int(std::ceil(layout_.screenW * zoom_ / dpr)), int(std::ceil(layout_.screenH * zoom_ / dpr))};
@@ -293,10 +317,12 @@ void ToasterScreen::redraw(const QRegion& region) {
         if (!t.hiddenByDefault)
             vt::assets::drawText(screen_, font_, t.x, t.baseline ? t.y : t.y + font_.baseline, t.text, true, 0);
     for (const QRect& rect : r) scale(rect);
-    const double dpr = devicePixelRatioF();
-    for (const QRect& rect : r)
-        update(QRectF(rect.x() * zoom_ / dpr, rect.y() * zoom_ / dpr, rect.width() * zoom_ / dpr,
-                      rect.height() * zoom_ / dpr).toAlignedRect());
+    for (const QRect& rect : r) update(logicalRect(rect));
+}
+
+QRect ToasterScreen::logicalRect(const QRect& r) const {
+    const double k = zoom_ / devicePixelRatioF();
+    return QRectF(r.x() * k, r.y() * k, r.width() * k, r.height() * k).toAlignedRect();
 }
 
 void ToasterScreen::compose(const QRect& clip) {
@@ -316,7 +342,18 @@ void ToasterScreen::compose(const QRect& clip) {
     }
 }
 
-void ToasterScreen::scale(const QRect& rect) { replicate(screen_, rect, zoom_, colours_, scaled_); }
+QRgb ToasterScreen::rgbAt(int x, int y) const {
+    const QRect a = ProjectGrid::area();
+    if (a.contains(x, y)) {
+        const QRgb c = reinterpret_cast<const QRgb*>(project_.image().constScanLine(y - a.y()))[x - a.x()];
+        if (qAlpha(c)) return c;
+    }
+    return colours_[screen_.px[size_t(y) * size_t(screen_.w) + size_t(x)]];
+}
+
+void ToasterScreen::scale(const QRect& rect) {
+    replicate(rect, zoom_, [this](int x, int y) { return rgbAt(x, y); }, scaled_);
+}
 
 void ToasterScreen::rescaleAll() {
     scaled_ = QImage(screen_.w * zoom_, screen_.h * zoom_, QImage::Format_RGB32);
@@ -337,6 +374,11 @@ void ToasterScreen::paintEvent(QPaintEvent*) {
 
 QPointF ToasterScreen::toScreen(const QPointF& logical) const { return logical * devicePixelRatioF() / zoom_; }
 
+QPoint ToasterScreen::toScreenPixel(const QPointF& logical) const {
+    const QPointF pos = toScreen(logical);
+    return {int(std::floor(pos.x())), int(std::floor(pos.y()))};
+}
+
 // The top row of the T-bar is 0 (handle up), the bottom row 511.
 int ToasterScreen::tbarFor(double screenY) const {
     const vt::Rect& r = layout_.tbarRect;
@@ -346,7 +388,14 @@ int ToasterScreen::tbarFor(double screenY) const {
 void ToasterScreen::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return QWidget::mousePressEvent(e);
     const QPointF pos = toScreen(e->position());
-    const QPoint px(int(std::floor(pos.x())), int(std::floor(pos.y())));
+    const QPoint px = toScreenPixel(e->position());
+    if (ProjectGrid::area().contains(px)) {
+        if (const int i = project_.indexAt(px); i >= 0) {
+            setNext(i);
+            actions_.loadCrouton(i, false);
+        }
+        return;
+    }
     if (tbarNode_ >= 0 && toQRect(layout_.tbarRect).contains(px)) {
         dragTbar_ = tbarFor(pos.y());
         actions_.setTBar(dragTbar_);
@@ -379,6 +428,35 @@ void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
     dragTbar_ = -1;
     pressed_ = -1;
     refresh();
+}
+
+// Qt sends press, release, double click, release: the press has loaded the crouton already.
+void ToasterScreen::mouseDoubleClickEvent(QMouseEvent* e) {
+    const QPoint px = toScreenPixel(e->position());
+    if (e->button() != Qt::LeftButton || !ProjectGrid::area().contains(px)) return QWidget::mouseDoubleClickEvent(e);
+    if (const int i = project_.indexAt(px); i >= 0) actions_.loadCrouton(i, true);
+}
+
+// One notch (120 eighths of a degree) over the grid scrolls one row; wheel down shows later rows.
+void ToasterScreen::wheelEvent(QWheelEvent* e) {
+    if (!ProjectGrid::area().contains(toScreenPixel(e->position()))) return QWidget::wheelEvent(e);
+    wheelAngle_ += e->angleDelta().y();
+    const int rows = wheelAngle_ / 120;
+    wheelAngle_ -= rows * 120;
+    if (rows) setScrollRow(project_.scrollRow() - rows);
+    e->accept();
+}
+
+bool ToasterScreen::event(QEvent* e) {
+    if (e->type() != QEvent::ToolTip) return QWidget::event(e);
+    const auto* help = static_cast<QHelpEvent*>(e);
+    if (const int i = project_.indexAt(toScreenPixel(help->pos())); i >= 0) {
+        QToolTip::showText(help->globalPos(), QString::fromStdString(project_.croutons()[size_t(i)].name), this);
+    } else {
+        QToolTip::hideText();
+        e->ignore();
+    }
+    return true;
 }
 
 // The list opens above the pop-up (it sits near the bottom of the screen), left edges aligned.

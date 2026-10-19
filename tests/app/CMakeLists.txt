@@ -3,6 +3,7 @@ qt_standard_project_setup() # AUTOMOC
 add_executable(vt_app_tests
     test_main.cpp
     test_main_window.cpp
+    test_project_grid.cpp
     test_toaster_screen.cpp
 )
 target_link_libraries(vt_app_tests PRIVATE vt_app_lib Qt6::Test)

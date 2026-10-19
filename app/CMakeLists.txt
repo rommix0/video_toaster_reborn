@@ -3,6 +3,7 @@ qt_standard_project_setup() # AUTOMOC
 # Everything except main.cpp, so tests can link the app's code.
 add_library(vt_app_lib STATIC
     src/main_window.cpp
+    src/project_grid.cpp
     src/toaster_screen.cpp
 )
 target_include_directories(vt_app_lib PUBLIC src)

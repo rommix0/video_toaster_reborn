@@ -12,6 +12,7 @@
 
 std::unique_ptr<QObject> makeMainWindowTests();
 std::unique_ptr<QObject> makeToasterScreenTests();
+std::unique_ptr<QObject> makeProjectGridTests();
 
 namespace {
 
@@ -57,6 +58,7 @@ int main(int argc, char** argv) {
     std::vector<std::unique_ptr<QObject>> tests;
     tests.push_back(makeMainWindowTests());
     tests.push_back(makeToasterScreenTests());
+    tests.push_back(makeProjectGridTests());
 
     QByteArrayList options, selectors;
     for (int i = 1; i < argc; ++i) {

@@ -1,8 +1,9 @@
 #pragma once
 // The Video Toaster 4.2 Switcher screen (768 x 481), drawn pixel for pixel from the original panel
 // art of switcher.main (../tools/re/SCREEN.md): bus buttons, TAKE, AUTO, S/M/F, the BKG pop-up, the
-// T-bar and the framestore / superimpose / key panels. Mouse and keys go to SwitcherActions; what
-// the screen shows comes only from the snapshots given to setState().
+// T-bar and the framestore / superimpose / key panels, with the Project grid of crouton icons above
+// them. Mouse and keys go to SwitcherActions; what the panel shows comes only from the snapshots
+// given to setState().
 #include <QImage>
 #include <QList>
 #include <QRegion>
@@ -12,6 +13,7 @@
 #include <vector>
 
 #include "controller.h"
+#include "project_grid.h"
 #include "vt/assets/font.h"
 #include "vt/assets/panel.h"
 #include "vt/media/monitor.h"
@@ -61,7 +63,20 @@ public:
     int zoom() const { return zoom_; }
     void setPanelPalette(bool previewMode);             // false: RGB mode 000 555 999 DDD
     void setState(const vt::media::SwitcherSnapshot&);  // repaints only what changed
-    QImage renderIndexedForTest() const;                // the current 768x481 screen as indices (Format_Indexed8)
+    // The Project grid: a single click on a crouton makes it "next" and loads it, a double click
+    // also runs Auto, the wheel scrolls by rows. "Loaded" is the crouton of the engine's current
+    // effect, which only the app knows.
+    void setCroutons(std::vector<vt::assets::Crouton>);  // back to the top, nothing loaded or next
+    void setScrollRow(int);
+    void setLoaded(int index);                           // -1: none
+    void setNext(int index);                             // -1: none
+    const ProjectGrid& project() const { return project_; }
+
+    // Ruling 3: the panel as indices, with the Project area left in the clear colour (Format_Indexed8).
+    QImage renderIndexedForTest() const;
+    // The 768x481 screen as shown, one pixel per Toaster pixel (Format_RGB32): the panel in its
+    // palette and the croutons in their own CMAP colours.
+    QImage renderRgbForTest() const;
 
     QSize sizeHint() const override;
 
@@ -70,6 +85,9 @@ protected:
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
+    void wheelEvent(QWheelEvent*) override;
+    bool event(QEvent*) override;  // tool tips: a crouton's name
     void keyPressEvent(QKeyEvent*) override;
 
 private:
@@ -91,9 +109,13 @@ private:
     void refresh();                        // brings looks and texts up to date, redraws what changed
     void redraw(const QRegion&);           // recomposes the indexed screen there and rescales it
     void compose(const QRect&);
-    void scale(const QRect&);              // indexed -> device pixels (the one place zoom is applied)
+    QRgb rgbAt(int x, int y) const;        // the composed screen: panel, or crouton where one is
+    void scale(const QRect&);              // composed -> device pixels (the one place zoom is applied)
+    void projectChanged(bool changed);     // redraws the Project area when the grid's picture changed
     void rescaleAll();
+    QRect logicalRect(const QRect& screenRect) const;  // widget pixels covering a screen rect
     QPointF toScreen(const QPointF& logical) const;
+    QPoint toScreenPixel(const QPointF& logical) const;
     int tbarFor(double screenY) const;
     void openBkgPopup();
 
@@ -111,6 +133,8 @@ private:
     int zoom_ = 1;
     QList<QRgb> colours_;
     vt::assets::IndexedImage screen_;                // the indexed screen
-    QImage scaled_;                                  // screen_ in device pixels, zoom_ x zoom_ each
+    ProjectGrid project_;                            // drawn over screen_ in its own colours (Ruling 3)
+    int wheelAngle_ = 0;                             // wheel turn not yet worth a row (1/8 degrees)
+    QImage scaled_;                                  // the composed screen in device pixels, zoom_ x zoom_ each
     BkgPopup* bkgPopup_ = nullptr;
 };

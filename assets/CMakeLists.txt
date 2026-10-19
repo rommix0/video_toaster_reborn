@@ -2,6 +2,7 @@
 add_library(vt_assets STATIC
     src/font.cpp
     src/hunk.cpp
+    src/icons.cpp
     src/panel.cpp
 )
 target_include_directories(vt_assets PUBLIC include)

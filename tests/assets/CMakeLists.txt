@@ -1,6 +1,7 @@
 add_executable(vt_assets_tests
     test_font.cpp
     test_hunk.cpp
+    test_icons.cpp
     test_panel.cpp
 )
 target_link_libraries(vt_assets_tests PRIVATE vt_assets catch2_amalgamated)
