@@ -26,5 +26,9 @@ void TestMainWindow::title() {
     QCOMPARE(w.windowTitle(), QStringLiteral("vtoast — Video Toaster"));
 }
 
-QTEST_MAIN(TestMainWindow)
+int runMainWindowTests(int argc, char** argv) {
+    TestMainWindow t;
+    return QTest::qExec(&t, argc, argv);
+}
+
 #include "test_main_window.moc"
