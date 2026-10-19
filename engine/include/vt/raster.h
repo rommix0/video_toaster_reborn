@@ -10,6 +10,7 @@ inline constexpr int kRasterW = 768, kRasterH = 482;
 
 struct Rect {
     int x, y, w, h;
+    bool operator==(const Rect&) const = default;
 };
 
 // The part of the raster shown by default (spec 5.6); underscan shows the whole raster.
