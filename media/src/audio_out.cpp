@@ -172,6 +172,27 @@ double DriftController::ratio(int fifoFrames) {
     return 1.0 + std::clamp(correction, -kMaxDeviation, kMaxDeviation);
 }
 
+FifoPacer::FifoPacer(int targetFrames) : target_(std::max(targetFrames, 1)), drift_(target_) {}
+
+FifoPacer::Step FifoPacer::step(int fifoFrames) {
+    Step s;
+    if (!primed_) {
+        if (fifoFrames < target_) return s;
+        primed_ = true;
+    } else if (fifoFrames <= target_ + kTrimMargin) {
+        s.play = true;
+        s.ratio = drift_.ratio(fifoFrames);
+        return s;
+    }
+    // Just primed, or far too full (after a stall the loop catches up in one burst): drop the
+    // oldest audio down to the target, a slow ratio would take minutes to drain it.
+    s.keepFrames = target_;
+    drift_ = DriftController(target_);
+    s.play = true;
+    s.ratio = drift_.ratio(target_);
+    return s;
+}
+
 AudioOutput::AudioOutput() : ring_(size_t(kRingFrames) * 2, 0.0f) {}
 
 AudioOutput::~AudioOutput() { stop(); }
@@ -215,7 +236,10 @@ bool AudioOutput::start(const AudioOutputSettings& settings, std::string* error)
         if (error) *error = std::move(why);
         return false;
     };
-    if (running_.load()) return fail("already running");
+    if (running_.load()) {   // not a failure of the run in progress: status().error stays as it is
+        if (error) *error = "already running";
+        return false;
+    }
     if (thread_.joinable()) thread_.join();   // a run that ended by itself (device lost)
     if (stopEvent_) CloseHandle(stopEvent_);
     stopEvent_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
@@ -317,7 +341,7 @@ void AudioOutput::renderMain(const AudioOutputSettings& settings, std::promise<s
     if (err < 0) return fail("cannot convert to the device format: " + averr(err));
 
     const int targetFrames = std::max(1700, 24 * settings.bufferMs);   // the FIFO level to hold, in 48 kHz frames
-    DriftController drift(targetFrames);
+    FifoPacer pacer(targetFrames);
     std::vector<float> in(size_t(std::ceil(double(bufferFrames) * kRate / fmt.rate * 1.01) + 256) * 2);
 
     BYTE* silence = nullptr;
@@ -344,7 +368,6 @@ void AudioOutput::renderMain(const AudioOutputSettings& settings, std::promise<s
     fail("");   // started
 
     const HANDLE waits[2] = {stopEvent_, event};
-    bool primed = false;   // the FIFO has reached its target and has not run dry since
     double owed = 0;       // input frames due to the resampler for the output made so far
     for (;;) {
         const DWORD got = WaitForMultipleObjects(2, waits, FALSE, 1000);
@@ -359,12 +382,17 @@ void AudioOutput::renderMain(const AudioOutputSettings& settings, std::promise<s
         BYTE* data = nullptr;
         if (FAILED(hr = render->GetBuffer(frames, &data))) break;
         DWORD flags = 0;
-        if (!primed && level() >= targetFrames) primed = true;
-        if (!primed) {
+        const FifoPacer::Step step = pacer.step(level());
+        if (step.keepFrames >= 0) {   // the consumer moves r_ (the producer never does)
+            const int64_t w = w_.load(std::memory_order_acquire);
+            if (w - r_.load(std::memory_order_relaxed) > step.keepFrames) r_.store(w - step.keepFrames, std::memory_order_release);
+            owed = 0;
+        }
+        if (!step.play) {
             std::memset(data, 0, size_t(frames) * size_t(fmt.bytesPerFrame));
             flags = AUDCLNT_BUFFERFLAGS_SILENT;
         } else {
-            const double ratio = drift.ratio(level());
+            const double ratio = step.ratio;
             driftPpm_.store((ratio - 1.0) * 1e6, std::memory_order_relaxed);
             // swr_set_compensation(delta, distance): delta < 0 makes `distance` output frames use
             // -delta more input frames, i.e. the FIFO drains faster (ratio > 1).
@@ -391,7 +419,7 @@ void AudioOutput::renderMain(const AudioOutputSettings& settings, std::promise<s
             }
             if (dry) {
                 underruns_.fetch_add(1, std::memory_order_relaxed);
-                primed = false;
+                pacer.ranDry();
                 owed = 0;
             }
             if (produced < int(frames))
@@ -400,10 +428,10 @@ void AudioOutput::renderMain(const AudioOutputSettings& settings, std::promise<s
         if (FAILED(hr = render->ReleaseBuffer(frames, flags))) break;
     }
 
-    running_.store(false, std::memory_order_release);
-    client->Stop();
     if (FAILED(hr)) setError(hr == AUDCLNT_E_DEVICE_INVALIDATED ? "the playback device was removed or changed (" + hex(hr) + ")"
                                                                   : "playback failed: " + hex(hr));
+    running_.store(false, std::memory_order_release);   // after the error, so a caller that sees "stopped" sees why
+    client->Stop();
 }
 
 } // namespace vt::media

@@ -5,11 +5,13 @@
 // ratio that keeps the FIFO near its target level (DriftController).
 //
 // Render thread, per device callback: while the FIFO has not yet reached its target level (at
-// start, and again after an underrun) the device gets silence and the FIFO is left to fill; then
-// each callback pulls what the device wants, through swresample into the device's mix format
+// start, and again after an underrun) the device gets silence and the FIFO is left to fill; once
+// it has, the FIFO is cut to the target (so audio the loop pushed in a burst after a stall does
+// not stay as extra delay, nor does the overshoot of the priming); then each callback pulls what the device wants, through swresample into the device's mix format
 // (any rate, channel count and 16/32 bit integer or float sample format), with
 // swr_set_compensation applying DriftController's ratio. A FIFO that runs dry in the middle of a
-// callback plays silence for the rest of it (an underrun) and primes again. onProgram on a full
+// callback plays silence for the rest of it (an underrun) and primes again; a level more than
+// 20 ms above target gets the same cut. onProgram on a full
 // FIFO (one second) makes the oldest audio go (an overrun). A device that goes away (unplugged,
 // disabled, format changed) ends the thread with status().error set; stop() still works.
 //
@@ -54,6 +56,26 @@ private:
     double target_;
     double level_ = 0;                     // the smoothed FIFO level
     bool seeded_ = false;
+};
+
+// What the render thread does each callback with the FIFO level: wait for the target level (at
+// start and after an underrun), cut the FIFO to the target when it primes or is more than
+// kTrimMargin above it, and otherwise play with the DriftController's ratio.
+class FifoPacer {
+public:
+    static constexpr int kTrimMargin = 960;   // 20 ms of 48 kHz frames
+    struct Step {
+        bool play = false;     // false: the device gets silence and the FIFO keeps filling
+        int keepFrames = -1;   // >= 0: drop the oldest audio first, so this many frames remain
+        double ratio = 1.0;    // when playing: input frames per nominal one, after any cut
+    };
+    explicit FifoPacer(int targetFrames);
+    Step step(int fifoFrames);   // once per callback, with the level before it
+    void ranDry() { primed_ = false; }   // the FIFO could not fill a callback
+private:
+    int target_;
+    DriftController drift_;
+    bool primed_ = false;
 };
 
 class AudioOutput : public ProgramSink {

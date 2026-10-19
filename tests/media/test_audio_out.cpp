@@ -24,32 +24,48 @@ constexpr int kTarget = 1700;   // frames: about 35 ms
 
 // The FIFO between a program loop that pushes a tick (800 or 801 frames) every 1001/60000 s and a
 // device that pulls 480 frames every 10 ms on its own clock, `skewPpm` faster than the loop's. The
-// controller is called once per pull; the pull takes ratio * 480 frames. Returns the FIFO level
-// before each pull, with whether it ever ran dry or overflowed.
+// render thread's FifoPacer is called once per pull; a played pull takes ratio * 480 frames. A stall
+// (gapLen > 0) holds the loop's ticks from gapAt on, and at gapAt + gapLen it catches up with all of
+// them at once. Returns the FIFO level of each played pull (after any cut) and when it was, with
+// whether the FIFO ever ran dry or overflowed.
 struct Simulation {
-    std::vector<int> levels;   // one per pull
+    std::vector<int> levels;
+    std::vector<double> times;
     bool dry = false, full = false;
 };
 
-Simulation simulate(double skewPpm, double seconds) {
-    DriftController drift(kTarget);
+Simulation simulate(double skewPpm, double seconds, double gapAt = 0, double gapLen = 0) {
+    FifoPacer pacer(kTarget);
     Simulation sim;
     double fifo = kTarget + 800, carry = 0;   // where the render thread's priming can start it, at worst
     const double loopPeriod = 1001.0 / 60000.0, devicePeriod = 0.010 / (1.0 + skewPpm * 1e-6);
-    double nextTick = 0, nextPull = devicePeriod;
+    double nextTick = 0, nextPull = devicePeriod, held = 0;
     int64_t tick = 0;
     while (std::min(nextTick, nextPull) < seconds) {
         if (nextTick <= nextPull) {
-            fifo += samplesInTick(tick);
+            if (gapLen > 0 && nextTick >= gapAt && nextTick < gapAt + gapLen) {
+                held += samplesInTick(tick);
+            } else {
+                fifo += held + samplesInTick(tick);
+                held = 0;
+            }
             nextTick = double(++tick) * loopPeriod;
             sim.full = sim.full || fifo > 48000;
         } else {
-            sim.levels.push_back(int(fifo));
-            carry += 480 * drift.ratio(int(fifo));
-            const double take = std::floor(carry);
-            carry -= take;
-            sim.dry = sim.dry || fifo < take;
-            fifo = std::max(fifo - take, 0.0);
+            const FifoPacer::Step step = pacer.step(int(fifo));
+            if (step.keepFrames >= 0) fifo = std::min(fifo, double(step.keepFrames));
+            if (step.play) {
+                sim.levels.push_back(int(fifo));
+                sim.times.push_back(nextPull);
+                carry += 480 * step.ratio;
+                const double take = std::floor(carry);
+                carry -= take;
+                if (fifo < take) {
+                    sim.dry = true;
+                    pacer.ranDry();
+                }
+                fifo = std::max(fifo - take, 0.0);
+            }
             nextPull += devicePeriod;
         }
     }
@@ -104,6 +120,42 @@ TEST_CASE("DriftController keeps the FIFO within 10 ms of target under clock ske
         CHECK(worstMean <= 480);   // 10 ms
         CHECK(worstEdge <= 480);
     }
+}
+
+TEST_CASE("FifoPacer cuts a burst after a loop stall down to the target", "[audio_out]") {
+    // 30 s of normal flow, then the loop stalls for 300 ms (the FIFO runs dry and the device plays
+    // silence while it primes again), then catches up with every missed tick at once.
+    const double gapAt = 30.0, gapLen = 0.3;
+    const Simulation sim = simulate(0.0, 40.0, gapAt, gapLen);
+    CHECK(sim.dry);          // the stall did starve the device ...
+    CHECK_FALSE(sim.full);
+    int played = 0;
+    for (size_t i = 0; i < sim.levels.size(); ++i) {
+        if (sim.times[i] < gapAt + gapLen) continue;
+        ++played;
+        const int off = std::abs(sim.levels[i] - kTarget);
+        INFO("t = " << sim.times[i] << " s, level " << sim.levels[i]);
+        // Right after the burst the cut puts the level at the target; it stays within 10 ms.
+        CHECK(off <= 480);
+    }
+    CHECK(played > 900);    // and playing resumed at once
+}
+
+TEST_CASE("FifoPacer waits for the target level, then cuts to it", "[audio_out]") {
+    FifoPacer p(kTarget);
+    auto s = p.step(kTarget - 1);
+    CHECK_FALSE(s.play);
+    CHECK(s.keepFrames < 0);
+    s = p.step(kTarget + 700);
+    CHECK(s.play);
+    CHECK(s.keepFrames == kTarget);
+    s = p.step(kTarget + FifoPacer::kTrimMargin);   // within the margin: no cut
+    CHECK(s.play);
+    CHECK(s.keepFrames < 0);
+    s = p.step(kTarget + FifoPacer::kTrimMargin + 1);
+    CHECK(s.keepFrames == kTarget);
+    p.ranDry();
+    CHECK_FALSE(p.step(10).play);
 }
 
 TEST_CASE("listOutputDevices never throws", "[audio_out]") {
