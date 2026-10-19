@@ -147,6 +147,9 @@ bool Recorder::Impl::open(const RecorderSettings& s, std::string& err) {
     vctx->colorspace = rgb ? AVCOL_SPC_RGB : AVCOL_SPC_SMPTE170M;
     vctx->color_range = rgb ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
     if (globalHeader) vctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    // One thread per core (FFV1 and ProRes encode slices in parallel; libx264 picks its own
+    // count). The default of one thread leaves ProRes below real time.
+    vctx->thread_count = 0;
     AvDict vopts;
     if (h264) {
         vopts.set("preset", "veryfast");

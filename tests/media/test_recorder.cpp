@@ -437,3 +437,37 @@ TEST_CASE("stop returns a blocked producer promptly", "[recorder]") {
     CHECK(rec.status().framesDropped == 0);
     fs::remove(path);
 }
+
+TEST_CASE("every format encodes well ahead of real time", "[recorder]") {
+    // 59.94 fps is real time; the encoders must keep ahead with room to spare. They are
+    // threaded: on one thread ProRes made ~48 fps and FFV1 ~99 fps at 720x480 (Ryzen 5600X),
+    // threaded both make several hundred. The bar is 2x real time; a busy machine can miss it.
+    initMedia();
+    constexpr int kFrames = 240;
+    std::vector<vt::Frame> frames;
+    std::vector<std::vector<float>> tones;
+    for (int64_t t = 0; t < 8; ++t) {
+        frames.push_back(makeFrame(t));
+        tones.push_back(makeTone(t));
+    }
+    struct Case { const char* file; RecordFormat format; };
+    for (const Case& c : {Case{"speed_h264.mkv", RecordFormat::H264Mkv}, Case{"speed_ffv1.mkv", RecordFormat::Ffv1Mkv},
+                          Case{"speed_prores.mov", RecordFormat::ProResMov}}) {
+        const fs::path path = tempFile(c.file);
+        RecorderSettings s = settingsFor(path, c.format);
+        s.blockWhenFull = true;
+        Recorder rec;
+        std::string err;
+        REQUIRE(rec.start(s, &err));
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int64_t t = 0; t < kFrames; ++t) rec.onProgram(t, frames[size_t(t % 8)], tones[size_t(t % 2)]);
+        rec.stop();
+        const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        const double fps = kFrames / secs;
+        INFO(c.file << ": " << kFrames << " frames in " << secs << " s = " << fps << " fps (bar: 2x real time = 120 fps; a loaded machine can miss it)");
+        CHECK(rec.status().error.empty());
+        CHECK(rec.status().framesWritten == kFrames);
+        CHECK(fps >= 2 * 60000.0 / 1001.0);
+        fs::remove(path);
+    }
+}
