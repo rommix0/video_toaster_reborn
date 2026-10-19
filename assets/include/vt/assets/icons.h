@@ -20,7 +20,11 @@ struct Crouton {
 
 // The croutons of `folder` (not its subfolders), sorted by file name (ASCII case-insensitive, then
 // byte order). Every file other than an icon (name ending ".i" / ".I") is an effect file candidate:
-// - its icon is the sibling "<name>.i" or "<name>.I", else the file's own leading FORM ILBM;
+// - its icon is the sibling "<name>.i" or "<name>.I"; else a sibling icon whose name matches after
+//   both are lower-cased, stripped of trailing spaces and underscores and of the spaces before a
+//   trailing "!" (the drawers hold "Border Fractal_" with "Border Fractal .i", "Spin Explode__" with
+//   "Spin Explode.I", "Wipe Soft Circle Out!" with "Wipe Soft Circle Out !.I", "Wedding Bells !"
+//   with "Wedding Bells!.I"); else the file's own leading FORM ILBM;
 // - a file with neither is not a crouton and is skipped (IFF files that are skipped get a logged
 //   reason, other files are skipped silently);
 // - an icon that is not 80x50, has no CMAP or does not decode is refused with a logged reason;

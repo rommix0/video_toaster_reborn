@@ -27,6 +27,20 @@ std::string lower(std::string s) {
 
 bool isIcon(const std::string& name) { return name.size() > 2 && lower(name.substr(name.size() - 2)) == ".i"; }
 
+// A name as the tolerant sibling match compares it: lower case, trailing spaces and underscores
+// trimmed, and the spaces before a trailing "!" dropped ("Border Fractal_" and "Border Fractal "
+// meet, as do "Wipe Soft Circle Out!" and "Wipe Soft Circle Out !").
+std::string matchKey(const std::string& name) {
+    std::string s = lower(name);
+    while (!s.empty() && (s.back() == ' ' || s.back() == '_')) s.pop_back();
+    if (!s.empty() && s.back() == '!') {
+        s.pop_back();
+        while (!s.empty() && s.back() == ' ') s.pop_back();
+        s += '!';
+    }
+    return s;
+}
+
 std::vector<uint8_t> readFile(const fs::path& p) {
     std::ifstream f(p, std::ios::binary);
     return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
@@ -90,19 +104,29 @@ std::vector<Crouton> scanCroutons(const fs::path& folder) {
             std::string name = utf8(e.path().filename());
             (isIcon(name) ? icons : files).push_back(std::move(name));
         }
-    std::sort(files.begin(), files.end(), [](const std::string& a, const std::string& b) {
+    const auto byName = [](const std::string& a, const std::string& b) {
         const std::string la = lower(a), lb = lower(b);
         return la != lb ? la < lb : a < b;
-    });
+    };
+    std::sort(files.begin(), files.end(), byName);
+    std::sort(icons.begin(), icons.end(), byName);  // the tolerant match takes the first that fits
     auto path = [&](const std::string& name) { return folder / fs::path(std::u8string(name.begin(), name.end())); };
     std::vector<Crouton> out;
     for (const auto& f : files) {
         fs::path icon = path(f);
+        bool sibling = false;
         for (const char* ext : {".i", ".I"})
             if (std::find(icons.begin(), icons.end(), f + ext) != icons.end()) {
                 icon = path(f + ext);
+                sibling = true;
                 break;
             }
+        if (!sibling) {
+            const std::string key = matchKey(f);
+            const auto it = std::find_if(icons.begin(), icons.end(),
+                                         [&](const std::string& i) { return matchKey(i.substr(0, i.size() - 2)) == key; });
+            if (it != icons.end()) icon = path(*it);
+        }
         if (auto c = crouton(path(f), icon)) out.push_back(std::move(*c));
     }
     return out;

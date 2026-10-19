@@ -112,3 +112,35 @@ TEST_CASE("folders, non-crouton files and icons of the wrong size are skipped") 
     CHECK(log.lines[0].find("Big") != std::string::npos);
     CHECK(log.lines[0].find("768x482") != std::string::npos);
 }
+
+TEST_CASE("an effect whose icon name differs in trailing spaces, underscores or the space before ! gets that icon") {
+    const struct { const char* drawer; const char* effect; const char* icon; } cases[] = {
+        {"2000FX/Dissolves", "Border Fractal_", "Border Fractal .i"},
+        {"4000FX/Dissolves", "Border Fractal_", "Border Fractal .i"},
+        {"2000FX/Digital", "Spin Explode__", "Spin Explode.I"},
+        {"4000FX/Digital", "Spin Explode__", "Spin Explode.I"},
+        {"4000FX/SoftEdge", "Wipe Soft Circle Out!", "Wipe Soft Circle Out !.I"},
+        {"4000FX/Weddings", "Wedding Bells !", "Wedding Bells!.I"},
+    };
+    for (const auto& c : cases) {
+        INFO(c.drawer << "/" << c.effect);
+        LogLines log;
+        const auto cs = vt::assets::scanCroutons(effects(c.drawer));
+        CHECK(log.lines.empty());
+        const Crouton* found = find(cs, c.effect);
+        REQUIRE(found);
+        CHECK(found->icon == effects(c.drawer) / c.icon);
+        const auto bytes = readFile(found->icon);
+        const auto forms = vt::iffForms(bytes);
+        REQUIRE(!forms.empty());
+        const auto [bm, img] = vt::readIlbm(bytes, forms.front());
+        CHECK(found->image.px == img.px);
+        REQUIRE(found->palette.size() == bm.cmap.size());
+        for (size_t i = 0; i < bm.cmap.size(); ++i) CHECK(found->palette[i] == vt::Rgba8{bm.cmap[i].r, bm.cmap[i].g, bm.cmap[i].b, 255});
+    }
+    // An exact sibling still wins: "Soft Fractal" keeps "Soft Fractal.i".
+    const auto dissolves = vt::assets::scanCroutons(effects("2000FX/Dissolves"));
+    const Crouton* soft = find(dissolves, "Soft Fractal");
+    REQUIRE(soft);
+    CHECK(soft->icon == effects("2000FX/Dissolves/Soft Fractal.i"));
+}
