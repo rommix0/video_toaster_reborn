@@ -1,5 +1,6 @@
 set(VT_MEDIA_SOURCES
     src/audio_convert.cpp
+    src/devices.cpp
     src/ffmpeg.cpp
     src/geometry.cpp
     src/input.cpp

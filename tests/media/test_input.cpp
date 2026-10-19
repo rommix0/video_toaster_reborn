@@ -222,14 +222,6 @@ TEST_CASE("inputs without a source yet") {
         CHECK(peak(a) == 0.0f);
         CHECK(in.status().state == State::Idle);
     }
-    for (InputKind kind : {InputKind::Device, InputKind::Screen}) {
-        InputConfig cfg;
-        cfg.kind = kind;
-        Input in(cfg, {}, SessionClock::manual());
-        CHECK_FALSE(in.videoAt(0, f, Wait::Block));
-        CHECK(in.status().state == State::Error);
-        CHECK(in.status().message == "not supported yet");
-    }
 }
 
 TEST_CASE("an input stops promptly with a full queue or in a retry sleep") {

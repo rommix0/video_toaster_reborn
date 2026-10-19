@@ -97,7 +97,7 @@ void Input::Shared::passComplete(SessionTime end) {
 void Input::Shared::setOpening() {
     std::lock_guard l(mu);
     status.state = State::Opening;
-    status.message = cfg.path;
+    status.message = name;
     status.width = status.height = 0;
     status.hasAudio = hasVideo = hasAudio = false;
 }
@@ -106,7 +106,7 @@ void Input::Shared::setRunning(int width, int height, bool video, bool audio) {
     {
         std::lock_guard l(mu);
         status.state = State::Running;
-        status.message = cfg.path;
+        status.message = name;
         status.width = width;
         status.height = height;
         status.hasAudio = hasAudio = audio;
@@ -116,6 +116,12 @@ void Input::Shared::setRunning(int width, int height, bool video, bool audio) {
         audioThrough = INT64_MIN;
     }
     dataCv.notify_all();
+}
+
+void Input::Shared::setPictureSize(int width, int height) {
+    std::lock_guard l(mu);
+    status.width = width;
+    status.height = height;
 }
 
 void Input::Shared::setState(State st, std::string message) {
@@ -153,12 +159,15 @@ Input::Input(const InputConfig& cfg, const MediaGeometry& geo, SessionClock cloc
         break; // Idle: no picture, silence
     case InputKind::Device:
     case InputKind::Screen:
-        s_->status.state = State::Error; // Ruling 2: capture sources come later
-        s_->status.message = "not supported yet";
-        break;
+        if (std::string why = liveConfigError(cfg); !why.empty()) {
+            s_->status.state = State::Error; // nothing to retry: the config itself is unusable
+            s_->status.message = std::move(why);
+            break;
+        }
+        [[fallthrough]];
     case InputKind::File:
         s_->status.state = State::Opening;
-        s_->status.message = cfg.path;
+        s_->status.message = s_->name;
         s_->thread = std::thread([s = s_.get()] { runInput(*s); });
         break;
     }
@@ -182,10 +191,12 @@ bool Input::videoAt(SessionTime t, vt::Frame& out, Wait wait) {
     s.advanceReader(t);
     s.roomCv.notify_all();
     if (wait == Wait::Block) {
-        ++s.waiters;
-        s.dataCv.wait(l, [&] {
+        const auto ready = [&] {
             return s.stopping || !s.busy() || (s.status.state == State::Running && s.videoThrough >= due);
-        });
+        };
+        ++s.waiters;
+        if (s.live) s.dataCv.wait_for(l, kLiveBlockWait, ready);
+        else s.dataCv.wait(l, ready);
         --s.waiters;
         s.advanceReader(t);
     }
@@ -214,11 +225,13 @@ void Input::audioAt(int64_t firstSample, std::span<float> stereo, Wait wait) {
         s.advanceReader(firstSample * 5);
         s.roomCv.notify_all();
         if (wait == Wait::Block) {
-            ++s.waiters;
-            s.dataCv.wait(l, [&] {
+            const auto ready = [&] {
                 return s.stopping || !s.busy() ||
                        (s.status.state == State::Running && (!s.hasAudio || std::max(s.audioEnd, s.audioThrough) >= end));
-            });
+            };
+            ++s.waiters;
+            if (s.live) s.dataCv.wait_for(l, kLiveBlockWait, ready);
+            else s.dataCv.wait(l, ready);
             --s.waiters;
         }
     }
