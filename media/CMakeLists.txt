@@ -2,6 +2,7 @@ add_library(vt_media STATIC
     src/ffmpeg.cpp
     src/geometry.cpp
     src/time.cpp
+    src/video_convert.cpp
 )
 target_include_directories(vt_media PUBLIC include)
 target_link_libraries(vt_media PUBLIC vt_engine vt::ffmpeg)

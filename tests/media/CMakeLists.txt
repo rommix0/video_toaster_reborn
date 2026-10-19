@@ -1,6 +1,7 @@
 add_executable(vt_media_tests
     test_ffmpeg.cpp
     test_time_geometry.cpp
+    test_video_convert.cpp
 )
 target_link_libraries(vt_media_tests PRIVATE vt_media catch2_amalgamated)
 target_compile_definitions(vt_media_tests PRIVATE
