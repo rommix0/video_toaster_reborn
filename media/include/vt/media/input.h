@@ -2,6 +2,7 @@
 // A video/audio source on its own decode thread: pictures converted into the engine raster and
 // sound into 48 kHz stereo, both stamped in session time so the program loop can sample them
 // tick by tick. Sources are files, DirectShow capture devices, or the desktop (or one window).
+#include <atomic>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -28,6 +29,11 @@ struct InputConfig {
     // A screen's audio device gets only the defaults.
     std::map<std::string, std::string> options;
     int retryMs = 2000;          // reopen interval after a failure (a live source: also after 2 s without data)
+#ifdef VT_MEDIA_TEST_SEAMS
+    // While set, the open source fails ("simulated failure") at its next packet, as a device
+    // that errors mid-capture would; each reopen then fails the same way.
+    std::shared_ptr<std::atomic<bool>> failForTest;
+#endif
 };
 
 struct InputStatus {
@@ -57,6 +63,9 @@ public:
 
     // The latest picture whose session time <= t, copied into out (skips the copy and returns
     // true if out already holds that picture for this input). False = no picture: caller shows black.
+    // A failed input (Error) and one reopening after a failure have no picture and are silent,
+    // also for what was decoded ahead before the failure; a file that ended (loop off) keeps
+    // showing its last picture.
     // Times within 0.5 ms after t also count, to absorb container timestamp rounding (Matroska
     // stores whole milliseconds). Give each input its own `out`: the skip trusts that nothing
     // else wrote into it since this input filled it.

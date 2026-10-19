@@ -95,11 +95,16 @@ void Input::Shared::passComplete(SessionTime end) {
 }
 
 void Input::Shared::setOpening() {
-    std::lock_guard l(mu);
-    status.state = State::Opening;
-    status.message = name;
-    status.width = status.height = 0;
-    status.hasAudio = hasVideo = hasAudio = false;
+    int64_t silenceFrom = 0;
+    {
+        std::lock_guard l(mu);
+        status.state = State::Opening;
+        status.message = name;
+        status.width = status.height = 0;
+        status.hasAudio = hasVideo = hasAudio = false;
+        silenceFrom = dropAhead();
+    }
+    ring.silenceFrom(silenceFrom);
 }
 
 void Input::Shared::setRunning(int width, int height, bool video, bool audio) {
@@ -125,11 +130,14 @@ void Input::Shared::setPictureSize(int width, int height) {
 }
 
 void Input::Shared::setState(State st, std::string message) {
+    int64_t silenceFrom = INT64_MAX;
     {
         std::lock_guard l(mu);
         status.state = st;
         status.message = std::move(message);
+        if (st == State::Error) silenceFrom = dropAhead();
     }
+    if (silenceFrom != INT64_MAX) ring.silenceFrom(silenceFrom);
     dataCv.notify_all();
 }
 
@@ -149,6 +157,15 @@ void Input::Shared::advanceReader(SessionTime t) {
 }
 
 bool Input::Shared::busy() const { return status.state == State::Opening || status.state == State::Running; }
+
+int64_t Input::Shared::dropAhead() {
+    for (Picture& p : queue)
+        if (pool.size() < kPoolMax) pool.push_back(std::move(p.frame));
+    queue.clear();
+    videoThrough = INT64_MIN;
+    videoShown = INT64_MIN;
+    return floorDiv(reader, 5);
+}
 
 // ---- Input ----
 

@@ -4,6 +4,7 @@
 #include "vt/media/input.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
@@ -210,6 +211,59 @@ TEST_CASE("a missing file that appears is picked up on retry") {
     fs::rename(staging.path, later.path); // appears whole
     CHECK(waitForState(in, State::Running, std::chrono::seconds(2)));
     CHECK(frameIndexOf(videoAtTick(in, 0)) == 0);
+}
+
+TEST_CASE("an input that fails mid-stream shows black and silence, not its last picture") {
+    QuietLog quiet;
+    InputConfig cfg = fileConfig(fixture("f30.mkv"));
+    cfg.retryMs = 60000; // stays in Error for the test
+    cfg.failForTest = std::make_shared<std::atomic<bool>>(false);
+    Input in(cfg, {}, SessionClock::manual());
+    CHECK(frameIndexOf(videoAtTick(in, 10)) == 5);
+    CHECK(peak(audioAt(in, samplesBefore(10), 801)) > 0.1f);
+
+    cfg.failForTest->store(true);
+    // The decode thread waits ahead of the reader; moving the reader on lets it read (and fail).
+    vt::Frame f;
+    int64_t n = 11;
+    for (; in.status().state != State::Error && n < 300; ++n) {
+        in.videoAt(tickTime(n), f, Wait::No);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    const InputStatus st = in.status();
+    REQUIRE(st.state == State::Error);
+    CHECK(st.message.find("simulated failure") != std::string::npos);
+    // What was decoded ahead of the reader before the failure (up to 16 pictures and 1 s of
+    // sound) is gone too.
+    CHECK_FALSE(in.videoAt(tickTime(n), f, Wait::No));
+    CHECK_FALSE(in.videoAt(tickTime(n + 4), f, Wait::Block));
+    CHECK(peak(audioAt(in, samplesBefore(n + 4), 801)) == 0.0f);
+    CHECK(peak(audioAt(in, samplesBefore(n + 30), 801)) == 0.0f);
+}
+
+TEST_CASE("a failed input comes back when its source works again") {
+    QuietLog quiet;
+    InputConfig cfg = fileConfig(fixture("f30.mkv"));
+    cfg.retryMs = 50;
+    cfg.failForTest = std::make_shared<std::atomic<bool>>(true);
+    SessionClock clock = SessionClock::manual();
+    clock.set(tickTime(100)); // every (re)open starts the file here
+    Input in(cfg, {}, clock);
+    REQUIRE(waitForState(in, State::Error, std::chrono::seconds(2)));
+    vt::Frame f;
+    CHECK_FALSE(in.videoAt(tickTime(100), f, Wait::Block));
+    cfg.failForTest->store(false);
+    // A failing attempt may still show Running for a moment: wait for a picture instead.
+    bool back = false;
+    for (const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+         !back && std::chrono::steady_clock::now() < until;) {
+        back = in.videoAt(tickTime(100), f, Wait::No);
+        if (!back) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    REQUIRE(back);
+    CHECK(frameIndexOf(f) == 0);
+    CHECK(frameIndexOf(videoAtTick(in, 104)) == 2);
+    CHECK(in.status().state == State::Running);
 }
 
 TEST_CASE("inputs without a source yet") {

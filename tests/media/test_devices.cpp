@@ -5,10 +5,15 @@
 
 #include <chrono>
 #include <cmath>
+#include <future>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
 
 using namespace vt::media;
 using State = InputStatus::State;
@@ -43,6 +48,54 @@ struct QuietLog {
         for (const auto& s : lines) n += s.find(part) != std::string::npos;
         return n;
     }
+};
+
+// A plain white top-level window with its own message loop, for window-capture tests.
+class TestWindow {
+public:
+    explicit TestWindow(const std::string& title) {
+        std::promise<HWND> made;
+        auto madeF = made.get_future();
+        thread_ = std::thread([made = std::move(made), title]() mutable {
+            WNDCLASSW wc{};
+            wc.lpfnWndProc = proc;
+            wc.hInstance = GetModuleHandleW(nullptr);
+            wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH));
+            wc.lpszClassName = L"vtoast_test_window";
+            RegisterClassW(&wc); // fails harmlessly if a previous test registered it
+            const std::wstring wtitle(title.begin(), title.end()); // ASCII titles only
+            HWND h = CreateWindowExW(0, wc.lpszClassName, wtitle.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100,
+                                     320, 240, nullptr, nullptr, wc.hInstance, nullptr);
+            made.set_value(h);
+            if (!h) return;
+            MSG m;
+            while (GetMessageW(&m, nullptr, 0, 0) > 0) {
+                TranslateMessage(&m);
+                DispatchMessageW(&m);
+            }
+        });
+        hwnd_ = madeF.get();
+    }
+    ~TestWindow() {
+        close();
+        thread_.join();
+    }
+    bool ok() const { return hwnd_ != nullptr; }
+    void close() {
+        if (hwnd_) PostMessageW(hwnd_, WM_CLOSE, 0, 0);
+        hwnd_ = nullptr;
+    }
+
+private:
+    static LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM w, LPARAM l) {
+        if (msg == WM_DESTROY) {
+            PostQuitMessage(0);
+            return 0;
+        }
+        return DefWindowProcW(h, msg, w, l);
+    }
+    std::thread thread_;
+    HWND hwnd_ = nullptr;
 };
 
 } // namespace
@@ -157,4 +210,37 @@ TEST_CASE("first real camera opens", "[live]") {
     INFO(cams.front().name << " (" << cams.front().id << ")");
     Input in(cfg, {}, SessionClock::realtime());
     CHECK(waitForState(in, State::Running, std::chrono::seconds(5)));
+}
+
+TEST_CASE("a captured window that closes goes black", "[live]") {
+    QuietLog quiet;
+    const std::string title = "vtoast capture test " + std::to_string(GetCurrentProcessId());
+    TestWindow win(title);
+    REQUIRE(win.ok());
+    InputConfig cfg;
+    cfg.kind = InputKind::Screen;
+    cfg.window = title;
+    cfg.retryMs = 200;
+    SessionClock clock = SessionClock::realtime();
+    Input in(cfg, {}, clock);
+    REQUIRE(waitForState(in, State::Running, std::chrono::seconds(3)));
+    // The white window shows (the first grabs may predate its first paint).
+    vt::Frame f;
+    bool white = false;
+    for (const auto until = Steady::now() + std::chrono::seconds(3); !white && Steady::now() < until;) {
+        white = in.videoAt(clock.now(), f, Wait::No) && f.at(384, 241).r > 200;
+        if (!white) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    REQUIRE(white);
+
+    win.close();
+    REQUIRE(waitForState(in, State::Error, std::chrono::seconds(5)));
+    // Black from then on, while it keeps looking for the window every retryMs.
+    int shown = 0;
+    for (int i = 0; i < 20; ++i) {
+        shown += in.videoAt(clock.now(), f, Wait::No);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    CHECK(shown == 0);
+    CHECK(in.status().state != State::Running);
 }

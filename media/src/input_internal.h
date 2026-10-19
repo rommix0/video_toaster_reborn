@@ -70,10 +70,13 @@ struct Input::Shared {
     // End of a pass: nothing more, picture or sound, can arrive before `end` (the next pass
     // starts there), so readers waiting on the gap, or on a stream that yielded nothing, return.
     void passComplete(SessionTime end);
+    // (Re)opening: the input shows black and silence until the new source delivers.
     void setOpening();
     void setRunning(int width, int height, bool hasVideo, bool hasAudio);
     // The source picture size, as decoded frames show it (a capture may only tell then).
     void setPictureSize(int width, int height);
+    // Error also drops every queued picture and the sound ahead of the reader (black and
+    // silence while the source is down); Ended keeps the last picture.
     void setState(InputStatus::State, std::string message);
     void countDecodeError();
 
@@ -97,6 +100,10 @@ struct Input::Shared {
     void advanceReader(SessionTime t);
     // Under mu: true while the decode thread may not be producing what a blocked reader wants.
     bool busy() const;
+    // Under mu: recycles every queued picture and forgets what was shown; returns the first
+    // sample the reader has not asked for, from which the caller silences the ring (after
+    // unlocking: the ring has its own lock).
+    int64_t dropAhead();
 };
 
 // The decode thread's body (input_demux.cpp).

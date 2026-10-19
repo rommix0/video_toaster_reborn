@@ -56,6 +56,9 @@ public:
     // One past the newest sample written so far (0 for an empty ring).
     int64_t endSample() const;
 
+    // Silences what was written from `firstSample` on (endSample() stays where it is).
+    void silenceFrom(int64_t firstSample);
+
 private:
     int64_t cap_;
     mutable std::mutex mu_; // guards end_ and buf_; held only for the copy of one span

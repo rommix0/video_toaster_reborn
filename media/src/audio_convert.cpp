@@ -138,4 +138,13 @@ int64_t AudioRing::endSample() const {
     return end_;
 }
 
+void AudioRing::silenceFrom(int64_t firstSample) {
+    std::lock_guard lock(mu_);
+    for (int64_t p = std::max({firstSample, end_ - cap_, int64_t(0)}); p < end_;) {
+        const int64_t slot = p % cap_, run = std::min(end_ - p, cap_ - slot);
+        std::fill_n(buf_.data() + slot * 2, run * 2, 0.0f);
+        p += run;
+    }
+}
+
 } // namespace vt::media

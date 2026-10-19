@@ -49,6 +49,12 @@ struct Source {
     Steady::time_point lastPacket{}; // live: when it last delivered
 };
 
+#ifdef VT_MEDIA_TEST_SEAMS
+bool failingForTest(const Input::Shared& s) { return s.cfg.failForTest && s.cfg.failForTest->load(); }
+#else
+constexpr bool failingForTest(const Input::Shared&) { return false; }
+#endif
+
 // Lets a blocked open or read give up when the input is being destroyed.
 int interruptCb(void* opaque) { return static_cast<Input::Shared*>(opaque)->stopping.load() ? 1 : 0; }
 
@@ -161,13 +167,18 @@ public:
     explicit Pump(Input::Shared& s) : s_(s), vconv_(s.geo), frame_(av_frame_alloc()), pkt_(av_packet_alloc()) {}
 
     // Plays a file `src` from where it stands to its end, its first timestamp due at `base`.
-    // False when the input is stopping; length() is then the session time the pass covered
-    // (video or audio, whichever ends later), which is how far the next loop starts after this one.
+    // False when the input is stopping or the source failed (failure() says why; "" when
+    // stopping); length() is then the session time the pass covered (video or audio, whichever
+    // ends later), which is how far the next loop starts after this one.
     bool play(Source& src, SessionTime base) {
         begin();
         src.base = base;
         for (;;) {
             if (!s_.waitForRoom()) return false;
+            if (failingForTest(s_)) {
+                failure_ = "simulated failure";
+                return false;
+            }
             const int err = av_read_frame(src.fmt.get(), pkt_.get());
             if (err < 0) {
                 if (s_.stopping) return false;
@@ -187,6 +198,7 @@ public:
     }
 
     SessionTime length() const { return length_; }
+    const std::string& failure() const { return failure_; }
 
     // Captures from open live sources as fast as they deliver, never waiting for the reader (a
     // full picture queue drops its oldest picture instead). Returns why it stopped: a read error,
@@ -197,6 +209,7 @@ public:
         begin();
         for (Source& src : srcs) src.lastPacket = Steady::now();
         for (;;) {
+            if (failingForTest(s_)) return "simulated failure";
             bool got = false;
             for (Source& src : srcs) {
                 for (bool video = false; !video;) {
@@ -223,6 +236,7 @@ private:
     // A new pass or capture: timing and audio placement start over.
     void begin() {
         width_ = height_ = -1; // setRunning reported the opened stream's size, which may be unknown
+        failure_.clear();
         length_ = 0;
         lastVideo_ = 0;
         synced_ = false;
@@ -315,6 +329,7 @@ private:
     PacketPtr pkt_;
     bool warnedInterlaced_ = false;
     int width_ = -1, height_ = -1; // the picture size last reported
+    std::string failure_;          // why the last play() failed
     SessionTime length_ = 0, lastVideo_ = 0;
     bool synced_ = false; // next_ holds a position from this pass
     int64_t next_ = 0;    // where the next audio chunk goes (48 kHz sample index)
@@ -325,7 +340,7 @@ private:
 std::string playFile(Input::Shared& s, Pump& pump, Source& src) {
     SessionTime base = s.clock.now();
     for (;;) {
-        if (!pump.play(src, base)) return {};
+        if (!pump.play(src, base)) return pump.failure(); // "" when stopping
         if (pump.length() <= 0) return "no playable frames";
         if (!s.cfg.loop) {
             s.setState(State::Ended, s.name);
