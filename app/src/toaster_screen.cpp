@@ -462,7 +462,7 @@ void ToasterScreen::openBkgPopup() {
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto, , . / = S M F,
 // F1-F7 = Main, 1-7 = Preview, q-u = Superimpose.
-void ToasterScreen::keyPressEvent(QKeyEvent* e) {
+bool ToasterScreen::switcherKey(QKeyEvent* e) {
     static constexpr Qt::Key kOverlay[] = {Qt::Key_Q, Qt::Key_W, Qt::Key_E, Qt::Key_R, Qt::Key_T, Qt::Key_Y, Qt::Key_U};
     const int k = e->key();
     auto handled = [&] {
@@ -484,6 +484,11 @@ void ToasterScreen::keyPressEvent(QKeyEvent* e) {
     } else if (const auto* o = std::find(std::begin(kOverlay), std::end(kOverlay), k); o != std::end(kOverlay)) {
         if (handled()) actions_.select(vt::Bus::Overlay, vt::Source(o - std::begin(kOverlay)));
     } else {
-        QWidget::keyPressEvent(e);
+        return false;
     }
+    return true;
+}
+
+void ToasterScreen::keyPressEvent(QKeyEvent* e) {
+    if (!switcherKey(e)) QWidget::keyPressEvent(e);
 }

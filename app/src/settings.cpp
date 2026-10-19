@@ -19,6 +19,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <optional>
+#include <utility>
 
 using vt::media::InputConfig;
 using vt::media::InputKind;
@@ -133,8 +134,9 @@ void AppSettings::load() {
     if (const auto z = integer(s, QStringLiteral("screenZoom"), 0, 8)) out.screenZoom = *z;
     if (const auto z = integer(s, QStringLiteral("monitorZoom"), 1, 4)) out.monitorZoom = *z;
     if (const auto u = boolean(s, QStringLiteral("underscan"))) out.underscan = *u;
-    if (const QVariant g = s.value(QStringLiteral("windowGeometry")); g.metaType().id() == QMetaType::QByteArray)
-        out.windowGeometry = g.toByteArray();
+    for (auto [key, into] : {std::pair{"windowGeometry", &out.windowGeometry}, std::pair{"monitors/programGeometry", &out.programGeometry},
+                             std::pair{"monitors/previewGeometry", &out.previewGeometry}})
+        if (const QVariant g = s.value(QLatin1String(key)); g.metaType().id() == QMetaType::QByteArray) *into = g.toByteArray();
     *this = out;
 }
 
@@ -158,6 +160,8 @@ bool AppSettings::save() const {
     s.setValue(QStringLiteral("monitorZoom"), monitorZoom);
     s.setValue(QStringLiteral("underscan"), underscan);
     if (!windowGeometry.isEmpty()) s.setValue(QStringLiteral("windowGeometry"), windowGeometry);
+    if (!programGeometry.isEmpty()) s.setValue(QStringLiteral("monitors/programGeometry"), programGeometry);
+    if (!previewGeometry.isEmpty()) s.setValue(QStringLiteral("monitors/previewGeometry"), previewGeometry);
     s.sync();
     return s.status() == QSettings::NoError;
 }

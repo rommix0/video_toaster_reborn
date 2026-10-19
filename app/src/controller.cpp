@@ -1,5 +1,6 @@
 #include "controller.h"
 
+#include <QAbstractSpinBox>
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -8,11 +9,15 @@
 #include <QDialog>
 #include <QDir>
 #include <QFile>
+#include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStatusBar>
+#include <QStyle>
+#include <QTextEdit>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <deque>
@@ -155,6 +160,7 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent, 
     zoomGroup_ = new QActionGroup(this);
     connect(window_->zoomMenu(), &QMenu::aboutToShow, this, &AppController::fillZoomMenu);
     window_->installEventFilter(this);
+    QCoreApplication::instance()->installEventFilter(this);
 
     auto* logWindow = new QDialog(window_.get());
     logWindow->setWindowTitle(tr("Log"));
@@ -184,6 +190,9 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent, 
     buildPanel();
     if (!settings_.windowGeometry.isEmpty()) window_->restoreGeometry(settings_.windowGeometry);
     fillZoomMenu();
+    if (settings_.programGeometry.isEmpty() && settings_.previewGeometry.isEmpty()) placeMonitors();
+    for (auto [m, g] : {std::pair{program_.get(), &settings_.programGeometry}, std::pair{preview_.get(), &settings_.previewGeometry}})
+        if (!g->isEmpty() && m->restoreGeometry(*g)) m->resize(m->sizeHint());  // the place; the size follows the zoom
     updateRecordAction();
     updateStatus();
 
@@ -202,9 +211,30 @@ ToasterScreen* AppController::screen() const { return screen_; }
 ProjectView* AppController::projectView() const { return view_; }
 
 void AppController::show() {
-    window_->show();
     program_->show();
     preview_->show();
+    window_->show();
+    window_->raise();
+    window_->activateWindow();
+    if (screen_) screen_->setFocus();
+}
+
+void AppController::placeMonitors() {
+    // Frames are not known before a window is shown: estimated as 8-px borders and a title bar.
+    constexpr int kBorder = 8;
+    const int title = window_->style()->pixelMetric(QStyle::PM_TitleBarHeight) + kBorder;
+    const QRect avail = window_->screen()->availableGeometry();
+    if (settings_.windowGeometry.isEmpty()) window_->move(avail.topLeft());  // so that there is room beside it
+    const QSize p = program_->sizeHint(), v = preview_->sizeHint();
+    const int x = window_->x() + window_->width() + 2 * kBorder, y = window_->y();
+    auto fits = [&](const QRect& r) { return avail.contains(r.adjusted(0, 0, 2 * kBorder, title + kBorder)); };
+    if (fits({x, y, p.width(), p.height()}) && fits({x, y + p.height() + title + kBorder, v.width(), v.height()})) {
+        program_->move(x, y);
+        preview_->move(x, y + p.height() + title + kBorder);
+    } else if (fits({x, y, p.width() + 2 * kBorder + v.width(), std::max(p.height(), v.height())})) {
+        program_->move(x, y);
+        preview_->move(x + p.width() + 2 * kBorder, y);
+    }
 }
 
 void AppController::runOffline(int64_t ticks) {
@@ -295,10 +325,28 @@ void AppController::showDataMessage(const QString& why) {
 }
 
 bool AppController::eventFilter(QObject* watched, QEvent* e) {
+    if (e->type() == QEvent::KeyPress && forwardKey(watched, static_cast<QKeyEvent*>(e))) return true;
     // Queued: the window's widgets get the event too, and the layout must see their new size hints.
     if (watched == window_.get() && e->type() == QEvent::DevicePixelRatioChange)
         QMetaObject::invokeMethod(this, [this] { if (!shutDown_) applyScreenZoom(); }, Qt::QueuedConnection);
     return QObject::eventFilter(watched, e);
+}
+
+// A key press for a widget of the main window, the mixer dock or a monitor goes to the Switcher
+// screen when it is one of the Switcher's keys, without Ctrl, Alt or Meta (those are the menus').
+bool AppController::forwardKey(QObject* receiver, QKeyEvent* e) {
+    auto* w = qobject_cast<QWidget*>(receiver);
+    if (!w || !screen_ || w == screen_ || shutDown_) return false;
+    if (e->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) return false;
+    // The widget the key was typed into: a key a text field ignores comes here again for its parents.
+    QWidget* origin = QApplication::focusWidget() ? QApplication::focusWidget() : w;
+    const QWidget* top = origin->window();
+    if (top != window_.get() && top != mixer_ && top != program_.get() && top != preview_.get()) return false;
+    if (QApplication::activePopupWidget() || QApplication::activeModalWidget()) return false;
+    if (qobject_cast<QLineEdit*>(origin) || qobject_cast<QAbstractSpinBox*>(origin) || qobject_cast<QTextEdit*>(origin) ||
+        qobject_cast<QPlainTextEdit*>(origin))
+        return false;
+    return screen_->switcherKey(e);
 }
 
 // ---- actions ----
@@ -548,6 +596,8 @@ void AppController::shutdown() {
         audio_->stop();
     }
     // 3. The monitors (off the loop before their windows go).
+    settings_.programGeometry = program_->saveGeometry();
+    settings_.previewGeometry = preview_->saveGeometry();
     for (MonitorWindow* m : {program_.get(), preview_.get()}) {
         loop_->removeMonitor(&m->sink());
         m->close();

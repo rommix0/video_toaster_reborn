@@ -82,6 +82,7 @@ MixerDock::MixerDock(vt::media::AudioMixer& mixer, QWidget* parent) : QDockWidge
 
         auto* mute = new QPushButton(tr("Mute"), body);
         mute->setCheckable(true);
+        mute->setFocusPolicy(Qt::NoFocus);
         s.mute = mute;
         col->addWidget(mute);
         row->addLayout(col);

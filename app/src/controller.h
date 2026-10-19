@@ -43,6 +43,7 @@ public:
 
 class MainWindow;
 class QActionGroup;
+class QKeyEvent;
 class MixerDock;
 class MonitorWindow;
 class ProjectView;
@@ -67,6 +68,12 @@ namespace vt::media { class Recorder; }
 //   fit (or the current zoom, if larger) and applies the choice at once, resizing the window to it.
 //   When the main window's device pixel ratio changes (another display), the zoom is applied again
 //   (with Fit, picked anew for that display) and the window resized to it.
+// - Keys: the Switcher's key map works while the main window (with the mixer dock) or a monitor is
+//   the active window: an application event filter hands the mapped key presses meant for any of
+//   their widgets to the Switcher screen, unless a text field has the focus or a pop-up or modal
+//   dialog is open. show() shows the monitors first and the main window last, activated.
+// - The monitor windows' geometry is stored in the settings; on the first launch they are placed to
+//   the right of the main window, Program above Preview, when that fits on its display.
 // - Toaster data root: while settings.toasterRoot is not valid (or its art does not load) the
 //   Switcher tab shows "Toaster data not found at <root>" with a button opening Settings on the
 //   Toaster data page; a valid root chosen there builds the panel at once.
@@ -80,7 +87,7 @@ namespace vt::media { class Recorder; }
 //   unplugged headset) the status bar shows "No audio output" and poll() tries to start it again
 //   every kAudioRetryMs; applying the settings restarts it whenever it is not running.
 // - shutdown() (closing the main window): stops the recording (finalised), the audio output, takes
-//   the monitors off the loop and stops the loop, then saves the settings.
+//   the monitors off the loop and stops the loop, then saves the settings (with the window geometries).
 class AppController : public QObject, public SwitcherActions {
     Q_OBJECT
 public:
@@ -103,7 +110,7 @@ public:
     ProjectView* projectView() const;
     QPlainTextEdit* logView() const { return logView_; }
     size_t cachedEffects() const { return effects_.size(); }
-    void show();  // the main window and the monitors
+    void show();  // the monitors, then the main window, activated
     void setScreenZoom(int);  // 0 = fit the display; writes settings.screenZoom and applies it
 
     void runOffline(int64_t ticks);  // Mode::Offline: that many ticks, then poll()
@@ -128,7 +135,9 @@ public:
     void loadCrouton(int index, bool run) override;
     void notImplemented(const QString& what) override;
 
-    bool eventFilter(QObject*, QEvent*) override;  // the main window's DevicePixelRatioChange
+    // The main window's DevicePixelRatioChange, and the key presses of the whole application (see
+    // forwardKey).
+    bool eventFilter(QObject*, QEvent*) override;
 
 signals:
     void finished();
@@ -141,6 +150,8 @@ private:
     int fitScreenZoom() const;     // defaultZoom for the main window's display and chrome
     void applyScreenZoom();        // the screen to settings.screenZoom (or the fit), the window to its size
     void fillZoomMenu();
+    bool forwardKey(QObject* receiver, QKeyEvent*);
+    void placeMonitors();          // first launch: beside the main window, where there is room
     void startAudio();
     void updateRecordAction();
     void updateStatus();

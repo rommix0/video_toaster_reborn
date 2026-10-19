@@ -74,6 +74,11 @@ public:
     void setNext(int index);                             // -1: none
     const ProjectGrid& project() const { return project_; }
 
+    // The Switcher's key map (Global Constraints) for a key press, also for presses AppController
+    // forwards from its other windows: true (and accepted) if the key is mapped. Auto-repeats of a
+    // mapped key are swallowed.
+    bool switcherKey(QKeyEvent*);
+
     // Ruling 3: the panel as indices, with the Project area left in the clear colour (Format_Indexed8).
     QImage renderIndexedForTest() const;
     // The 768x481 screen as shown, one pixel per Toaster pixel (Format_RGB32): the panel in its

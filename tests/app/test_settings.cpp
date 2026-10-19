@@ -33,6 +33,8 @@ QString firstDifference(const AppSettings& a, const AppSettings& b) {
     if (a.monitorZoom != b.monitorZoom) return QStringLiteral("monitorZoom");
     if (a.underscan != b.underscan) return QStringLiteral("underscan");
     if (a.windowGeometry != b.windowGeometry) return QStringLiteral("windowGeometry");
+    if (a.programGeometry != b.programGeometry) return QStringLiteral("monitors/programGeometry");
+    if (a.previewGeometry != b.previewGeometry) return QStringLiteral("monitors/previewGeometry");
     return {};
 }
 
@@ -64,6 +66,8 @@ AppSettings filled(const QString& file) {
     s.monitorZoom = 4;
     s.underscan = true;
     s.windowGeometry = QByteArray("\x01\xd9\xd0\xcb\x00\x03", 6);
+    s.programGeometry = QByteArray("\x01\xd9\xd0\xcb\x00\x03\x00\x01", 8);
+    s.previewGeometry = QByteArray("\x01\xd9\xd0\xcb\x00\x03\x00\x02=,;", 11);
     return s;
 }
 

@@ -40,6 +40,7 @@ public:
     int monitorZoom = 1;                                // Program/Preview monitors: 1..4
     bool underscan = false;                             // monitors show the whole 768 x 482 raster
     QByteArray windowGeometry;                          // the main window, QWidget::saveGeometry()
+    QByteArray programGeometry, previewGeometry;        // monitors/programGeometry, monitors/previewGeometry: likewise
 
 private:
     QString file_;

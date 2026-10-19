@@ -2,7 +2,8 @@
 // The audio mixer dock: per channel (In 1-4, Effect sounds, Master) a fader (-96..+24 dB, 0 by
 // default), a mute button and a level meter (peak and RMS in dBFS). The dock is the single reader
 // of AudioMixer::meters(), which it polls at 30 Hz on the UI thread; the faders and mutes go to the
-// mixer's atomic setters, so nothing here blocks the loop.
+// mixer's atomic setters, so nothing here blocks the loop. The mute buttons take no keyboard focus
+// (Space and Return belong to the Switcher).
 #include <QDockWidget>
 #include <QTimer>
 #include <QWidget>

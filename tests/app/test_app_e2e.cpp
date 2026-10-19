@@ -2,6 +2,7 @@
 // through the Switcher screen, the menus and the settings dialog.
 #include "controller.h"
 
+#include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
@@ -13,6 +14,7 @@
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSlider>
 #include <QRegularExpression>
 #include <QStatusBar>
 #include <QTemporaryDir>
@@ -21,6 +23,7 @@
 #include <thread>
 
 #include "main_window.h"
+#include "mixer_dock.h"
 #include "monitor_window.h"
 #include "project_grid.h"
 #include "test_support.h"
@@ -163,6 +166,8 @@ private slots:
     void settingsChangeTheInputs();
     void logLinesFromOtherThreads();
     void audioOutputComesBack();
+    void switcherKeysFromTheOtherWindows();
+    void monitorGeometryIsKept();
     void menus();
     void zoomMenu();
     void zoomFollowsADevicePixelRatioChange();
@@ -463,6 +468,74 @@ void TestAppE2e::audioOutputComesBack() {
     c.applySettings(settings);
     QCOMPARE(audio->starts, 4);
     QVERIFY(audio->running());
+}
+
+// The Switcher's keys work while a monitor or the main window is the active window, whichever of
+// their widgets has the focus; a text field keeps its keys, and the mixer's mute buttons take no focus.
+void TestAppE2e::switcherKeysFromTheOtherWindows() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    auto mainSource = [&] { return c.loop().switcherState().main; };
+    QCOMPARE(mainSource(), vt::Source::In1);
+
+    QTest::keyClick(&c.programMonitor(), Qt::Key_Return);  // Take
+    c.runOffline(1);
+    QCOMPARE(mainSource(), vt::Source::In2);
+    QTest::keyClick(&c.previewMonitor(), Qt::Key_F4);  // Main = In4
+    c.runOffline(1);
+    QCOMPARE(mainSource(), vt::Source::In4);
+    QTest::keyClick(c.mixerDock().fader(vt::media::Channel::Master), Qt::Key_F1);
+    c.runOffline(1);
+    QCOMPARE(mainSource(), vt::Source::In1);
+    QTest::keyClick(c.projectView()->drawerPicker(), Qt::Key_F3);
+    c.runOffline(1);
+    QCOMPARE(mainSource(), vt::Source::In3);
+    for (int i = 0; i < MixerDock::kChannels; ++i)
+        QCOMPARE(c.mixerDock().muteButton(vt::media::Channel(i))->focusPolicy(), Qt::NoFocus);
+
+    // A text field with the focus keeps the keys, also those it does not use (they go on to its parents).
+    auto* edit = new QLineEdit(c.projectView());
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");
+    c.window().show();
+    QVERIFY(QTest::qWaitForWindowActive(&c.window()));
+    edit->setFocus();
+    QCOMPARE(QApplication::focusWidget(), edit);
+    QTest::keyClick(edit, Qt::Key_F1);
+    QTest::keyClick(edit, Qt::Key_Q);
+    c.runOffline(1);
+    QCOMPARE(mainSource(), vt::Source::In3);
+    QCOMPARE(c.loop().switcherState().overlay, vt::Source::Bkg);
+    QCOMPARE(edit->text(), QStringLiteral("q"));
+}
+
+// The monitor windows' places are stored when the app closes and restored at the next start.
+void TestAppE2e::monitorGeometryIsKept() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    {
+        AppController c(settings, Mode::Offline);
+        c.programMonitor().move(10, 20);
+        c.previewMonitor().move(100, 30);
+        c.shutdown();
+    }
+    QVERIFY(!settings.programGeometry.isEmpty());
+    AppSettings stored(settings.file());
+    stored.load();
+    QCOMPARE(stored.programGeometry, settings.programGeometry);
+    QCOMPARE(stored.previewGeometry, settings.previewGeometry);
+    AppController c(stored, Mode::Offline);
+    // Where restoreGeometry() puts a window (the offscreen platform shifts an unshown one a little).
+    auto restored = [](const QByteArray& g) {
+        MonitorWindow w(MonitorWindow::Kind::Program);
+        w.restoreGeometry(g);
+        return w.pos();
+    };
+    QCOMPARE(c.programMonitor().pos(), restored(stored.programGeometry));
+    QCOMPARE(c.previewMonitor().pos(), restored(stored.previewGeometry));
+    QVERIFY((c.previewMonitor().pos() - QPoint(100, 30)).manhattanLength() < 10);
+    QCOMPARE(c.previewMonitor().size(), c.previewMonitor().sizeHint());
 }
 
 void TestAppE2e::menus() {
