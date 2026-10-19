@@ -7,7 +7,9 @@ namespace vt::media {
 
 namespace {
 
-float dbToLinear(float db) { return db > -96.0f ? std::pow(10.0f, db / 20.0f) : 0.0f; }
+constexpr float kSilenceDb = -96.0f, kMaxDb = 24.0f;
+
+float dbToLinear(float db) { return db > kSilenceDb ? std::pow(10.0f, std::min(db, kMaxDb) / 20.0f) : 0.0f; }
 
 float toDb(double linear) {
     return linear > 0 ? static_cast<float>(20.0 * std::log10(linear)) : -std::numeric_limits<float>::infinity();
@@ -17,7 +19,7 @@ float toDb(double linear) {
 int inputOf(vt::Source s) { return s <= vt::Source::In4 ? static_cast<int>(s) : -1; }
 
 // Level of one channel over a tick, both stereo channels together.
-struct Level {
+struct TickLevel {
     float peak = 0;
     double sumSquares = 0;
     void add(float l, float r) {
@@ -37,18 +39,26 @@ AudioMixer::AudioMixer() {
     for (int c = 0; c < kChannels; ++c) {
         fader_[c] = 1.0f;
         mute_[c] = false;
-        peakDb_[c] = rmsDb_[c] = -std::numeric_limits<float>::infinity();
     }
     lastStrip_.fill(1.0f);
 }
 
-void AudioMixer::setFaderDb(Channel c, float db) { fader_[static_cast<int>(c)] = dbToLinear(db); }
+void AudioMixer::setFaderDb(Channel c, float db) {
+    if (std::isnan(db)) return;
+    fader_[static_cast<int>(c)] = dbToLinear(db);
+}
+
 void AudioMixer::setMute(Channel c, bool m) { mute_[static_cast<int>(c)] = m; }
 
-std::array<Meter, 6> AudioMixer::meters() const {
-    std::array<Meter, 6> m;
-    for (int c = 0; c < kChannels; ++c) m[c] = {peakDb_[c].load(), rmsDb_[c].load()};
-    return m;
+std::array<Meter, 6> AudioMixer::meters() {
+    std::lock_guard l(meterMu_);
+    for (int c = 0; c < kChannels; ++c) {
+        Level& v = levels_[c];
+        if (v.frames == 0) continue; // no tick since the last read: repeat it
+        lastMeters_[c] = {toDb(v.peak), toDb(std::sqrt(v.sumSquares / double(2 * v.frames)))};
+        v = {};
+    }
+    return lastMeters_;
 }
 
 void AudioMixer::startSound(const std::shared_ptr<const vt::Sound>& sound) {
@@ -101,7 +111,7 @@ void AudioMixer::process(const MixState& st, const std::array<std::span<const fl
     std::array<size_t, 4> avail;
     for (int i = 0; i < 4; ++i) avail[i] = std::min(inputs[i].size() / 2, n);
 
-    std::array<Level, kChannels> level;
+    std::array<TickLevel, kChannels> level;
     const float invN = 1.0f / static_cast<float>(n);
     const int fx = static_cast<int>(Channel::EffectSound), master = static_cast<int>(Channel::Master);
     for (size_t j = 0; j < n; ++j) {
@@ -142,9 +152,12 @@ void AudioMixer::process(const MixState& st, const std::array<std::span<const fl
         v.pos += n;
         if (v.pos >= v.pcm->size() / 2) v = {};
     }
+    std::lock_guard l(meterMu_);
     for (int c = 0; c < kChannels; ++c) {
-        peakDb_[c] = toDb(level[c].peak);
-        rmsDb_[c] = toDb(std::sqrt(level[c].sumSquares / double(2 * n)));
+        Level& v = levels_[c];
+        v.peak = std::max(v.peak, level[c].peak);
+        v.sumSquares += level[c].sumSquares;
+        v.frames += int64_t(n);
     }
 }
 

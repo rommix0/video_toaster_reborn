@@ -202,10 +202,11 @@ TEST_CASE("faders, mute and meters") {
     for (float s : r.run(st)) CHECK(s == 0.0f);
     r.mixer.setFaderDb(Channel::Master, 0.0f);
 
-    // Full-scale 1 kHz sine on In1.
+    // Full-scale 1 kHz sine on In1 (the first tick still ramps Master up from silence).
     for (size_t i = 0; i < r.in1.size() / 2; ++i)
         r.in1[2 * i] = r.in1[2 * i + 1] = static_cast<float>(std::sin(2 * std::numbers::pi * 1000.0 * double(i) / 48000.0));
     r.run(st);
+    (void)r.mixer.meters(); // a new interval starts after the ramp
     r.run(st);
     const auto m = r.mixer.meters();
     const Meter in1 = m[size_t(Channel::In1)], master = m[size_t(Channel::Master)];
@@ -219,8 +220,68 @@ TEST_CASE("faders, mute and meters") {
     // Meters are post-fader.
     r.mixer.setFaderDb(Channel::In1, -6.0206f);
     r.run(st);
+    (void)r.mixer.meters();
     r.run(st);
     CHECK(r.mixer.meters()[size_t(Channel::In1)].peakDb == Catch::Approx(-6.02f).margin(0.1));
+}
+
+TEST_CASE("meters hold the peak and the RMS since the previous read") {
+    Rig r;
+    const MixState st = state(Source::In1, Source::In2);
+    r.run(st); // settling tick
+    (void)r.mixer.meters();
+    // A loud tick, then a quiet one: the peak is the loud one, the RMS covers both.
+    r.setDc(0.5f, 0.0f);
+    const size_t n1 = r.run(st).size() / 2;
+    r.setDc(0.25f, 0.0f);
+    const size_t n2 = r.run(st).size() / 2; // the ramp is on the follow gain only, already 1
+    const Meter both = r.mixer.meters()[size_t(Channel::In1)];
+    CHECK(both.peakDb == Catch::Approx(20 * std::log10(0.5)).margin(0.01));
+    const double rms = std::sqrt((0.25 * double(n1) + 0.0625 * double(n2)) / double(n1 + n2));
+    CHECK(both.rmsDb == Catch::Approx(20 * std::log10(rms)).margin(0.01));
+    // The next read covers only what ran since.
+    r.run(st);
+    const Meter quiet = r.mixer.meters()[size_t(Channel::In1)];
+    CHECK(quiet.peakDb == Catch::Approx(20 * std::log10(0.25)).margin(0.01));
+    CHECK(quiet.rmsDb == Catch::Approx(20 * std::log10(0.25)).margin(0.01));
+    // No tick in between: the same reading again, not silence.
+    const Meter again = r.mixer.meters()[size_t(Channel::In1)];
+    CHECK(again.peakDb == quiet.peakDb);
+    CHECK(again.rmsDb == quiet.rmsDb);
+    // Silence reads -inf.
+    r.setDc(0.0f, 0.0f);
+    r.run(st);
+    CHECK(r.mixer.meters()[size_t(Channel::In1)].peakDb == -INFINITY);
+}
+
+TEST_CASE("fader settings are clamped to -96..+24 dB and NaN is ignored") {
+    Rig r;
+    r.setDc(0.01f, 0.0f);
+    const MixState st = state(Source::In1, Source::In2);
+    auto in1Peak = [&] {
+        r.run(st); // ramp
+        (void)r.mixer.meters();
+        r.run(st);
+        return r.mixer.meters()[size_t(Channel::In1)].peakDb;
+    };
+    const float base = 20 * std::log10(0.01f); // -40 dB
+    r.mixer.setFaderDb(Channel::In1, 1000.0f);
+    CHECK(in1Peak() == Catch::Approx(base + 24).margin(0.01));
+    r.mixer.setFaderDb(Channel::In1, INFINITY);
+    CHECK(in1Peak() == Catch::Approx(base + 24).margin(0.01));
+    r.mixer.setFaderDb(Channel::In1, -6.0f);
+    r.mixer.setFaderDb(Channel::In1, NAN);
+    CHECK(in1Peak() == Catch::Approx(base - 6).margin(0.01));
+    r.mixer.setFaderDb(Channel::In1, -INFINITY);
+    CHECK(in1Peak() == -INFINITY);
+    r.mixer.setFaderDb(Channel::In1, -95.0f);
+    CHECK(in1Peak() == Catch::Approx(base - 95).margin(0.01));
+    // Master at +24 dB with In1 at +24 dB: the output clamps, nothing overflows to inf or NaN.
+    r.setDc(1.0f, 0.0f);
+    r.mixer.setFaderDb(Channel::In1, 24.0f);
+    r.mixer.setFaderDb(Channel::Master, 1e30f);
+    r.run(st);
+    for (float x : r.run(st)) CHECK(x == 1.0f);
 }
 
 TEST_CASE("master clamps to full scale, short or missing inputs are silence") {

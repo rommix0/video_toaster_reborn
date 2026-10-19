@@ -10,6 +10,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <span>
 #include <vector>
 
@@ -29,7 +30,7 @@ struct MixState {
     static MixState of(const vt::Switcher&);
 };
 
-// Post-fader level of one channel over the last tick (-inf dB for silence).
+// Post-fader level of one channel since the previous meters() read (-inf dB for silence).
 struct Meter {
     float peakDb = -std::numeric_limits<float>::infinity();
     float rmsDb = -std::numeric_limits<float>::infinity();
@@ -41,16 +42,22 @@ struct Meter {
 // overlay keeps Main 1, Preview 0. BKG, DV1 and DV2 carry no audio, and a source on both buses
 // has gain 1 (not cos + sin).
 //
-// Meters are taken per tick after the channel's fader and mute (so an input that is not on air
-// still reads its level); Master's is the final output, after its fader and the clamp.
+// Meters are taken after the channel's fader and mute (so an input that is not on air still
+// reads its level); Master's is the final output, after its fader and the clamp. Each meters()
+// call returns, per channel, the peak since the previous call and the RMS over every sample
+// processed since then, and starts the next interval; when no tick ran in between it repeats
+// its previous reading, so a display polling faster than 59.94 Hz does not flicker.
 //
 // Threading: process() runs on one thread. setFaderDb, setMute and meters() may be called from
-// any thread at any time; a change takes effect from the next process() call.
+// any thread at any time; a change takes effect from the next process() call. meters() and
+// process() share a lock held only to add or take the level sums (no allocation, no slow call).
 class AudioMixer {
 public:
     AudioMixer();
 
-    void setFaderDb(Channel, float db); // default 0 dB; <= -96 dB is silence
+    // Default 0 dB. Clamped to [-96, +24] dB, where -96 (or less) is silence; NaN is ignored
+    // (the fader keeps its value).
+    void setFaderDb(Channel, float db);
     void setMute(Channel, bool);
 
     // Mixes one tick. inputs[i] holds that tick's stereo samples of input i (silence if none or
@@ -61,7 +68,7 @@ public:
     void process(const MixState&, const std::array<std::span<const float>, 4>& inputs,
                  std::shared_ptr<const vt::Sound> sound, std::span<float> out);
 
-    std::array<Meter, 6> meters() const; // a snapshot, indexed by Channel; safe from any thread
+    std::array<Meter, 6> meters(); // since the previous call, indexed by Channel; any thread
 
 private:
     static constexpr int kChannels = 6;
@@ -79,7 +86,16 @@ private:
     // Written by any thread.
     std::array<std::atomic<float>, kChannels> fader_; // linear
     std::array<std::atomic<bool>, kChannels> mute_;
-    std::array<std::atomic<float>, kChannels> peakDb_, rmsDb_;
+
+    // Levels since the last meters() read: process() adds, meters() takes.
+    struct Level {
+        float peak = 0;          // linear
+        double sumSquares = 0;   // both stereo channels
+        int64_t frames = 0;      // stereo frames summed
+    };
+    std::mutex meterMu_;
+    std::array<Level, kChannels> levels_;
+    std::array<Meter, kChannels> lastMeters_; // the previous reading
 
     // process() thread only.
     std::array<float, kChannels> lastStrip_;  // fader * mute of the last tick
