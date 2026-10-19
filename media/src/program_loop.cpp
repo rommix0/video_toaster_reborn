@@ -233,7 +233,7 @@ void ProgramLoop::runTick(bool realtime) {
         }
     }
     {
-        // Each command runs once, even if something below throws past this tick.
+        // Cleared however the loop is left, so no command can run twice.
         struct Clear {
             std::vector<std::function<void(vt::Switcher&)>>& v;
             ~Clear() { v.clear(); }
