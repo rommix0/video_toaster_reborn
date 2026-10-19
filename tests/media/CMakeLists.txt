@@ -3,6 +3,7 @@ add_executable(vt_media_tests
     test_ffmpeg.cpp
     test_input.cpp
     test_mixer.cpp
+    test_program_loop.cpp
     test_time_geometry.cpp
     test_video_convert.cpp
 )
