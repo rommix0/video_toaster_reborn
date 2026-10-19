@@ -14,7 +14,9 @@
 // `presentationDelayMs` in the past); offline uses a manual clock set to tickTime(n) at the start
 // of tick n, so an input opened at tick n starts there (Ruling 1), and reads with Wait::Block and
 // no delay, so the result does not depend on how fast files open or decode. Running in the other
-// mode than the last run reopens all inputs on a new clock. Tick numbers count on across runs.
+// mode than the last run, and every start(), reopens all inputs on a new clock (so a stopped
+// run's paused files and live backlogs are not replayed); consecutive runOffline calls continue
+// on the same clock. Tick numbers count on across runs.
 //
 // Real-time pacing: tick n is due at absolute deadline t0 + tickTime(n) (steady clock, waited on
 // a high-resolution waitable timer). A tick that starts more than 1 ms after its deadline runs at
@@ -23,12 +25,22 @@
 // tick's sample count equal to samplesInTick(tick)) and counts a stall; the inputs are then
 // sampled at the current time again, so their pictures and audio jump forward.
 //
-// Threading: post, setInput, addSink, removeSink, mixer()'s setters, inputStatus and stats may be
-// called from any thread. Only the loop thread (or runOffline's caller) touches the Switcher. An
-// input replaced by setInput is destroyed on a separate thread, so the loop never waits for its
-// decode thread to join. Sinks are called on the loop thread, synchronously: a slow sink slows
-// the loop (offline that is intended). removeSink waits for a running sink call to finish, so it
-// must not be called from inside onProgram.
+// Threading: post, setInput, addSink, removeSink, mixer()'s setters and meters(), inputStatus and
+// stats may be called from any thread. Only the loop thread (or runOffline's caller) touches the
+// Switcher. An input replaced by setInput is destroyed on a separate thread, so the loop never
+// waits for its decode thread to join. Sinks are called on the loop thread, synchronously: a slow
+// sink slows the loop (offline that is intended). removeSink waits for a running sink call to
+// finish: once it returns, that sink is not called again.
+//
+// From the loop thread itself, that is inside onProgram or a posted command:
+// - post, setInput, mixer()'s setters and meters(), inputStatus and stats are fine;
+// - addSink and removeSink are fine in a posted command but deadlock inside onProgram (the sinks'
+//   lock is held while they run);
+// - start, stop and runOffline must never be called (stop would join its own thread, runOffline
+//   and an offline start would wait for the run they are called from).
+//
+// Exceptions: a posted command or a sink call that throws is logged (vt::logWarning) and skipped;
+// the tick and the run go on, and the command is not run again.
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -74,11 +86,11 @@ public:
     ProgramLoop(const ProgramLoop&) = delete;
     ProgramLoop& operator=(const ProgramLoop&) = delete;
 
-    void post(std::function<void(vt::Switcher&)>);    // runs at the start of the next tick
+    void post(std::function<void(vt::Switcher&)>);    // runs once, at the start of the next tick
     void setInput(int index, const InputConfig&);     // replaces input index (0..3) at the next tick
     AudioMixer& mixer() { return mixer_; }            // its setters are thread-safe
     void addSink(ProgramSink*);  void removeSink(ProgramSink*);   // thread-safe
-    void start();                // real time on its own thread; does nothing if running
+    void start();                // real time on its own thread, inputs reopened; does nothing if running
     void stop();                 // joins the thread; does nothing if not running
     // On the calling thread, inputs read with Wait::Block, delay 0. Not while start()ed (asserts;
     // returns at once in release builds).

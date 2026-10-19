@@ -5,12 +5,14 @@
 #include "vt/media/program_loop.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -256,6 +258,44 @@ TEST_CASE("posted commands apply at the next tick, in order") {
     }
 }
 
+TEST_CASE("a posted command or a sink that throws is logged and skipped") {
+    QuietLog quiet;
+    ProgramLoop loop({});
+    Recorder rec;
+    struct Throwing : ProgramSink {
+        int calls = 0;
+        void onProgram(int64_t tick, const vt::Frame&, std::span<const float>) override {
+            ++calls;
+            if (tick == 2) throw std::runtime_error("sink trouble");
+        }
+    } bad;
+    loop.addSink(&bad);
+    loop.addSink(&rec); // after the throwing one: still called every tick
+    int threw = 0, after = 0;
+    loop.post([&](vt::Switcher&) {
+        ++threw;
+        throw std::runtime_error("command trouble");
+    });
+    loop.post([&](vt::Switcher& sw) {
+        ++after;
+        sw.select(vt::Bus::Main, vt::Source::Bkg);
+    });
+    loop.runOffline(3);
+    loop.runOffline(2);
+    CHECK(threw == 1); // never run again
+    CHECK(after == 1);
+    CHECK(bad.calls == 5);
+    REQUIRE(rec.ticks.size() == 5);
+    for (int64_t n = 0; n < 5; ++n) CHECK(rec.ticks[size_t(n)] == n);
+    CHECK(loop.stats().ticks == 5);
+    const auto logged = [&](const char* text) {
+        return std::count_if(quiet.lines.begin(), quiet.lines.end(),
+                             [&](const std::string& l) { return l.find(text) != std::string::npos; });
+    };
+    CHECK(logged("a posted command failed: command trouble") == 1);
+    CHECK(logged("a sink failed: sink trouble") == 1);
+}
+
 TEST_CASE("an input that fails keeps the Program running") {
     QuietLog quiet;
     ProgramConfig cfg;
@@ -360,4 +400,87 @@ TEST_CASE("real time re-bases after falling more than 1 s behind", "[live]") {
     CHECK(st.ticks <= 33);
     for (size_t n = 0; n < rec.ticks.size(); ++n) CHECK(rec.ticks[n] == int64_t(n));
     for (size_t n = 0; n < rec.audio.size(); ++n) CHECK(rec.audio[n].size() == size_t(samplesInTick(int64_t(n))) * 2);
+}
+
+TEST_CASE("real time: start after stop reopens the inputs on a fresh clock", "[live]") {
+    ProgramConfig cfg;
+    cfg.inputs[0] = fileConfig(fixture("f30.mkv"));
+    ProgramLoop loop(cfg);
+    Recorder rec;
+    loop.addSink(&rec);
+    loop.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    loop.stop();
+    const size_t firstRun = rec.ticks.size();
+    REQUIRE(firstRun > 0);
+    CHECK(frameIndexOf(rec.centre.back()) >= 8); // ~0.4 s of picture
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    loop.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    loop.stop();
+    // The file starts over: black while it reopens (frame 0 is coded black too), then frame 1,
+    // not the frame its old clock reached meanwhile (~21).
+    int firstShown = -1;
+    for (size_t i = firstRun; i < rec.centre.size() && firstShown < 0; ++i)
+        if (!(rec.centre[i] == vt::Rgba8{0, 0, 0, 255})) firstShown = frameIndexOf(rec.centre[i]);
+    INFO("first picture after the restart: frame " << firstShown);
+    CHECK(firstShown >= 1);
+    CHECK(firstShown <= 3);
+    for (size_t n = 0; n < rec.ticks.size(); ++n) CHECK(rec.ticks[n] == int64_t(n)); // ticks count on
+}
+
+TEST_CASE("real time: control calls from another thread", "[live]") {
+    ProgramConfig cfg;
+    cfg.inputs[0] = fileConfig(fixture("f30.mkv"));
+    ProgramLoop loop(cfg);
+    struct Counting : ProgramSink {
+        std::atomic<int> calls{0}, afterRemove{0};
+        std::atomic<bool> removed{false};
+        void onProgram(int64_t, const vt::Frame&, std::span<const float>) override {
+            ++calls;
+            if (removed) ++afterRemove;
+        }
+    } steady, flapping;
+    loop.addSink(&steady);
+    std::atomic<int> ran{0};
+    int posted = 0, swaps = 0;
+    loop.start();
+    std::thread hammer([&] {
+        using Clock = std::chrono::steady_clock;
+        const auto until = Clock::now() + std::chrono::seconds(1);
+        auto nextSwap = Clock::now();
+        for (int i = 0; Clock::now() < until; ++i) {
+            loop.post([&ran, i](vt::Switcher& sw) {
+                ++ran;
+                sw.select(vt::Bus::Main, i % 2 ? vt::Source::In1 : vt::Source::In2);
+            });
+            ++posted;
+            if (Clock::now() >= nextSwap) { // a new file every 50 ms
+                loop.setInput(1 + swaps % 3, fileConfig(fixture(swaps % 2 ? "f30.mkv" : "f25_169.mkv")));
+                ++swaps;
+                nextSwap += std::chrono::milliseconds(50);
+            }
+            flapping.removed = false;
+            loop.addSink(&flapping);
+            loop.removeSink(&flapping);
+            flapping.removed = true; // not called from here on, until added again
+            (void)loop.inputStatus(i % 4);
+            (void)loop.stats();
+            loop.mixer().setFaderDb(Channel::In1, i % 2 ? -6.0f : 0.0f);
+            loop.mixer().setMute(Channel::In2, i % 3 == 0);
+            (void)loop.mixer().meters();
+            std::this_thread::yield();
+        }
+    });
+    hammer.join();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    loop.stop();
+    const LoopStats st = loop.stats();
+    INFO("ticks " << st.ticks << ", late " << st.lateTicks << ", posted " << posted << ", ran " << ran << ", swaps " << swaps);
+    CHECK(flapping.afterRemove == 0);
+    CHECK(steady.calls == st.ticks);
+    CHECK(st.ticks >= 60);
+    CHECK(ran == posted); // everything posted before the last 100 ms ran, once
+    CHECK(swaps >= 15);
+    CHECK(loop.inputStatus(0).state == State::Running);
 }

@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <exception>
+#include <string>
+
+#include "vt/log.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -73,6 +77,18 @@ int64_t roundUpTo(int64_t x, int64_t m) {
 // Smallest integer >= a / b (b > 0).
 int64_t ceilDiv(int64_t a, int64_t b) { return a >= 0 ? (a + b - 1) / b : -((-a) / b); }
 
+// Runs f; an exception is logged as "<what> failed: <reason>" and goes no further.
+template <class F>
+void guarded(const char* what, F&& f) {
+    try {
+        f();
+    } catch (const std::exception& e) {
+        logWarning(std::string("program loop: ") + what + " failed: " + e.what());
+    } catch (...) {
+        logWarning(std::string("program loop: ") + what + " failed");
+    }
+}
+
 } // namespace
 
 ProgramLoop::ProgramLoop(ProgramConfig cfg)
@@ -143,7 +159,8 @@ void ProgramLoop::runOffline(int64_t ticks) {
 }
 
 void ProgramLoop::prepare(bool realtime) {
-    if (clock_ && clockRealtime_ == realtime) return;
+    // Offline runs continue on their clock; each real-time start begins on a fresh one.
+    if (clock_ && !realtime && !clockRealtime_) return;
     // A new clock: every input reopens on it at the next tick.
     clock_ = realtime ? SessionClock::realtime() : SessionClock::manual();
     clockRealtime_ = realtime;
@@ -215,8 +232,14 @@ void ProgramLoop::runTick(bool realtime) {
             retiring_.push_back(std::async(std::launch::async, [old = std::move(fresh)]() mutable { old.reset(); }));
         }
     }
-    for (auto& f : running_) f(sw_);
-    running_.clear();
+    {
+        // Each command runs once, even if something below throws past this tick.
+        struct Clear {
+            std::vector<std::function<void(vt::Switcher&)>>& v;
+            ~Clear() { v.clear(); }
+        } clear{running_};
+        for (auto& f : running_) guarded("a posted command", [&] { f(sw_); });
+    }
 
     // 2-3. Every input, on air or not (offline, a blocking read of each before the clock moves
     // on keeps file anchors independent of decode speed).
@@ -243,7 +266,7 @@ void ProgramLoop::runTick(bool realtime) {
     // 7. Sinks.
     {
         std::lock_guard l(sinkMu_);
-        for (ProgramSink* s : sinks_) s->onProgram(n, program_, mix);
+        for (ProgramSink* s : sinks_) guarded("a sink", [&] { s->onProgram(n, program_, mix); });
     }
 
     // 8.
