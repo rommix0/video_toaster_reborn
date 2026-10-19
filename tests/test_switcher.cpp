@@ -1090,3 +1090,47 @@ TEST_CASE("every Overlays-drawer effect shows something over a textured Main wit
     REQUIRE(checked >= 40);
     REQUIRE(identity.empty());
 }
+
+TEST_CASE("renderSource: the picture of one source, no effect", "[switcher]") {
+    Rig r;
+    vt::Frame out;
+    const vt::Frame black = solid({0, 0, 0, 255});
+    r.sw.setBackground(vt::BkgColour::Green);
+    r.sw.renderSource(Source::Bkg, r.src, out);
+    CHECK(out.px == solid(vt::bkgColour(vt::BkgColour::Green)).px);
+    r.sw.renderSource(Source::In1, r.src, out);
+    CHECK(out.px == r.in1.px);
+    r.sw.renderSource(Source::In4, r.src, out);
+    CHECK(out.px == r.in4.px);
+    r.sw.renderSource(Source::DV1, r.src, out);
+    CHECK(out.px == black.px);
+    r.sw.renderSource(Source::DV2, r.src, out);
+    CHECK(out.px == black.px);
+    // an input without a picture is black; `out` may be an input's own frame
+    const vt::SourceFrames none;
+    r.sw.renderSource(Source::In2, none, out);
+    CHECK(out.px == black.px);
+    r.sw.renderSource(Source::In3, r.src, r.in3);
+    CHECK(r.in3.px == ramp(1).px);
+}
+
+TEST_CASE("renderSource ignores the effect and matches render's Snow", "[switcher]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(dissolve()));
+    r.sw.setTBar(200);  // mid-transition: Program is a mix, the Preview source is still In2
+    vt::Frame out;
+    r.sw.renderSource(Source::In2, r.src, out);
+    CHECK(out.px == r.in2.px);
+    // Snow: the noise render puts on Program for a plain BKG Main, and it changes per tick
+    Rig s;
+    s.sw.setBackground(vt::BkgColour::Snow);
+    s.sw.select(Bus::Main, Source::Bkg);
+    vt::Frame snow, prog;
+    s.sw.renderSource(Source::Bkg, s.src, snow);
+    s.sw.render(s.src, prog);
+    CHECK(snow.px == prog.px);
+    s.sw.tick();
+    vt::Frame next;
+    s.sw.renderSource(Source::Bkg, s.src, next);
+    CHECK(next.px != snow.px);
+}

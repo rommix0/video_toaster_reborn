@@ -156,40 +156,46 @@ void Switcher::tick() {
     }
 }
 
-void Switcher::render(const SourceFrames& in, Frame& program) const {
-    // BKG: the colour, or noise that changes every tick. Built only if a bus uses it.
-    const bool snow = bkg_.isSnow();
-    bool bkgBuilt = false;
-
-    auto frameOf = [&](Source s) -> const Frame* {
-        switch (s) {
-            case Source::In1: case Source::In2: case Source::In3: case Source::In4:
-                return in.inputs[static_cast<size_t>(s)];  // null = no picture, black
-            case Source::DV1: case Source::DV2:
-                return &dv_;
-            case Source::Bkg:
-                if (!bkgBuilt) {
-                    if (snow) {
-                        renderSnow(bkgScratch_, tickCount_);
-                    } else {
-                        std::fill(bkgScratch_.px.begin(), bkgScratch_.px.end(), bkg_.rgb());
-                    }
-                    bkgBuilt = true;
+// The picture of one source. BKG is the colour, or noise that changes every tick, built only
+// when first asked for (bkgBuilt); a missing input is black (blackBuilt). The frames are members.
+const Frame& Switcher::sourceFrame(Source s, const SourceFrames& in, bool& bkgBuilt, bool& blackBuilt) const {
+    const Frame* f = nullptr;
+    switch (s) {
+        case Source::In1: case Source::In2: case Source::In3: case Source::In4:
+            f = in.inputs[static_cast<size_t>(s)];  // null = no picture, black
+            break;
+        case Source::DV1: case Source::DV2:
+            f = &dv_;
+            break;
+        case Source::Bkg:
+            if (!bkgBuilt) {
+                if (bkg_.isSnow()) {
+                    renderSnow(bkgScratch_, tickCount_);
+                } else {
+                    std::fill(bkgScratch_.px.begin(), bkgScratch_.px.end(), bkg_.rgb());
                 }
-                return &bkgScratch_;
-        }
-        return nullptr;
-    };
-    bool blackBuilt = false;
-    auto pick = [&](Source s) -> const Frame& {
-        const Frame* f = frameOf(s);
-        if (f) return *f;
-        if (!blackBuilt) {
-            std::fill(blackScratch_.px.begin(), blackScratch_.px.end(), kBlack);
-            blackBuilt = true;
-        }
-        return blackScratch_;
-    };
+                bkgBuilt = true;
+            }
+            f = &bkgScratch_;
+            break;
+    }
+    if (f) return *f;
+    if (!blackBuilt) {
+        std::fill(blackScratch_.px.begin(), blackScratch_.px.end(), kBlack);
+        blackBuilt = true;
+    }
+    return blackScratch_;
+}
+
+void Switcher::renderSource(Source s, const SourceFrames& in, Frame& out) const {
+    bool bkgBuilt = false, blackBuilt = false;
+    const Frame& f = sourceFrame(s, in, bkgBuilt, blackBuilt);
+    if (&f != &out) out.px = f.px;  // a copy into out's own buffer (out may be an input frame)
+}
+
+void Switcher::render(const SourceFrames& in, Frame& program) const {
+    bool bkgBuilt = false, blackBuilt = false;
+    auto pick = [&](Source s) -> const Frame& { return sourceFrame(s, in, bkgBuilt, blackBuilt); };
 
     const Frame& a = pick(sel_[busIndex(Bus::Main)]);
     // Output goes to a separate frame: DVE effects must not alias their inputs, and `program`

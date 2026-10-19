@@ -95,6 +95,7 @@ ProgramLoop::ProgramLoop(ProgramConfig cfg)
     : geometry_(cfg.geometry), delayMs_(std::max(0, cfg.presentationDelayMs)), configs_(std::move(cfg.inputs)) {
     for (auto& a : audio_) a.resize(kTickFrames * 2);
     mix_.resize(kTickFrames * 2);
+    publish();   // the Switcher's defaults, until the first tick
 }
 
 ProgramLoop::~ProgramLoop() { stop(); }
@@ -102,6 +103,17 @@ ProgramLoop::~ProgramLoop() { stop(); }
 void ProgramLoop::post(std::function<void(vt::Switcher&)> f) {
     std::lock_guard l(mu_);
     posted_.push_back(std::move(f));
+}
+
+void ProgramLoop::postChecked(std::function<bool(vt::Switcher&, std::string& why)> f) {
+    post([this, f = std::move(f)](vt::Switcher& sw) {   // runs on the loop thread, which owns work_
+        std::string why;
+        if (f(sw, why)) {
+            work_.lastRefusal.clear();
+        } else {
+            work_.lastRefusal = why.empty() ? "refused" : std::move(why);
+        }
+    });
 }
 
 void ProgramLoop::setInput(int index, const InputConfig& c) {
@@ -120,6 +132,46 @@ void ProgramLoop::addSink(ProgramSink* s) {
 void ProgramLoop::removeSink(ProgramSink* s) {
     std::lock_guard l(sinkMu_);
     std::erase(sinks_, s);
+}
+
+void ProgramLoop::addMonitor(MonitorSink* m) {
+    std::lock_guard l(monitorMu_);
+    if (std::find(monitors_.begin(), monitors_.end(), m) == monitors_.end()) monitors_.push_back(m);
+}
+
+void ProgramLoop::removeMonitor(MonitorSink* m) {
+    std::lock_guard l(monitorMu_);
+    std::erase(monitors_, m);
+}
+
+SwitcherSnapshot ProgramLoop::switcherState() const {
+    std::lock_guard l(snapMu_);
+    return snapshot_;
+}
+
+// The effect's name is a string built on every call, so it is read again only after posted
+// commands ran: the one way the effect can change.
+void ProgramLoop::publish() {
+    SwitcherSnapshot& w = work_;
+    w.main = sw_.selected(vt::Bus::Main);
+    w.preview = sw_.selected(vt::Bus::Preview);
+    w.overlay = sw_.selected(vt::Bus::Overlay);
+    w.tbar = sw_.tbar();
+    w.autoRunning = sw_.autoRunning();
+    w.transition = sw_.transitionActive();
+    w.chroma = sw_.chromaEngaged();
+    w.overlayEngaged = sw_.overlayEngaged();
+    w.speed = sw_.speed();
+    if (nameStale_) {
+        nameStale_ = false;
+        std::string name = sw_.effect().name();
+        if (name != w.effectName) w.effectName = std::move(name);
+    }
+    w.effectColour = sw_.effectColour();
+    w.background = sw_.background();
+    w.tick = tick_ - 1;
+    std::lock_guard l(snapMu_);
+    snapshot_ = w;   // the strings reuse their capacity: no allocation unless a name or reason grew
 }
 
 InputStatus ProgramLoop::inputStatus(int index) const {
@@ -239,6 +291,7 @@ void ProgramLoop::runTick(bool realtime) {
             ~Clear() { v.clear(); }
         } clear{running_};
         for (auto& f : running_) guarded("a posted command", [&] { f(sw_); });
+        if (!running_.empty()) nameStale_ = true;
     }
 
     // 2-3. Every input, on air or not (offline, a blocking read of each before the clock moves
@@ -268,10 +321,18 @@ void ProgramLoop::runTick(bool realtime) {
         std::lock_guard l(sinkMu_);
         for (ProgramSink* s : sinks_) guarded("a sink", [&] { s->onProgram(n, program_, mix); });
     }
+    {
+        std::lock_guard l(monitorMu_);
+        if (!monitors_.empty()) {
+            sw_.renderSource(sw_.selected(vt::Bus::Preview), src, preview_);
+            for (MonitorSink* m : monitors_) guarded("a monitor", [&] { m->onPictures(n, program_, preview_); });
+        }
+    }
 
     // 8.
     sw_.tick();
     ++tick_;
+    publish();
     const double ms = std::chrono::duration<double, std::milli>(Steady::now() - began).count();
     std::lock_guard l(mu_);
     ++stats_.ticks;

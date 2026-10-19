@@ -12,6 +12,7 @@
 #include <fstream>
 #include <functional>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -483,4 +484,165 @@ TEST_CASE("real time: control calls from another thread", "[live]") {
     CHECK(ran == posted); // everything posted before the last 100 ms ran, once
     CHECK(swaps >= 15);
     CHECK(loop.inputStatus(0).state == State::Running);
+}
+
+namespace {
+
+// Copies the pictures of every tick.
+struct Monitor : MonitorSink {
+    std::vector<int64_t> ticks;
+    std::map<int64_t, vt::Frame> program, preview;
+    void onPictures(int64_t tick, const vt::Frame& prog, const vt::Frame& prev) override {
+        ticks.push_back(tick);
+        program[tick] = prog;
+        preview[tick] = prev;
+    }
+};
+
+} // namespace
+
+TEST_CASE("a monitor gets Program and the Preview source every tick, until removed") {
+    ProgramConfig cfg;
+    cfg.inputs[0] = fileConfig(fixture("f30.mkv"));
+    cfg.inputs[1] = fileConfig(fixture("f25_169.mkv"));
+    ProgramLoop loop(cfg);
+    Recorder rec;
+    rec.keepFrame = [](int64_t) { return true; };
+    Monitor mon;
+    loop.addSink(&rec);
+    loop.addMonitor(&mon);
+    loop.addMonitor(&mon); // once
+    loop.runOffline(12);
+    REQUIRE(mon.ticks.size() == 12);
+    Input in2(fileConfig(fixture("f25_169.mkv")), {}, SessionClock::manual());
+    vt::Frame want;
+    for (int64_t n = 0; n < 12; ++n) { // Main In1, Preview In2: no transition
+        INFO("tick " << n);
+        CHECK(mon.ticks[size_t(n)] == n);
+        CHECK(mon.program[n].px == rec.frames[n].px);
+        REQUIRE(in2.videoAt(tickTime(n), want, Wait::Block));
+        CHECK(mon.preview[n].px == want.px);
+    }
+    // The Preview picture follows the bus selection
+    loop.post([](vt::Switcher& sw) {
+        sw.setBackground(vt::BkgColour::Red);
+        sw.select(vt::Bus::Preview, vt::Source::Bkg);
+    });
+    loop.runOffline(2);
+    REQUIRE(mon.ticks.size() == 14);
+    const std::vector<vt::Rgba8> red(size_t(vt::kRasterW) * vt::kRasterH, vt::bkgColour(vt::BkgColour::Red));
+    for (int64_t n = 12; n < 14; ++n) CHECK(mon.preview[n].px == red);
+    loop.removeMonitor(&mon);
+    loop.runOffline(3);
+    CHECK(mon.ticks.size() == 14);
+    CHECK(rec.ticks.size() == 17);
+}
+
+TEST_CASE("switcherState follows the Switcher from the tick a command ran") {
+    ProgramLoop loop({});
+    SwitcherSnapshot s = loop.switcherState();
+    CHECK(s.tick == -1);
+    CHECK(s.main == vt::Source::In1);
+    CHECK(s.preview == vt::Source::In2);
+    CHECK(s.overlay == vt::Source::Bkg);
+    CHECK(s.tbar == 0);
+    CHECK_FALSE(s.transition);
+    CHECK(s.lastRefusal.empty());
+    CHECK(s.effectName == vt::makeDissolve()->name());
+
+    loop.runOffline(5);
+    CHECK(loop.switcherState().tick == 4);
+    loop.post([](vt::Switcher& sw) {
+        sw.select(vt::Bus::Main, vt::Source::In3);
+        sw.select(vt::Bus::Overlay, vt::Source::DV1);
+        sw.setBackground(vt::BkgColour::Blue);
+    });
+    s = loop.switcherState();
+    CHECK(s.main == vt::Source::In1); // not run yet
+    loop.runOffline(1);
+    s = loop.switcherState();
+    CHECK(s.tick == 5);
+    CHECK(s.main == vt::Source::In3);
+    CHECK(s.overlay == vt::Source::DV1);
+    CHECK(s.background == vt::EffectColour::of(vt::BkgColour::Blue));
+
+    int dur = 0;
+    loop.post([&](vt::Switcher& sw) {
+        sw.autoTransition(vt::Speed::Fast);
+        dur = fastTicks(sw.effect());
+    });
+    loop.runOffline(3);
+    s = loop.switcherState();
+    CHECK(s.autoRunning);
+    CHECK(s.transition);
+    CHECK(s.tbar > 0);
+    CHECK(s.speed == vt::Speed::Fast);
+    loop.runOffline(dur);
+    s = loop.switcherState();
+    CHECK_FALSE(s.autoRunning);
+    CHECK(s.main == vt::Source::In2); // Auto finished: Main and Preview swapped
+    CHECK(s.preview == vt::Source::In3);
+}
+
+TEST_CASE("switcherState names the effect and can be read from another thread") {
+    ProgramLoop loop({});
+    const std::shared_ptr<const vt::Effect> effect = vt::makeDissolve();
+    std::string want;
+    loop.post([&](vt::Switcher& sw) {
+        sw.setEffect(effect);
+        sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Yellow));
+        want = sw.effect().name();
+    });
+    std::atomic<bool> done{false};
+    std::atomic<int> reads{0};
+    std::thread reader([&] {
+        while (!done) {
+            if (loop.switcherState().tick >= 0) ++reads;
+        }
+    });
+    loop.runOffline(30);
+    done = true;
+    reader.join();
+    const SwitcherSnapshot s = loop.switcherState();
+    CHECK(s.effectName == want);
+    CHECK(s.effectColour == vt::EffectColour::of(vt::BkgColour::Yellow));
+    CHECK(s.tick == 29);
+}
+
+TEST_CASE("postChecked: a refusal's reason lands in lastRefusal until a checked post succeeds") {
+    const fs::path root = fs::path(VT_DATA_ROOT).lexically_normal();
+    const std::shared_ptr<const vt::Effect> fadeToNeg = vt::loadEffect(root / "4.2/Effects/ChromaFx/Fade To Neg");
+    const std::shared_ptr<const vt::Effect> dve = vt::loadEffect(root / "4.2/Effects/2000FX/Blinds/Split Corners In");
+    REQUIRE(fadeToNeg);
+    REQUIRE(dve);
+    ProgramLoop loop({});
+    loop.postChecked([&](vt::Switcher& sw, std::string& why) { return sw.setEffect(fadeToNeg, &why); });
+    loop.post([](vt::Switcher& sw) { sw.setTBar(100); });
+    loop.runOffline(2);
+    SwitcherSnapshot s = loop.switcherState();
+    CHECK(s.lastRefusal.empty());
+    CHECK(s.chroma);
+    CHECK(s.effectName == fadeToNeg->name());
+
+    loop.postChecked([&](vt::Switcher& sw, std::string& why) { return sw.setEffect(dve, &why); });
+    loop.runOffline(1);
+    s = loop.switcherState();
+    CHECK(s.lastRefusal.find("ChromaFX") != std::string::npos);
+    CHECK(s.effectName == fadeToNeg->name()); // the refused effect was not taken
+    CHECK(s.chroma);
+    loop.runOffline(2); // kept
+    CHECK_FALSE(loop.switcherState().lastRefusal.empty());
+    loop.post([](vt::Switcher& sw) { sw.setTBar(1); }); // a plain post leaves it alone
+    loop.runOffline(1);
+    CHECK_FALSE(loop.switcherState().lastRefusal.empty());
+
+    loop.postChecked([](vt::Switcher&, std::string&) { return false; }); // no reason given
+    loop.runOffline(1);
+    CHECK(loop.switcherState().lastRefusal == "refused");
+
+    loop.postChecked([](vt::Switcher& sw, std::string& why) { return sw.setEffect(vt::makeDissolve(), &why); });
+    loop.runOffline(1);
+    s = loop.switcherState();
+    CHECK(s.lastRefusal.empty());
+    CHECK(s.effectName == vt::makeDissolve()->name());
 }

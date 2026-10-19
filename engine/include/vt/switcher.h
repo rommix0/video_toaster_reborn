@@ -147,6 +147,10 @@ public:
     // steady-state renders allocation-free), so program.px.data() alternates between two
     // buffers: do not keep a pointer into program.px across renders.
     void render(const SourceFrames&, Frame& program) const;
+    // The picture a bus would show for source `s` (an input, DV1/DV2, or BKG: its colour or this
+    // tick's Snow), with no effect applied: what the Preview monitor shows. A missing input is
+    // black. Same scratch rules as render (serialised with it); `out` may alias an input frame.
+    void renderSource(Source s, const SourceFrames&, Frame& out) const;
 
     // The current effect's sound, once, when a transition starts; nullptr otherwise (and after
     // a Take). The pointer shares ownership of the effect, so the sound stays valid however
@@ -159,6 +163,7 @@ private:
     void arriveAt0();
     void engage();
     void disengage();
+    const Frame& sourceFrame(Source, const SourceFrames&, bool& bkgBuilt, bool& blackBuilt) const;
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::Bkg};
