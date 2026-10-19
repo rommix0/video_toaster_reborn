@@ -85,10 +85,11 @@ void Input::Shared::publishAudio(int64_t firstSample, std::span<const float> ste
     dataCv.notify_all();
 }
 
-void Input::Shared::videoCompleteThrough(SessionTime t) {
+void Input::Shared::passComplete(SessionTime end) {
     {
         std::lock_guard l(mu);
-        videoThrough = std::max(videoThrough, t);
+        videoThrough = std::max(videoThrough, end - 1);
+        audioThrough = std::max(audioThrough, floorDiv(end, 5));
     }
     dataCv.notify_all();
 }
@@ -112,6 +113,7 @@ void Input::Shared::setRunning(int width, int height, bool video, bool audio) {
         hasVideo = video;
         // A reader waits for this run's pictures; without video there are none to wait for.
         videoThrough = video ? INT64_MIN : INT64_MAX;
+        audioThrough = INT64_MIN;
     }
     dataCv.notify_all();
 }
@@ -215,7 +217,7 @@ void Input::audioAt(int64_t firstSample, std::span<float> stereo, Wait wait) {
             ++s.waiters;
             s.dataCv.wait(l, [&] {
                 return s.stopping || !s.busy() ||
-                       (s.status.state == State::Running && (!s.hasAudio || s.audioEnd >= end));
+                       (s.status.state == State::Running && (!s.hasAudio || std::max(s.audioEnd, s.audioThrough) >= end));
             });
             --s.waiters;
         }

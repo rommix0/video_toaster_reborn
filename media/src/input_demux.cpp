@@ -122,7 +122,7 @@ public:
         if (src.audio.dec) decode(src.audio, nullptr, false);
         if (src.video.dec) avcodec_flush_buffers(src.video.dec.get());
         if (src.audio.dec) avcodec_flush_buffers(src.audio.dec.get());
-        if (length_ > 0) s_.videoCompleteThrough(base_ + length_ - 1);
+        if (length_ > 0) s_.passComplete(base_ + length_);
         return !s_.stopping;
     }
 

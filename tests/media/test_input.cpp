@@ -1,5 +1,6 @@
 #include "catch_amalgamated.hpp"
 #include "vt/log.h"
+#include "vt/media/ffmpeg.h"
 #include "vt/media/input.h"
 
 #include <algorithm>
@@ -7,6 +8,8 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <future>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -288,4 +291,72 @@ TEST_CASE("a damaged packet mid-file is skipped and counted") {
     CHECK(st.state == State::Ended);
     CHECK(st.decodeErrors >= 1);
     CHECK(st.framesDecoded < 150);
+}
+
+namespace {
+
+// f30's first `frames` video packets remuxed into `path` beside a 48 kHz stereo PCM audio track
+// that has no packets at all: the input gets an audio decoder that never yields a sample.
+void writeSilentTrackFile(const std::string& path, int frames) {
+    AVFormatContext* raw = nullptr;
+    REQUIRE(avformat_open_input(&raw, fixture("f30.mkv").c_str(), nullptr, nullptr) >= 0);
+    FormatCtxPtr in(raw);
+    REQUIRE(avformat_find_stream_info(in.get(), nullptr) >= 0);
+    const int v = av_find_best_stream(in.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+    REQUIRE(v >= 0);
+
+    AVFormatContext* oc = nullptr;
+    REQUIRE(avformat_alloc_output_context2(&oc, nullptr, "matroska", path.c_str()) >= 0);
+    std::unique_ptr<AVFormatContext, decltype(&avformat_free_context)> out(oc, avformat_free_context);
+    AVStream* vs = avformat_new_stream(oc, nullptr);
+    REQUIRE(avcodec_parameters_copy(vs->codecpar, in->streams[v]->codecpar) >= 0);
+    vs->codecpar->codec_tag = 0;
+    vs->time_base = in->streams[v]->time_base;
+    AVStream* as = avformat_new_stream(oc, nullptr);
+    as->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
+    as->codecpar->codec_id = AV_CODEC_ID_PCM_S16LE;
+    as->codecpar->format = AV_SAMPLE_FMT_S16;
+    as->codecpar->sample_rate = 48000;
+    as->codecpar->bits_per_coded_sample = 16;
+    as->codecpar->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+    as->time_base = {1, 48000};
+
+    REQUIRE(avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE) >= 0);
+    REQUIRE(avformat_write_header(oc, nullptr) >= 0);
+    PacketPtr pkt(av_packet_alloc());
+    for (int n = 0; n < frames && av_read_frame(in.get(), pkt.get()) >= 0;) {
+        if (pkt->stream_index == v) {
+            av_packet_rescale_ts(pkt.get(), in->streams[v]->time_base, vs->time_base);
+            pkt->stream_index = 0;
+            pkt->pos = -1;
+            REQUIRE(av_interleaved_write_frame(oc, pkt.get()) >= 0);
+            ++n;
+        }
+        av_packet_unref(pkt.get());
+    }
+    REQUIRE(av_write_trailer(oc) >= 0);
+    avio_closep(&oc->pb);
+}
+
+} // namespace
+
+TEST_CASE("an audio track that yields no samples does not block a looping input's audio") {
+    QuietLog quiet;
+    TempPath file("vt_input_silent_track.mkv");
+    writeSilentTrackFile(file.str(), 30); // 1.001 s of picture per pass
+    // On a hang the input is leaked on purpose: the reader thread still uses it.
+    auto* in = new Input(fileConfig(file.str()), {}, SessionClock::manual());
+    auto result = std::make_shared<std::promise<float>>();
+    std::future<float> done = result->get_future();
+    std::thread([in, result] {
+        std::vector<float> a(1602, 1.0f);
+        in->audioAt(48000, a, Wait::Block); // 1.0 s .. 1.017 s: inside the second pass
+        result->set_value(peak(a));
+    }).detach();
+    REQUIRE(done.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+    CHECK(done.get() == 0.0f);
+    const InputStatus st = in->status();
+    CHECK(st.state == State::Running);
+    CHECK(st.hasAudio);
+    delete in;
 }

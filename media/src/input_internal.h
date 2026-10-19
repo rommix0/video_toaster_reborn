@@ -51,8 +51,9 @@ struct Input::Shared {
     void publishPicture(SessionTime t, vt::Frame&& f);
     // Writes audio at `firstSample` into the ring and wakes readers.
     void publishAudio(int64_t firstSample, std::span<const float> stereo);
-    // No picture can arrive before `t` any more (end of a pass).
-    void videoCompleteThrough(SessionTime t);
+    // End of a pass: nothing more, picture or sound, can arrive before `end` (the next pass
+    // starts there), so readers waiting on the gap, or on a stream that yielded nothing, return.
+    void passComplete(SessionTime end);
     void setOpening();
     void setRunning(int width, int height, bool hasVideo, bool hasAudio);
     void setState(InputStatus::State, std::string message);
@@ -69,6 +70,7 @@ struct Input::Shared {
     bool hasVideo = false, hasAudio = false;
     SessionTime videoThrough = INT64_MIN; // every picture up to here has been queued
     int64_t audioEnd = 0;                 // mirrors ring.endSample()
+    int64_t audioThrough = INT64_MIN;     // no more audio will be written before this sample
     SessionTime reader;                   // furthest time either reader asked for
     SessionTime videoShown = INT64_MIN;   // t + slack of the last finished videoAt
     int waiters = 0;                      // readers blocked in Wait::Block

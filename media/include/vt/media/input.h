@@ -56,7 +56,8 @@ public:
     // Wait::No returns what is there now.
     bool videoAt(SessionTime t, vt::Frame& out, Wait);
     // Samples [first, first + stereo.size()/2) of this input; silence where there are none.
-    // Wait::Block waits until the thread has written past the span (or ended or failed).
+    // Wait::Block waits until the thread has written past the span, or finished the pass that
+    // covers it without writing there (or the input ended or failed).
     void audioAt(int64_t firstSample, std::span<float> stereo, Wait);
     InputStatus status() const;
 
