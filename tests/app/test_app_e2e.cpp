@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRegularExpression>
@@ -143,6 +144,7 @@ private slots:
     void settingsChangeTheInputs();
     void logLinesFromOtherThreads();
     void menus();
+    void zoomMenu();
     void realtimeRecordingWithLiveInputs();  // live: tools/live.bat (VT_APP_LIVE=1)
 };
 
@@ -415,6 +417,36 @@ void TestAppE2e::menus() {
     QCOMPARE(w.recordAction()->shortcut(), QKeySequence(Qt::CTRL | Qt::Key_R));
     QCOMPARE(w.quitAction()->text(), QStringLiteral("&Quit"));
     QCOMPARE(w.logAction()->text(), QStringLiteral("&Log"));
+}
+
+// View -> Zoom: Fit, then 1x up to the fit for the display or the current zoom (the offscreen display
+// fits only 1x; the stored zoom is 3). Choosing 2x sets the screen's zoom and the setting at once.
+void TestAppE2e::zoomMenu() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    settings.screenZoom = 3;
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QCOMPARE(c.screen()->zoom(), 3);
+    QStringList names;
+    QAction* two = nullptr;
+    QAction* fit = nullptr;
+    for (QAction* a : c.window().zoomMenu()->actions()) {
+        if (a->isSeparator()) continue;
+        names << a->text();
+        if (a->text() == QStringLiteral("2×")) two = a;
+        if (a->text() == QStringLiteral("Fit")) fit = a;
+        QCOMPARE(a->isChecked(), a->text() == QStringLiteral("3×"));
+    }
+    QCOMPARE(names, (QStringList{"Fit", "1×", "2×", "3×"}));
+    two->trigger();
+    QCOMPARE(c.screen()->zoom(), 2);
+    QCOMPARE(settings.screenZoom, 2);
+    QCOMPARE(c.window().size(), c.window().sizeHint());
+    QVERIFY(two->isChecked());
+    fit->trigger();
+    QCOMPARE(settings.screenZoom, 0);
+    QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
 }
 
 // Review Focus 4 in real time: In1 = the desktop, In2 = the first video device, the audio output

@@ -36,14 +36,15 @@ QString toQString(const fs::path& p) { return QString::fromStdU16String(p.generi
 
 }  // namespace
 
-int fitZoom(QSize available, int chromeHeight) {
-    return std::max(1, std::min(available.width() / kScreenW, (available.height() - chromeHeight) / kScreenH));
+int fitZoom(QSize available, int chromeHeight, int chromeWidth) {
+    return std::max(1, std::min((available.width() - chromeWidth) / kScreenW, (available.height() - chromeHeight) / kScreenH));
 }
 
-int defaultZoom(const QScreen& screen, int chromeHeight) {
+int defaultZoom(const QScreen& screen, int chromeHeight, int chromeWidth) {
     const double dpr = screen.devicePixelRatio();
     const QSize avail = screen.availableGeometry().size();
-    return fitZoom(QSize(int(avail.width() * dpr), int(avail.height() * dpr)), int(std::ceil(chromeHeight * dpr)));
+    return fitZoom(QSize(int(avail.width() * dpr), int(avail.height() * dpr)), int(std::ceil(chromeHeight * dpr)),
+                   int(std::ceil(chromeWidth * dpr)));
 }
 
 ProjectGrid::ProjectGrid() { compose(); }

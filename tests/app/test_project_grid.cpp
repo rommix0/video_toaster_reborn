@@ -194,7 +194,8 @@ void TestProjectGrid::drawerPicker() {
     QVERIFY(fake.calls.isEmpty());
 }
 
-// Review Focus 1: the largest whole-number zoom whose screen plus 40 px of window chrome fits.
+// Review Focus 1: the largest whole-number zoom whose screen plus 40 px of window chrome fits, and
+// with the mixer dock beside it, its width too.
 void TestProjectGrid::fitZoomChoice() {
     QCOMPARE(fitZoom(QSize(1366, 728)), 1);
     QCOMPARE(fitZoom(QSize(1920, 1040)), 2);
@@ -202,6 +203,16 @@ void TestProjectGrid::fitZoomChoice() {
     QCOMPARE(fitZoom(QSize(640, 400)), 1);  // never below 1
     QCOMPARE(fitZoom(QSize(1536, 1002)), 2);
     QCOMPARE(fitZoom(QSize(1536, 1001)), 1);
+    QCOMPARE(fitZoom(QSize(1366, 728), 40, 0), 1);
+    QCOMPARE(fitZoom(QSize(1920, 1040), 40, 0), 2);
+    QCOMPARE(fitZoom(QSize(3840, 2080), 40, 0), 4);
+    // 1920 x 1200 at 100 %, taskbar 40: zoom 2 is 1536 wide, too wide beside the 508-px dock.
+    QCOMPARE(fitZoom(QSize(1920, 1160), 130, 508), 1);
+    QCOMPARE(fitZoom(QSize(1920 + 508, 1160), 130, 508), 2);
+    // 3840 x 2160 at 100 % with the same chrome: zoom 4 (3072 + 508 wide, 1924 + 130 high) still fits.
+    QCOMPARE(fitZoom(QSize(3840, 2120), 130, 508), 4);
+    // At 150 % the chrome is 1.5 times as many device pixels: 3.
+    QCOMPARE(fitZoom(QSize(3840, 2100), 195, 762), 3);
 }
 
 std::unique_ptr<QObject> makeProjectGridTests() { return std::make_unique<TestProjectGrid>(); }

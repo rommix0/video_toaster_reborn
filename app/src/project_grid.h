@@ -16,11 +16,12 @@ class QScreen;
 class ToasterScreen;
 
 // The largest whole-number zoom (device pixels per Toaster pixel, >= 1) with the 768 x 481 screen
-// plus chromeHeight of window chrome inside `available`; both in device pixels.
-int fitZoom(QSize available, int chromeHeight = 40);
+// plus chromeHeight of window chrome above and below it and chromeWidth beside it (the mixer dock)
+// inside `available`; all in device pixels.
+int fitZoom(QSize available, int chromeHeight = 40, int chromeWidth = 0);
 // fitZoom for the screen's available geometry (QScreen::availableGeometry), in its device pixels;
-// chromeHeight is in logical pixels.
-int defaultZoom(const QScreen&, int chromeHeight = 40);
+// chromeHeight and chromeWidth are in logical pixels.
+int defaultZoom(const QScreen&, int chromeHeight = 40, int chromeWidth = 0);
 
 // What the grid holds and shows. Crouton i sits in slot i: column i % 8, row i / 8; visible rows
 // scrollRow()..scrollRow()+3 are drawn at x = 64 + 80 * column, y = 44 + 50 * (row - scrollRow()).

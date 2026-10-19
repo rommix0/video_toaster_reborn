@@ -1,6 +1,7 @@
 #include "controller.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QComboBox>
 #include <QDateTime>
@@ -131,6 +132,8 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
             m->raise();
         });
     windows->addAction(mixer_->toggleViewAction());
+    zoomGroup_ = new QActionGroup(this);
+    connect(window_->zoomMenu(), &QMenu::aboutToShow, this, &AppController::fillZoomMenu);
 
     auto* logWindow = new QDialog(window_.get());
     logWindow->setWindowTitle(tr("Log"));
@@ -156,6 +159,7 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
     window_->resize(800, 500);  // until the panel sets its own size, or the stored geometry
     buildPanel();
     if (!settings_.windowGeometry.isEmpty()) window_->restoreGeometry(settings_.windowGeometry);
+    fillZoomMenu();
     updateRecordAction();
     updateStatus();
 
@@ -204,13 +208,47 @@ void AppController::buildPanel() {
         window_->setSwitcherWidget(view);
         screen_ = screen;
         view_ = view;
-        const int chrome = window_->chromeHeight() + view->drawerPicker()->sizeHint().height() + view->layout()->spacing();
-        screen->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : defaultZoom(*window_->screen(), chrome));
+        screen->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : fitScreenZoom());
         screen->setState(loop_->switcherState());
         screen->setFocus();
         if (settings_.windowGeometry.isEmpty()) window_->resize(window_->sizeHint());
     } catch (const std::exception& e) {
         showDataMessage(QString::fromStdString(e.what()));
+    }
+}
+
+int AppController::fitScreenZoom() const {
+    int chrome = window_->chromeHeight();
+    if (view_) chrome += view_->drawerPicker()->sizeHint().height() + view_->layout()->spacing();
+    return defaultZoom(*window_->screen(), chrome, window_->chromeWidth());
+}
+
+void AppController::setScreenZoom(int z) {
+    settings_.screenZoom = std::clamp(z, 0, 8);
+    applyScreenZoom();
+}
+
+void AppController::applyScreenZoom() {
+    if (!screen_) return;
+    screen_->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : fitScreenZoom());
+    screen_->updateGeometry();
+    if (!(window_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen))) window_->resize(window_->sizeHint());
+}
+
+// Fit, then 1x up to the zoom that fits the display (or the current zoom, if larger); rebuilt each
+// time the menu opens, so it follows the display the window is on.
+void AppController::fillZoomMenu() {
+    QMenu* menu = window_->zoomMenu();
+    menu->clear();
+    const int top = std::max(fitScreenZoom(), settings_.screenZoom);
+    for (int z = 0; z <= top; ++z) {
+        QAction* a = menu->addAction(z ? tr("%1×").arg(z) : tr("Fit"));
+        a->setCheckable(true);
+        a->setChecked(z == settings_.screenZoom);
+        a->setEnabled(screen_ != nullptr);
+        zoomGroup_->addAction(a);
+        connect(a, &QAction::triggered, this, [this, z] { setScreenZoom(z); });
+        if (!z) menu->addSeparator();
     }
 }
 

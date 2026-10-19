@@ -1,6 +1,7 @@
 #include "main_window.h"
 
 #include <QCloseEvent>
+#include <QDockWidget>
 #include <QLabel>
 #include <QMenuBar>
 #include <QStatusBar>
@@ -33,6 +34,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     quit_ = file->addAction(tr("&Quit"));
     quit_->setShortcut(QKeySequence::Quit);
     connect(quit_, &QAction::triggered, this, &QWidget::close);
+    zoomMenu_ = menuBar()->addMenu(tr("&View"))->addMenu(tr("&Zoom"));
     windowMenu_ = menuBar()->addMenu(tr("&Window"));
     QMenu* help = menuBar()->addMenu(tr("&Help"));
     log_ = help->addAction(tr("&Log"));
@@ -49,6 +51,14 @@ int MainWindow::chromeHeight() const {
     return style()->pixelMetric(QStyle::PM_TitleBarHeight) + menuBar()->sizeHint().height() +
            tabs_->tabBar()->sizeHint().height() + 2 * style()->pixelMetric(QStyle::PM_DefaultFrameWidth) +
            statusBar()->sizeHint().height();
+}
+
+int MainWindow::chromeWidth() const {
+    int w = 2 * style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
+    for (QDockWidget* d : findChildren<QDockWidget*>(Qt::FindDirectChildrenOnly))
+        if (!d->isHidden() && !d->isFloating() && (dockWidgetArea(d) & (Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea)))
+            w += d->sizeHint().width() + style()->pixelMetric(QStyle::PM_DockWidgetSeparatorExtent);
+    return w;
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {

@@ -31,6 +31,7 @@ public:
 };
 
 class MainWindow;
+class QActionGroup;
 class MixerDock;
 class MonitorWindow;
 class ProjectView;
@@ -50,6 +51,9 @@ namespace vt::media { class AudioOutput; class ProgramLoop; class Recorder; }
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
 //   the log queue (the vt::setLogSink callback only queues: it runs under a global lock on worker
 //   threads) into the status bar and the log view (Help -> Log), and updates the status labels.
+// - The Switcher screen's zoom is settings.screenZoom, or with 0 the largest that fits the main
+//   window's display beside the mixer dock (defaultZoom); View -> Zoom offers Fit and 1x up to that
+//   fit (or the current zoom, if larger) and applies the choice at once, resizing the window to it.
 // - Toaster data root: while settings.toasterRoot is not valid (or its art does not load) the
 //   Switcher tab shows "Toaster data not found at <root>" with a button opening Settings on the
 //   Toaster data page; a valid root chosen there builds the panel at once.
@@ -82,6 +86,7 @@ public:
     QPlainTextEdit* logView() const { return logView_; }
     size_t cachedEffects() const { return effects_.size(); }
     void show();  // the main window and the monitors
+    void setScreenZoom(int);  // 0 = fit the display; writes settings.screenZoom and applies it
 
     void runOffline(int64_t ticks);  // Mode::Offline: that many ticks, then poll()
     void poll();
@@ -113,6 +118,9 @@ private:
 
     void buildPanel();                       // the Switcher screen, or the data-root message
     void showDataMessage(const QString& why);
+    int fitScreenZoom() const;     // defaultZoom for the main window's display and chrome
+    void applyScreenZoom();        // the screen to settings.screenZoom (or the fit), the window to its size
+    void fillZoomMenu();
     void startAudio();
     void updateRecordAction();
     void updateStatus();
@@ -131,6 +139,7 @@ private:
     QPointer<SettingsDialog> settingsDialog_;
     QPlainTextEdit* logView_ = nullptr;
     QLabel *inputsLabel_ = nullptr, *recordLabel_ = nullptr, *loopLabel_ = nullptr;
+    QActionGroup* zoomGroup_ = nullptr;
     QTimer timer_;
     std::shared_ptr<LogQueue> log_;
 
