@@ -1,11 +1,14 @@
 // The decode thread: open a source, read its packets, decode its best video and audio streams,
 // convert them and publish them on the session timeline. Opening is per source kind (a file, a
-// DirectShow device, the desktop through gdigrab); the pump that turns packets into published
-// pictures and sound is shared by all of them.
+// DirectShow device, the desktop through ddagrab or gdigrab); the pump that turns packets into
+// published pictures and sound is shared by all of them.
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +20,11 @@
 extern "C" {
 #include <libavutil/mathematics.h>
 }
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include <timeapi.h>
 
 namespace vt::media {
 namespace {
@@ -56,6 +64,22 @@ bool failingForTest(const Input::Shared& s) { return s.cfg.failForTest && s.cfg.
 #else
 constexpr bool failingForTest(const Input::Shared&) { return false; }
 #endif
+
+// While it lives, this process's timers run at 1 ms. ddagrab and gdigrab pace their frames with
+// av_usleep (Sleep), and skip a frame when they wake more than one frame late: at Windows'
+// default 15.6 ms resolution a 59.94 fps grab loses frames even with nothing else to do.
+class FineTimers {
+public:
+    FineTimers() : set_(timeBeginPeriod(1) == TIMERR_NOERROR) {}
+    ~FineTimers() {
+        if (set_) timeEndPeriod(1);
+    }
+    FineTimers(const FineTimers&) = delete;
+    FineTimers& operator=(const FineTimers&) = delete;
+
+private:
+    bool set_;
+};
 
 // Lets a blocked open or read give up when the input is being destroyed.
 int interruptCb(void* opaque) { return static_cast<Input::Shared*>(opaque)->stopping.load() ? 1 : 0; }
@@ -139,9 +163,30 @@ Options dshowOptions(const std::string& audio, const Options& config) {
     return o;
 }
 
-// Opens a Device (one dshow source whose streams share one clock mapping) or a Screen (gdigrab,
-// plus a dshow source for its audio device, with a mapping of its own); 0 or an FFmpeg error.
-// The config's options go to the device or the screen, not to a screen's audio device.
+// The desktop through Desktop Duplication, as a lavfi graph: ddagrab hands over GPU frames and
+// hwdownload brings them into memory as BGRA. The options become ddagrab's; "" when one holds
+// more than letters, digits and "_./+-" (filter graph syntax would need escaping).
+std::string ddagrabGraph(const Options& options) {
+    const auto plain = [](const std::string& t) {
+        return !t.empty() && std::all_of(t.begin(), t.end(), [](char ch) {
+            return std::isalnum(static_cast<unsigned char>(ch)) || std::strchr("_./+-", ch);
+        });
+    };
+    std::string args;
+    for (const auto& [k, v] : options) {
+        if (!plain(k) || !plain(v)) return {};
+        args += (args.empty() ? "" : ":") + k + "=" + v;
+    }
+    return "ddagrab=" + args + ",hwdownload,format=bgra";
+}
+
+// Opens a Device (one dshow source whose streams share one clock mapping) or a Screen (plus a
+// dshow source for its audio device, with a mapping of its own); 0 or an FFmpeg error. The
+// config's options go to the device or the screen grabber, not to a screen's audio device.
+// The desktop is grabbed with ddagrab (Desktop Duplication: the first monitor, a 4K one at
+// 59.94 fps), falling back to gdigrab (every monitor, a 4K one at about 15 fps) where that
+// cannot open: no duplication in the session, or an option ddagrab does not have. A window is
+// grabbed with gdigrab.
 int openLive(Input::Shared& s, std::vector<Source>& srcs) {
     const InputConfig& c = s.cfg;
     if (c.kind == InputKind::Device) {
@@ -152,8 +197,16 @@ int openLive(Input::Shared& s, std::vector<Source>& srcs) {
     srcs.resize(c.audioDevice.empty() ? 1 : 2);
     Options screen{{"framerate", "60000/1001"}, {"draw_mouse", "1"}};
     for (const auto& [k, v] : c.options) screen[k] = v;
-    const std::string what = c.window.empty() ? "desktop" : "title=" + c.window;
-    if (const int err = openSource(s, srcs[0], what, "gdigrab", screen); err < 0 || srcs.size() == 1) return err;
+    int err = AVERROR(EINVAL);
+    if (c.window.empty()) {
+        if (const std::string graph = ddagrabGraph(screen); !graph.empty()) err = openSource(s, srcs[0], graph, "lavfi", {});
+        if (err < 0) {
+            logWarning(s.name + ": Desktop Duplication unavailable (" + averr(err) + "), grabbing with gdigrab");
+            srcs[0] = Source{};
+        }
+    }
+    if (err < 0) err = openSource(s, srcs[0], c.window.empty() ? "desktop" : "title=" + c.window, "gdigrab", screen);
+    if (err < 0 || srcs.size() == 1) return err;
     return openSource(s, srcs[1], dshowUrl({}, c.audioDevice), "dshow", dshowOptions(c.audioDevice, {}));
 }
 
@@ -162,11 +215,86 @@ bool rewind(Source& src) { return av_seek_frame(src.fmt.get(), -1, src.startUs, 
 
 int64_t frameTs(const AVFrame& f) { return f.best_effort_timestamp != AV_NOPTS_VALUE ? f.best_effort_timestamp : f.pts; }
 
+// Converts and publishes a live source's pictures on a thread of its own, so scaling a large
+// picture (6 ms for a 4K desktop) overlaps the next grab instead of following it: on the grab
+// thread it left too little of the tick, and a 4K desktop lost frames (58 to 59.5 fps, against
+// 59.7 to 59.9 here). It takes the newest decoded frame; one still waiting when the next arrives
+// is dropped (counted late), so capture never waits for it.
+class LiveConverter {
+public:
+    explicit LiveConverter(Input::Shared& s)
+        : s_(s), conv_(s.geo), pending_(av_frame_alloc()), work_(av_frame_alloc()), thread_([this] { run(); }) {}
+    ~LiveConverter() {
+        {
+            std::lock_guard l(mu_);
+            quit_ = true;
+        }
+        wake_.notify_all();
+        thread_.join();
+    }
+
+    // Takes over f's references (f is left empty); its picture is due at t.
+    void submit(AVFrame& f, SessionTime t) {
+        bool dropped;
+        {
+            std::lock_guard l(mu_);
+            dropped = waiting_;
+            av_frame_unref(pending_.get());
+            av_frame_move_ref(pending_.get(), &f);
+            due_ = t;
+            waiting_ = true;
+        }
+        wake_.notify_one();
+        if (dropped) s_.countLate();
+    }
+
+    // Drops a frame still waiting and returns once the one being converted is published, so
+    // nothing from a capture that ended is published after it.
+    void flush() {
+        std::unique_lock l(mu_);
+        av_frame_unref(pending_.get());
+        waiting_ = false;
+        idle_.wait(l, [&] { return !busy_; });
+    }
+
+private:
+    void run() {
+        std::unique_lock l(mu_);
+        for (;;) {
+            wake_.wait(l, [&] { return quit_ || waiting_; });
+            if (quit_) return;
+            av_frame_move_ref(work_.get(), pending_.get());
+            const SessionTime t = due_;
+            waiting_ = false;
+            busy_ = true;
+            l.unlock();
+            vt::Frame pic = s_.takeBuffer();
+            conv_.convert(*work_, pic);
+            av_frame_unref(work_.get());
+            s_.publishPicture(t, std::move(pic));
+            l.lock();
+            busy_ = false;
+            idle_.notify_all();
+        }
+    }
+
+    Input::Shared& s_;
+    VideoConverter conv_;
+    FramePtr pending_, work_; // the frame waiting, the frame being converted
+    std::mutex mu_;
+    std::condition_variable wake_, idle_;
+    SessionTime due_ = 0;
+    bool waiting_ = false, busy_ = false, quit_ = false;
+    std::thread thread_; // last: starts once the rest is set up
+};
+
 // Turns a source's packets into published pictures and sound. Lives as long as the thread, so
 // its converters and the once-per-input interlace warning carry across reopens and loops.
 class Pump {
 public:
-    explicit Pump(Input::Shared& s) : s_(s), vconv_(s.geo), frame_(av_frame_alloc()), pkt_(av_packet_alloc()) {}
+    explicit Pump(Input::Shared& s)
+        : s_(s), vconv_(s.geo), frame_(av_frame_alloc()), pkt_(av_packet_alloc()),
+          live_(s.live ? std::make_unique<LiveConverter>(s) : nullptr) {}
 
     // Plays a file `src` from where it stands to its end, its first timestamp due at `base`.
     // False when the input is stopping or the source failed (failure() says why; "" when
@@ -205,10 +333,19 @@ public:
     // Captures from open live sources as fast as they deliver, never waiting for the reader (a
     // full picture queue drops its oldest picture instead). Returns why it stopped: a read error,
     // or a source that delivered nothing for 2 s (5 s from opening to its first packet); "" when
-    // the input is stopping.
+    // the input is stopping. Its pictures are converted on the LiveConverter's thread, all of
+    // them published by the time it returns.
     // Each round takes what a source has ready up to one video packet, so a slow screen grab
     // cannot leave its audio device's packets waiting (their arrival times feed the clock mapping).
     std::string capture(std::vector<Source>& srcs) {
+        const FineTimers fine;
+        std::string why = captureUntilDone(srcs);
+        live_->flush();
+        return why;
+    }
+
+private:
+    std::string captureUntilDone(std::vector<Source>& srcs) {
         begin();
         for (Source& src : srcs) {
             src.mapping = LiveClock(s_.liveLateLimit);
@@ -242,7 +379,6 @@ public:
         }
     }
 
-private:
     // A new pass or capture: timing and audio placement start over.
     void begin() {
         width_ = height_ = -1; // setRunning reported the opened stream's size, which may be unknown
@@ -288,13 +424,13 @@ private:
                 s_.countDecodeError();
                 return;
             }
-            if (video) onVideo(src, st, *frame_);
+            if (video) onVideo(src, st, *frame_); // a live frame is handed over, leaving frame_ empty
             else onAudio(src, *frame_, st.tb);
             av_frame_unref(frame_.get());
         }
     }
 
-    void onVideo(const Source& src, const Stream& st, const AVFrame& f) {
+    void onVideo(const Source& src, const Stream& st, AVFrame& f) {
         if (!warnedInterlaced_ && (f.flags & AV_FRAME_FLAG_INTERLACED)) {
             warnedInterlaced_ = true;
             logWarning(s_.name + ": interlaced video, shown as progressive frames");
@@ -305,6 +441,10 @@ private:
         const SessionTime rel = ts != AV_NOPTS_VALUE ? toSession(ts, st.tb) - src.start : lastVideo_ + dur;
         lastVideo_ = rel;
         length_ = std::max(length_, rel + dur);
+        if (live_) {
+            live_->submit(f, src.base + rel);
+            return;
+        }
         vt::Frame pic = s_.takeBuffer();
         vconv_.convert(f, pic);
         s_.publishPicture(src.base + rel, std::move(pic));
@@ -343,6 +483,7 @@ private:
     SessionTime length_ = 0, lastVideo_ = 0;
     bool synced_ = false; // next_ holds a position from this pass
     int64_t next_ = 0;    // where the next audio chunk goes (48 kHz sample index)
+    std::unique_ptr<LiveConverter> live_; // a live input's picture conversion; null for a file
 };
 
 // Plays an opened file until it ends (loop off), fails, or the input stops. Returns the error

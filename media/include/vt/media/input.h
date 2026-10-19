@@ -26,6 +26,9 @@ struct InputConfig {
     std::string window;          // Screen: "" = desktop, else window title
     // Extra avformat options for the file, the device (video_size, framerate...; rtbufsize
     // defaults to 100M) or the screen capture (framerate defaults to 60000/1001, draw_mouse to 1).
+    // The desktop is grabbed with ddagrab (Desktop Duplication, the first monitor), its options
+    // ddagrab's; one it does not have, or no duplication, falls back to gdigrab (all monitors,
+    // much slower: a 4K desktop at about 15 fps). A window is grabbed with gdigrab.
     // A screen's audio device gets only the defaults.
     std::map<std::string, std::string> options;
     int retryMs = 2000;          // reopen interval after a failure (a live source: also after 2 s without

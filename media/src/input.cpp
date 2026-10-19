@@ -146,6 +146,11 @@ void Input::Shared::countDecodeError() {
     ++status.decodeErrors;
 }
 
+void Input::Shared::countLate() {
+    std::lock_guard l(mu);
+    ++status.framesLate;
+}
+
 // ---- shared helpers (under mu) ----
 
 void Input::Shared::advanceReader(SessionTime t) {

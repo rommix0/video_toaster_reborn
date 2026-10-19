@@ -84,6 +84,8 @@ struct Input::Shared {
     // silence while the source is down); Ended keeps the last picture.
     void setState(InputStatus::State, std::string message);
     void countDecodeError();
+    // A live picture dropped before it was converted (a newer one replaced it).
+    void countLate();
 
     // ---- shared state, guarded by mu ----
     mutable std::mutex mu;

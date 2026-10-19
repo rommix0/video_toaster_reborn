@@ -200,6 +200,52 @@ TEST_CASE("desktop capture delivers frames", "[live]") {
     CHECK(in.status().state == State::Running);
 }
 
+TEST_CASE("desktop capture keeps up with 59.94 fps", "[live]") {
+    QuietLog quiet;
+    InputConfig cfg;
+    cfg.kind = InputKind::Screen;
+    SessionClock clock = SessionClock::realtime();
+    Input in(cfg, {}, clock);
+    REQUIRE(waitForState(in, State::Running, std::chrono::seconds(3)));
+    CHECK(quiet.count("Desktop Duplication unavailable") == 0);
+
+    // Read as the program loop does, a tick at a time 100 ms behind the clock, after a second
+    // to settle; ddagrab repeats the last frame while the desktop is still, so this counts
+    // frames delivered, not screen changes.
+    vt::Frame f;
+    const auto tick = std::chrono::microseconds(16683);
+    auto next = Steady::now();
+    const auto read = [&](std::chrono::seconds span) {
+        for (const auto until = Steady::now() + span; Steady::now() < until; std::this_thread::sleep_until(next += tick))
+            in.videoAt(clock.now() - 24000, f, Wait::No);
+    };
+    read(std::chrono::seconds(1));
+    const InputStatus a = in.status();
+    const auto t0 = Steady::now();
+    read(std::chrono::seconds(5));
+    const InputStatus b = in.status();
+    const double secs = std::chrono::duration<double>(Steady::now() - t0).count();
+    const double fps = double(b.framesDecoded - a.framesDecoded) / secs;
+    WARN("desktop " << b.width << "x" << b.height << ": " << fps << " fps over " << secs << " s, "
+                    << (b.framesLate - a.framesLate) << " late");
+    CHECK(b.state == State::Running);
+    CHECK(fps >= 59.0);
+}
+
+TEST_CASE("a desktop option ddagrab lacks falls back to gdigrab", "[live]") {
+    QuietLog quiet;
+    InputConfig cfg;
+    cfg.kind = InputKind::Screen;
+    cfg.options["show_region"] = "0"; // gdigrab only
+    Input in(cfg, {}, SessionClock::realtime());
+    REQUIRE(waitForState(in, State::Running, std::chrono::seconds(3)));
+    CHECK(quiet.count("Desktop Duplication unavailable") == 1);
+    const auto until = Steady::now() + std::chrono::seconds(3);
+    while (in.status().framesDecoded == 0 && Steady::now() < until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    CHECK(in.status().framesDecoded > 0);
+}
+
 TEST_CASE("first real camera opens", "[live]") {
     const std::vector<DeviceInfo> cams = listDevices(DeviceKind::Video);
     if (cams.empty()) SKIP("no camera");
