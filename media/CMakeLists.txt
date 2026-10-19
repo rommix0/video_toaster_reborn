@@ -4,6 +4,7 @@ add_library(vt_media STATIC
     src/geometry.cpp
     src/input.cpp
     src/input_demux.cpp
+    src/mixer.cpp
     src/time.cpp
     src/video_convert.cpp
 )
