@@ -1,5 +1,6 @@
 add_executable(vt_assets_tests
     test_hunk.cpp
+    test_panel.cpp
 )
 target_link_libraries(vt_assets_tests PRIVATE vt_assets catch2_amalgamated)
 target_include_directories(vt_assets_tests PRIVATE ${CMAKE_SOURCE_DIR}/tests)

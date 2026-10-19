@@ -1,7 +1,14 @@
 """Video Toaster 4.2 Switcher panel: extract the layout from switcher.main and render it.
 
-    python -P -E tools/re/render_layout.py --extract        # switcher.main -> tools/re/switcher_layout.json
-    python -P -E tools/re/render_layout.py [--out X.png]    # json (+ switcher.main pixels) -> PNG
+    python -P -E tools/ref/render_layout.py --extract        # switcher.main -> tools/re/switcher_layout.json
+    python -P -E tools/ref/render_layout.py [--out X.png]    # json (+ switcher.main pixels) -> PNG
+
+Options: --root DIR (the Toaster data root; default $VT_TOASTER_ROOT, else the parent of the
+vtoast_reborn repo), --json FILE (default <root>/tools/re/switcher_layout.json), --manual PNG
+(optional manual photo for the comparison sheet).
+vtoast_reborn copy: only the path handling differs from tools/re/render_layout.py; extract() also
+returns the layout (writing the JSON only when given a path) and render_px() holds render()'s
+pixel drawing, with texts=False skipping the run-time texts (make_golden.py record "panel").
 
 The panel art is raw planar image data inside switcher.main (DATA hunks 11/15-17/19-24), referenced
 by "panel nodes" (see SCREEN.md).  The JSON stores node addresses as flat-image addresses produced
@@ -14,12 +21,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hunk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
-EXE = os.path.join(ROOT, '4.2', 'Programs', 'switcher.main')
-FONT = os.path.join(ROOT, '4.2', 'Programs', 'System_Support', 'Fonts', 'CGInterface', '14.4C')
-JSON = os.path.join(HERE, 'switcher_layout.json')
-MANUAL = os.path.join(os.environ.get('TEMP', ''), 'claude', 'C--Users-abart-Desktop-Video-Toaster-v4-3',
-                      '941404fe-802a-4743-8da9-3e71d1eb0274', 'scratchpad', 'pages', 'p164.png')
+MANUAL = None
+
+
+def set_root(root):
+    global ROOT, EXE, FONT, JSON
+    ROOT = root
+    EXE = os.path.join(ROOT, '4.2', 'Programs', 'switcher.main')
+    FONT = os.path.join(ROOT, '4.2', 'Programs', 'System_Support', 'Fonts', 'CGInterface', '14.4C')
+    JSON = os.path.join(ROOT, 'tools', 're', 'switcher_layout.json')
+
+
+set_root(os.environ.get('VT_TOASTER_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
 A5 = 0x5d5c
 
 # words per 16-pixel column for the six draw methods (node +0x2c / 4), see SCREEN.md
@@ -74,8 +87,8 @@ NAMES = {
 
 
 class Img:
-    def __init__(self, path=EXE):
-        self.h = hunk.load(path)
+    def __init__(self, path=None):
+        self.h = hunk.load(path or EXE)
         self.m = self.h.mem
 
     def u8(self, a): return self.m[a]
@@ -162,7 +175,7 @@ def hunk_index(im, a):
             return i
 
 
-def extract():
+def extract(path=''):
     im = Img()
     els, seen = [], set()
     for off, lst in LISTS:
@@ -237,14 +250,17 @@ def extract():
                          'icon': 'crouton ILBM 80x50x3 fills the whole cell (no gap)'},
         'elements': els,
     }
-    with open(JSON, 'w') as f:
-        json.dump(lay, f, indent=1)
-    print(f'wrote {JSON}: {len(els)} elements')
+    path = JSON if path == '' else path
+    if path:
+        with open(path, 'w') as f:
+            json.dump(lay, f, indent=1)
+        print(f'wrote {path}: {len(els)} elements')
+    return lay
 
 
 # ---------------------------------------------------------------- colour font
-def load_font(path=FONT):
-    h = hunk.load(path)
+def load_font(path=None):
+    h = hunk.load(path or FONT)
     m = h.mem
     b = h.hunks[0][1]
     u16 = lambda a: struct.unpack('>H', m[a:a + 2])[0]
@@ -290,9 +306,7 @@ def draw_text(px, f, x, baseline, s, bgpen=0):
 
 
 # ---------------------------------------------------------------- render
-def render(out, manual=MANUAL):
-    from PIL import Image
-    lay = json.load(open(JSON))
+def render_px(lay, texts=True):
     im = Img()
     W, H = lay['screen']['width'], lay['screen']['height']
     px = [[0] * W for _ in range(H)]
@@ -309,14 +323,22 @@ def render(out, manual=MANUAL):
             for cc, v in enumerate(line):
                 if 0 <= x + cc < W and 0 <= y + r < H:
                     px[y + r][x + cc] = v
-    f = load_font()
-    for t in lay['texts']:
+    f = load_font() if texts else None
+    for t in lay['texts'] if texts else []:
         if t.get('hidden_default'):
             continue
         if 'pen_xy_baseline' in t:
             draw_text(px, f, t['pen_xy_baseline'][0], t['pen_xy_baseline'][1], t['default'])
         else:
             draw_text(px, f, t['itext_top_left'][0], t['itext_top_left'][1] + f['baseline'], t['default'])
+    return px
+
+
+def render(out, manual=MANUAL):
+    from PIL import Image
+    lay = json.load(open(JSON))
+    W, H = lay['screen']['width'], lay['screen']['height']
+    px = render_px(lay)
     pal = [tuple(int(ch, 16) * 17 for ch in col) for col in lay['palette']['rgb_mode']]
     scr = Image.new('RGB', (W, H))
     scr.putdata([pal[v] for row in px for v in row])
@@ -337,9 +359,12 @@ def render(out, manual=MANUAL):
 
 if __name__ == '__main__':
     a = sys.argv[1:]
+    if '--root' in a:
+        set_root(os.path.abspath(a[a.index('--root') + 1]))
+    if '--json' in a:
+        JSON = os.path.abspath(a[a.index('--json') + 1])
     if '--extract' in a:
         extract()
     else:
-        out = a[a.index('--out') + 1] if '--out' in a else os.path.join(
-            os.path.dirname(MANUAL), '..', 'switcher_render.png')
+        out = a[a.index('--out') + 1] if '--out' in a else 'switcher_render.png'
         render(os.path.abspath(out), a[a.index('--manual') + 1] if '--manual' in a else MANUAL)

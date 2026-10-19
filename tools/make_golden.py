@@ -18,6 +18,11 @@ JSON-lines files to vtoast_reborn/tests/golden/:
                   (tools/chromafx_rows_ref.py), one CRC per row of 96 RGBA bytes
   hunk.jsonl      Amiga hunk executables and fonts laid out by tools/ref/hunk.py: hunk
                   count, bases, sizes, kinds (0 CODE, 1 DATA, 2 BSS) and the flat image CRC
+  panel.jsonl     the Switcher panel from switcher.main as tools/ref/render_layout.py extracts it:
+                  one "node" line per panel node (rects, method, list index, state / selected-look /
+                  mask CRCs), one "text" line per run-time text, then one "panel" line (T-bar image
+                  CRCs, palettes as 12-bit words, screen clear, CRC of the default screen drawn
+                  without the run-time texts)
 
     python -P -E vtoast_reborn/tools/make_golden.py --only chromafx_rows
 
@@ -41,6 +46,7 @@ sys.path.insert(0, HERE)
 import chromafx_rows_ref as CR
 sys.path.insert(0, os.path.join(HERE, 'ref'))
 import hunk as H
+import render_layout as RL
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
 TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
@@ -162,12 +168,55 @@ def hunk_record(rel):
                 flat_crc32=crc(bytes(img.mem)))
 
 
+def panel_mask(im, method, words, rows, addr):
+    """Methods 4/5: the first word of every column is the mask; 1 = inside the art."""
+    wpc = RL.WPC[method]
+    return bytes((im.u16(addr + 2 * wpc * (r * words + w)) >> b) & 1
+                 for r in range(rows) for w in range(words) for b in range(15, -1, -1))
+
+
+def panel_records():
+    RL.set_root(ROOT)
+    lay = RL.extract(None)
+    im = RL.Img()
+    lists = {f'${off:x}(a5) {name}': i for i, (off, name) in enumerate(RL.LISTS)}
+    flat = lambda img: bytes(v for line in img for v in line)
+    recs, tbar = [], None
+    for e in lay['elements']:
+        x, y, w, h = e['rect']
+        words, sp = w // 16, e['select_pattern']
+        states = [int(a, 16) for a in e['states']]
+        st = [crc(flat(RL.decode(im, e['method'], words, h, a))) for a in states]
+        sel = [crc(flat(RL.decode(im, e['method'], words, h, a, True, sp * 0x101))) for a in states]
+        masks = [crc(panel_mask(im, e['method'], words, h, a)) for a in states] if e['method'] in (4, 5) else []
+        image = crc(flat(RL.decode(im, e['method'], words, h, int(e['image'], 16)))) if e['image'] else 0
+        recs.append(dict(rec='node', id=e['id'], rect=e['rect'], hit_rect=e['hit_rect'], method=e['method'],
+                         list=lists.get(e['list'], -1), select_pattern=sp, hidden=int(e['hidden_default']),
+                         n_states=len(states), image_crc32=image, state_crc32=st, selected_crc32=sel,
+                         mask_crc32=masks))
+        if e['id'] == 'tbar':
+            tbar = (st, e['rect'])
+    for t in lay['texts']:
+        xy = t.get('pen_xy_baseline', t.get('itext_top_left'))
+        recs.append(dict(rec='text', id=t['id'], x=xy[0], y=xy[1], baseline=int('pen_xy_baseline' in t),
+                         text=t.get('default', ''), hidden=int(bool(t.get('hidden_default')))))
+    scr, clear = lay['screen'], lay['screen']['clear']
+    assert clear['x_range'][1] == scr['width'] - clear['x_range'][0]
+    px = RL.render_px(lay, texts=False)          # Ruling 2 (a): the texts come with the font (Task 4)
+    recs.append(dict(rec='panel', screen=[scr['width'], scr['height']], tbar_crc32=tbar[0], tbar_rect=tbar[1],
+                     palette_rgb_mode=[int(c, 16) for c in lay['palette']['rgb_mode']],
+                     palette_preview_mode=[int(c, 16) for c in lay['palette']['preview_mode']],
+                     clear_colour=clear['colour'], clear_margin_x=clear['x_range'][0],
+                     default_screen_crc32=crc(flat(px))))
+    return recs
+
+
 def main():
     only = None
     if '--only' in sys.argv:
         only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
     os.makedirs(OUT, exist_ok=True)
-    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk')}
+    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
             if r['status'] == 'converted']
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
@@ -247,6 +296,8 @@ def main():
                 nb += 1
 
     files['hunk'] = [hunk_record(f) for f in HUNK_FILES]
+    if only is None or 'panel' in only:
+        files['panel'] = panel_records()
 
     for name, recs in files.items():
         if only is not None and name not in only:
