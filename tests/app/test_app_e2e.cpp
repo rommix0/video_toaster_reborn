@@ -89,6 +89,25 @@ int autoTicks(const fs::path& effectFile) {
     return t.durationTicks[size_t(t.resolve(t.defaultSpeed))];
 }
 
+// An audio output whose start fails `failures` times, then works; the test can make it go away.
+struct FakeAudio : AudioDevice {
+    int failures = 0, starts = 0;
+    bool on = false;
+    void onProgram(int64_t, const vt::Frame&, std::span<const float>) override {}
+    bool start(const std::string&, std::string* why) override {
+        ++starts;
+        if (failures > 0) {
+            --failures;
+            *why = "no playback device";
+            return false;
+        }
+        on = true;
+        return true;
+    }
+    void stop() override { on = false; }
+    bool running() const override { return on; }
+};
+
 struct LastPicture : vt::media::MonitorSink {
     vt::Frame program;
     void onPictures(int64_t, const vt::Frame& p, const vt::Frame&) override { program = p; }
@@ -143,6 +162,7 @@ private slots:
     void stoppingARecordingDoesNotBlock();
     void settingsChangeTheInputs();
     void logLinesFromOtherThreads();
+    void audioOutputComesBack();
     void menus();
     void zoomMenu();
     void zoomFollowsADevicePixelRatioChange();
@@ -406,6 +426,43 @@ void TestAppE2e::logLinesFromOtherThreads() {
 
     c.notImplemented(QStringLiteral("FREEZE"));
     QCOMPARE(c.window().statusBar()->currentMessage(), QStringLiteral("FREEZE: not in version 1"));
+}
+
+// The audio output that does not start, or goes away (an unplugged headset), shows "No audio output"
+// in the status bar until a retry, every 2 s, starts it again; applying the settings restarts it too.
+void TestAppE2e::audioOutputComesBack() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    auto fake = std::make_unique<FakeAudio>();
+    FakeAudio* audio = fake.get();
+    audio->failures = 1;
+    AppController c(settings, Mode::Offline, nullptr, std::move(fake));
+    auto* label = c.window().findChild<QLabel*>(QStringLiteral("audioStatus"));
+    QVERIFY(label);
+    QCOMPARE(audio->starts, 1);
+    QVERIFY(!label->isHidden());
+    QCOMPARE(label->text(), QStringLiteral("No audio output"));
+    QCOMPARE(label->toolTip(), QStringLiteral("no playback device"));
+    QCOMPARE(c.window().statusBar()->currentMessage(), QStringLiteral("No audio output: no playback device"));
+
+    QElapsedTimer t;
+    t.start();
+    QTRY_VERIFY_WITH_TIMEOUT(label->isHidden(), 4000);
+    QVERIFY2(t.elapsed() >= AppController::kAudioRetryMs - 100, qPrintable(QString::number(t.elapsed())));
+    QCOMPARE(audio->starts, 2);
+    QVERIFY(audio->running());
+
+    audio->on = false;  // the device went away
+    c.poll();
+    QVERIFY(!label->isHidden());
+    QCOMPARE(audio->starts, 2);  // the last try was just now
+    QTRY_VERIFY_WITH_TIMEOUT(label->isHidden(), 4000);
+    QCOMPARE(audio->starts, 3);
+
+    audio->on = false;  // and once more: applying the settings starts it at once
+    c.applySettings(settings);
+    QCOMPARE(audio->starts, 4);
+    QVERIFY(audio->running());
 }
 
 void TestAppE2e::menus() {

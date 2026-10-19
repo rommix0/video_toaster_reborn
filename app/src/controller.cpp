@@ -79,6 +79,28 @@ QString stateWord(InputStatus::State s) {
     return {};
 }
 
+// vt::media::AudioOutput as the AudioDevice. A start first checks that the device is connected, so
+// the retries while it is away do not log a failure every time.
+class LiveAudio : public AudioDevice {
+public:
+    void onProgram(int64_t tick, const vt::Frame& f, std::span<const float> stereo) override { out_.onProgram(tick, f, stereo); }
+    bool start(const std::string& deviceId, std::string* why) override {
+        const auto devices = vt::media::listOutputDevices();
+        if (std::none_of(devices.begin(), devices.end(), [&](const auto& d) { return deviceId.empty() || d.id == deviceId; })) {
+            *why = deviceId.empty() ? "no playback device" : "the playback device is not connected";
+            return false;
+        }
+        vt::media::AudioOutputSettings as;
+        as.deviceId = deviceId;
+        return out_.start(as, why);
+    }
+    void stop() override { out_.stop(); }
+    bool running() const override { return out_.status().running; }
+
+private:
+    vt::media::AudioOutput out_;
+};
+
 }  // namespace
 
 // What the log sink leaves for the UI thread.
@@ -88,8 +110,8 @@ struct AppController::LogQueue {
     uint64_t dropped = 0;  // lines that did not fit
 };
 
-AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
-    : QObject(parent), settings_(settings), mode_(mode), log_(std::make_shared<LogQueue>()) {
+AppController::AppController(AppSettings& settings, Mode mode, QObject* parent, std::unique_ptr<AudioDevice> audio)
+    : QObject(parent), settings_(settings), mode_(mode), audio_(std::move(audio)), log_(std::make_shared<LogQueue>()) {
     vt::setLogSink([q = log_](std::string_view line) {
         const std::lock_guard l(q->mu);
         if (q->lines.size() >= kMaxQueuedLines) {
@@ -104,10 +126,8 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
     loop_ = std::make_unique<vt::media::ProgramLoop>(std::move(config));
     recorder_ = std::make_unique<vt::media::Recorder>();
     loop_->addSink(recorder_.get());
-    if (mode_ == Mode::Realtime) {
-        audio_ = std::make_unique<vt::media::AudioOutput>();
-        loop_->addSink(audio_.get());
-    }
+    if (!audio_ && mode_ == Mode::Realtime) audio_ = std::make_unique<LiveAudio>();
+    if (audio_) loop_->addSink(audio_.get());
 
     program_ = std::make_unique<MonitorWindow>(MonitorWindow::Kind::Program);
     preview_ = std::make_unique<MonitorWindow>(MonitorWindow::Kind::Preview);
@@ -155,7 +175,10 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
     recordLabel_->setObjectName(QStringLiteral("recordStatus"));
     loopLabel_ = new QLabel(window_.get());
     loopLabel_->setObjectName(QStringLiteral("loopStatus"));
-    for (QLabel* l : {inputsLabel_, recordLabel_, loopLabel_}) window_->statusBar()->addPermanentWidget(l);
+    audioLabel_ = new QLabel(tr("No audio output"), window_.get());
+    audioLabel_->setObjectName(QStringLiteral("audioStatus"));
+    for (QLabel* l : {audioLabel_, inputsLabel_, recordLabel_, loopLabel_}) window_->statusBar()->addPermanentWidget(l);
+    audioLabel_->hide();  // while the audio output runs (or there is none)
 
     window_->resize(800, 500);  // until the panel sets its own size, or the stored geometry
     buildPanel();
@@ -164,10 +187,8 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent)
     updateRecordAction();
     updateStatus();
 
-    if (mode_ == Mode::Realtime) {
-        loop_->start();
-        startAudio();
-    }
+    if (mode_ == Mode::Realtime) loop_->start();
+    if (audio_) startAudio();
     connect(&timer_, &QTimer::timeout, this, &AppController::poll);
     timer_.start(1000 / 30);
 }
@@ -362,6 +383,11 @@ void AppController::poll() {
     for (const auto& line : lines) logView_->appendPlainText(QString::fromStdString(line));
     if (!lines.empty()) message(QString::fromStdString(lines.back()), 5000);
 
+    if (audio_ && !audio_->running() && !shutDown_) {
+        audioLabel_->show();
+        if (audioTried_.elapsed() >= kAudioRetryMs) startAudio();
+    }
+
     const vt::media::SwitcherSnapshot s = loop_->switcherState();
     if (s.refusalCount != refusalsShown_) {
         refusalsShown_ = s.refusalCount;
@@ -483,7 +509,7 @@ void AppController::applySettings(const AppSettings& next) {
         buildPanel();
     else if (next.panelPalette != prev.panelPalette)
         screen_->setPanelPalette(next.panelPalette == PanelPalette::Preview);
-    if (audio_ && next.audioOutDevice != prev.audioOutDevice) {
+    if (audio_ && (next.audioOutDevice != prev.audioOutDevice || !audio_->running())) {
         audio_->stop();
         startAudio();
     }
@@ -491,11 +517,17 @@ void AppController::applySettings(const AppSettings& next) {
     updateStatus();
 }
 
+// Says why only for the first failure in a row; the label stays while the output does not run.
 void AppController::startAudio() {
-    vt::media::AudioOutputSettings as;
-    as.deviceId = settings_.audioOutDevice.toStdString();
+    audioTried_.start();
     std::string why;
-    if (!audio_->start(as, &why)) message(tr("No audio output: %1").arg(QString::fromStdString(why)));
+    if (audio_->start(settings_.audioOutDevice.toStdString(), &why)) {
+        audioLabel_->hide();
+        return;
+    }
+    if (audioLabel_->isHidden()) message(tr("No audio output: %1").arg(QString::fromStdString(why)));
+    audioLabel_->setToolTip(QString::fromStdString(why));
+    audioLabel_->show();
 }
 
 // ---- shutdown ----

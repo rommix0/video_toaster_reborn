@@ -1,6 +1,7 @@
 #pragma once
 // What the operator can ask of the Switcher from the screen (SwitcherActions; tests use a fake), and
 // AppController, the app itself: it posts every action to the ProgramLoop.
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -14,6 +15,7 @@
 
 #include "settings.h"
 #include "vt/background.h"
+#include "vt/media/program_loop.h"
 #include "vt/switcher.h"
 #include "vt/timing.h"
 
@@ -30,6 +32,15 @@ public:
     virtual void notImplemented(const QString& what) = 0;  // a control that does nothing in v1
 };
 
+// The live audio output as the controller drives it: a Program sink that plays on an output device.
+// The app uses vt::media::AudioOutput; tests give a stand-in.
+class AudioDevice : public vt::media::ProgramSink {
+public:
+    virtual bool start(const std::string& deviceId, std::string* why) = 0;  // "" = the default device
+    virtual void stop() = 0;
+    virtual bool running() const = 0;  // false after a failed start or once the device went away
+};
+
 class MainWindow;
 class QActionGroup;
 class MixerDock;
@@ -39,7 +50,7 @@ class QLabel;
 class QPlainTextEdit;
 class ToasterScreen;
 namespace vt { class Effect; }
-namespace vt::media { class AudioOutput; class ProgramLoop; class Recorder; }
+namespace vt::media { class Recorder; }
 
 // Owns the ProgramLoop (built from the settings' inputs), the Recorder and the AudioOutput (both
 // Program sinks), the Program and Preview monitor windows, and the main window with the Switcher
@@ -63,8 +74,11 @@ namespace vt::media { class AudioOutput; class ProgramLoop; class Recorder; }
 //   Stop runs Recorder::stop() on another thread (it blocks while the queue drains), the menu
 //   reading "Stopping…" until it is done.
 // - Mode::Realtime (the app) starts the loop and the audio output at once. Mode::Offline (tests)
-//   runs no thread and no audio device: runOffline() drives the loop, and the recorder waits for
-//   queue room instead of dropping frames.
+//   runs no thread and no audio device (unless given a stand-in): runOffline() drives the loop, and
+//   the recorder waits for queue room instead of dropping frames.
+// - Audio output: while it is not running (the start failed, or the device went away, e.g. an
+//   unplugged headset) the status bar shows "No audio output" and poll() tries to start it again
+//   every kAudioRetryMs; applying the settings restarts it whenever it is not running.
 // - shutdown() (closing the main window): stops the recording (finalised), the audio output, takes
 //   the monitors off the loop and stops the loop, then saves the settings.
 class AppController : public QObject, public SwitcherActions {
@@ -74,8 +88,10 @@ public:
     // Loaded croutons kept (an effect can be ~90 MB). An evicted effect the engine still uses stays
     // alive through the engine's own shared_ptr.
     static constexpr size_t kEffectCache = 12;
+    static constexpr int kAudioRetryMs = 2000;
 
-    AppController(AppSettings&, Mode, QObject* parent = nullptr);
+    // `audio` replaces the audio output (Realtime: vt::media::AudioOutput; Offline: none).
+    AppController(AppSettings&, Mode, QObject* parent = nullptr, std::unique_ptr<AudioDevice> audio = nullptr);
     ~AppController() override;  // shutdown()
 
     MainWindow& window() { return *window_; }
@@ -134,7 +150,8 @@ private:
     const Mode mode_;
     std::unique_ptr<vt::media::ProgramLoop> loop_;
     std::unique_ptr<vt::media::Recorder> recorder_;
-    std::unique_ptr<vt::media::AudioOutput> audio_;  // Realtime only
+    std::unique_ptr<AudioDevice> audio_;  // Realtime, or a test's stand-in
+    QElapsedTimer audioTried_;            // since the last start attempt
     std::unique_ptr<MonitorWindow> program_, preview_;
     std::unique_ptr<MainWindow> window_;
     MixerDock* mixer_ = nullptr;
@@ -142,7 +159,7 @@ private:
     QPointer<ProjectView> view_;
     QPointer<SettingsDialog> settingsDialog_;
     QPlainTextEdit* logView_ = nullptr;
-    QLabel *inputsLabel_ = nullptr, *recordLabel_ = nullptr, *loopLabel_ = nullptr;
+    QLabel *inputsLabel_ = nullptr, *recordLabel_ = nullptr, *loopLabel_ = nullptr, *audioLabel_ = nullptr;
     QActionGroup* zoomGroup_ = nullptr;
     QTimer timer_;
     std::shared_ptr<LogQueue> log_;
