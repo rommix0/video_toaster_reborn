@@ -780,11 +780,16 @@ TEST_CASE("BKG renders the background colour", "[switcher]") {
     REQUIRE(r.render().px == expect.px);
 }
 
-// The effect rendered directly with this matte colour.
-vt::Frame withMatte(const vt::Effect& e, int tbar, const vt::Frame& a, const vt::Frame& b, vt::Rgba8 matte) {
+// The colour a fresh Switcher (BKG Black) gives an effect's matte: its own, else BKG's.
+vt::Rgba8 r0colour(const vt::Effect& e) { return e.effectColour().value_or(vt::EffectColour{}).rgb(); }
+
+// The effect rendered directly with this matte colour (and a Snow generator's picture).
+vt::Frame withMatte(const vt::Effect& e, int tbar, const vt::Frame& a, const vt::Frame& b, vt::Rgba8 matte,
+                    const vt::Frame* generator = nullptr) {
     vt::Frame out;
     vt::RenderCtx ctx;
     ctx.background = matte;
+    ctx.generator = generator;
     e.render(tbar, a, b, out, ctx);
     return out;
 }
@@ -808,8 +813,12 @@ TEST_CASE("effects get their own Effect Color, not the BKG colour (Ruling 26)", 
     // the Effect Color pop-up overrides it until another setEffect
     r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Red));
     REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, vt::bkgColour(vt::BkgColour::Red)).px);
-    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Snow));  // Snow: black, as for BKG
-    REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, black).px);
+    // Snow: the matte shows the generator's noise of this tick (tag 0x1B routes it to the generator)
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Snow));
+    vt::Frame noise;
+    vt::renderSnow(noise, 0);
+    REQUIRE(r.render().px == withMatte(*fork, t, r.in3, r.in4, black, &noise).px);
+    REQUIRE(r.render().px != withMatte(*fork, t, r.in3, r.in4, black).px);
     REQUIRE(r.sw.setEffect(fork));
     REQUIRE(r.sw.effectColour() == vt::EffectColour::of(vt::BkgColour::White));
 
@@ -880,6 +889,37 @@ TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Rulings 
     REQUIRE_FALSE(dissolve()->isOverlay());
 }
 
+TEST_CASE("an effect without tag 0x23 shows the BKG colour, which it follows (switcher.main 0xe723e)", "[switcher]") {
+    // Blendo !: no tag 0x23 or 0x24; its tag 0x1B routes palette indices 0 and 1 to the generator
+    const auto blendo = load("4.2/Effects/4000FX/Special/Blendo !");
+    REQUIRE_FALSE(blendo->effectColour());
+    Rig r;
+    r.sw.setBackground(vt::BkgColour::Blue);
+    REQUIRE(r.sw.setEffect(blendo));
+    REQUIRE_FALSE(r.sw.effectHasOwnColour());
+    REQUIRE(r.sw.effectColour() == vt::EffectColour::of(vt::BkgColour::Blue));
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    const vt::Rgba8 blue = vt::bkgColour(vt::BkgColour::Blue), black = vt::bkgColour(vt::BkgColour::Black);
+    int t = 8;  // a T-bar position where the matte shows
+    while (t < 511 && withMatte(*blendo, t, r.in3, r.in4, blue).px == withMatte(*blendo, t, r.in3, r.in4, black).px) t += 8;
+    REQUIRE(t < 511);
+    r.sw.setTBar(t);
+    REQUIRE(r.render().px == withMatte(*blendo, t, r.in3, r.in4, blue).px);
+    r.sw.setBackground(vt::BkgColour::Yellow);  // a BKG change shows at once
+    REQUIRE(r.render().px == withMatte(*blendo, t, r.in3, r.in4, vt::bkgColour(vt::BkgColour::Yellow)).px);
+    r.sw.setBackground(vt::BkgColour::Snow);  // and a Snow BKG fills the matte with its noise
+    vt::Frame noise;
+    vt::renderSnow(noise, 0);
+    REQUIRE(r.render().px == withMatte(*blendo, t, r.in3, r.in4, black, &noise).px);
+    // the Effect Color pop-up still sets a colour of its own
+    r.sw.setEffectColour(vt::EffectColour::of(vt::BkgColour::Red));
+    REQUIRE(r.sw.effectHasOwnColour());
+    REQUIRE(r.render().px == withMatte(*blendo, t, r.in3, r.in4, vt::bkgColour(vt::BkgColour::Red)).px);
+    REQUIRE(r.sw.setEffect(blendo));
+    REQUIRE_FALSE(r.sw.effectHasOwnColour());
+}
+
 TEST_CASE("an overlay loops over Main and never swaps (Rulings 27, 32)", "[switcher][overlay]") {
     // Snowfall Loop: a soft matte, B = its effect colour (White); Glitch Roll Screen: a DVE move,
     // B = Main. Both have loop frames that differ.
@@ -891,7 +931,7 @@ TEST_CASE("an overlay loops over Main and never swaps (Rulings 27, 32)", "[switc
     const bool dve = ov->usesDvMemory();
     REQUIRE(dve == (std::string(src).find("Glitch") != std::string::npos));
     REQUIRE((dve || ov->effectColour() == vt::EffectColour::of(vt::BkgColour::White)));
-    const vt::Frame colour = solid(ov->effectColour().rgb());
+    const vt::Frame colour = solid(r0colour(*ov));
     const int n = ov->frameCount();
     REQUIRE(n > 2);
     const vt::Speed speed = ov->timing().resolve(ov->timing().defaultSpeed);
@@ -901,7 +941,7 @@ TEST_CASE("an overlay loops over Main and never swaps (Rulings 27, 32)", "[switc
     auto expected = [&](const Rig& r, int tbar, uint32_t k) {
         vt::Frame out;
         vt::RenderCtx ctx;
-        ctx.background = ov->effectColour().rgb();
+        ctx.background = r0colour(*ov);
         ctx.frameNumber = k;
         ctx.speed = speed;
         ctx.animFrame = int(k / uint32_t(fpf) % uint32_t(n));
@@ -1018,6 +1058,7 @@ TEST_CASE("an animated matte overlay shows its effect colour, Snow as noise (Rul
     vt::Frame noise;
     vt::renderSnow(noise, 0);
     ctx.background = vt::Rgba8{0, 0, 0, 255};
+    ctx.generator = &noise;
     ov->render(1, r.in3, noise, expect, ctx);
     REQUIRE(r.render().px == expect.px);
 }
@@ -1034,7 +1075,7 @@ TEST_CASE("gradient overlays are split screens with Preview, held by the T-bar (
     REQUIRE(r.sw.overlayEngaged());
     vt::Frame expect;
     vt::RenderCtx ctx;
-    ctx.background = split->effectColour().rgb();
+    ctx.background = r.sw.effectColour().rgb();
     split->render(256, r.in3, r.in4, expect, ctx);
     const vt::Frame shown = r.render();
     REQUIRE(shown.px == expect.px);

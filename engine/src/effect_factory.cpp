@@ -30,6 +30,7 @@ constexpr std::array<char, 4> kIlbmForm{'I', 'L', 'B', 'M'};
 constexpr uint32_t kTagMode = 0x80000022;
 constexpr uint32_t kTagColour = 0x80000023;        // Effect Color preset (vt/background.h)
 constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
+constexpr uint32_t kTagSourceWords = 0x1000001B;   // per palette index hardware words (vt/mix.h)
 
 // Rulings 27, 32: the crouton's own folder is an Overlays drawer (4.2/Effects/2000FX/OverLays,
 // 4.2/Effects/4000FX/Overlays), any case. No crouton tag separates these effects from the rest:
@@ -89,6 +90,8 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             }
             AnimPlan plan = planAnim(an, c->tag(kTagMode));
             if (plan.kind == AnimKind::Unsupported) return fail(why, plan.reason);
+            if (auto it = c->blobs.find(kTagSourceWords); it != c->blobs.end())
+                plan.routes = paletteRoutes(it->second, an.bm.planes);
             auto b = basics(animTiming(*c, int(an.frames.size())));  // before `an` is moved from
             return detail::makeAnimEffect(std::move(b), std::move(an), std::move(plan), why);
         }

@@ -208,27 +208,33 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         out.px = a.px;
     } else {
         const bool overlay = overlayEngaged();
+        const EffectColour colour = effectColour();
+        // The effect colour as a picture: one colour, or this tick's Snow.
+        auto colourFrame = [&]() -> const Frame& {
+            if (colour.isSnow()) {
+                renderSnow(colourScratch_, tickCount_);
+                colourValid_ = false;
+            } else if (!colourValid_ || !(colourBuilt_ == colour)) {
+                std::fill(colourScratch_.px.begin(), colourScratch_.px.end(), colour.rgb());
+                colourBuilt_ = colour;
+                colourValid_ = true;
+            }
+            return colourScratch_;
+        };
+        // A Snow generator's noise, for the matte areas of animated wipes too (RenderCtx::generator).
+        const Frame* snow = colour.isSnow() ? &colourFrame() : nullptr;
         const Frame* bp = nullptr;
         switch (overlay ? overlayB(*effect_) : OverlayB::Preview) {
             case OverlayB::Preview: bp = &pick(sel_[busIndex(Bus::Preview)]); break;
             case OverlayB::Main: bp = &a; break;
-            case OverlayB::Colour:
-                if (effectColour_.isSnow()) {
-                    renderSnow(colourScratch_, tickCount_);
-                    colourValid_ = false;
-                } else if (!colourValid_ || !(colourBuilt_ == effectColour_)) {
-                    std::fill(colourScratch_.px.begin(), colourScratch_.px.end(), effectColour_.rgb());
-                    colourBuilt_ = effectColour_;
-                    colourValid_ = true;
-                }
-                bp = &colourScratch_;
-                break;
+            case OverlayB::Colour: bp = snow ? snow : &colourFrame(); break;
         }
         const Frame& b = *bp;
         const Timing timing = effect_->timing();
         const Speed speed = timing.resolve(speed_);
         RenderCtx ctx;
-        ctx.background = effectColour_.rgb();  // the effect's own colour, not BKG's (Ruling 26)
+        ctx.background = colour.rgb();  // the effect's own colour if it has one (Ruling 26), else BKG's
+        ctx.generator = snow;
         // The frame counter runs while a ChromaFX (cycling) or an overlay is engaged. Other
         // effects are rendered from the T-bar position alone, so a T-bar moved back looks like a
         // fresh render there.

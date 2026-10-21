@@ -81,21 +81,26 @@ TEST_CASE("renderSnow is deterministic per frame number") {
     CHECK(light);
 }
 
-TEST_CASE("an effect's colour comes from tags 0x23 / 0x24 (Ruling 26)") {
+TEST_CASE("an effect's colour comes from tags 0x23 / 0x24 as switcher.main reads them") {
     using vt::BkgColour;
     using vt::EffectColour;
     CHECK(vt::effectColourFromTags(2, std::nullopt) == EffectColour::of(BkgColour::White));
-    CHECK(vt::effectColourFromTags(8, 0x0906) == EffectColour::of(BkgColour::Cyan));  // 0x24 only if 0x23 < 0
-    CHECK(vt::effectColourFromTags(9, std::nullopt).isSnow());
-    // negative 0x23: the custom word
-    const EffectColour c = vt::effectColourFromTags(0xffffffffu, 0x0906);
-    CHECK(c == EffectColour::customWord(0x0906));
-    CHECK(same(c.rgb(), vt::bkgColour(BkgColour::Red)));
-    CHECK(vt::effectColourFromTags(0x80000000u, 0x8000).isSnow());
-    CHECK(vt::effectColourFromTags(0x80000000u, std::nullopt) == EffectColour::customWord(0));
-    // missing, 0 (the library default) and out of range: Black
-    for (auto t : {std::optional<uint32_t>{}, std::optional<uint32_t>{0u}, std::optional<uint32_t>{10u}})
-        CHECK(vt::effectColourFromTags(t, std::nullopt) == EffectColour{});
+    CHECK(vt::effectColourFromTags(9, std::nullopt)->isSnow());
+    // tag 0x24 present: its handler 0xe6db4 sets 0x23 to -1, so the custom word wins
+    CHECK(vt::effectColourFromTags(8, 0x0906) == EffectColour::customWord(0x0906));
+    CHECK(vt::effectColourFromTags(std::nullopt, 0x8000)->isSnow());
+    // negative 0x23 (the low byte, ext.w): the custom word, missing = 0
+    CHECK(vt::effectColourFromTags(0xffffffffu, 0x0906) == EffectColour::customWord(0x0906));
+    CHECK(same(vt::effectColourFromTags(0xffffffffu, 0x0906)->rgb(), vt::bkgColour(BkgColour::Red)));
+    CHECK(vt::effectColourFromTags(0xffffffffu, std::nullopt) == EffectColour::customWord(0));
+    CHECK(vt::effectColourFromTags(0x80u, std::nullopt) == EffectColour::customWord(0));
+    CHECK(vt::effectColourFromTags(0x102u, std::nullopt) == EffectColour::of(BkgColour::White));  // low byte 2
+    // missing, or above 9: no colour of its own, the generator keeps the BKG colour (0xe723e, 0xe727c)
+    CHECK_FALSE(vt::effectColourFromTags(std::nullopt, std::nullopt));
+    CHECK_FALSE(vt::effectColourFromTags(10u, std::nullopt));
+    CHECK_FALSE(vt::effectColourFromTags(127u, std::nullopt));
+    // 0: GUESS Black (the Switcher reuses the last Effect Color, $332(a5))
+    CHECK(vt::effectColourFromTags(0u, std::nullopt) == EffectColour{});
     CHECK(EffectColour{} == EffectColour::of(BkgColour::Black));
     // rgb: the generator's colours; Snow is black (noise has no single colour)
     CHECK(same(EffectColour::of(BkgColour::Blue).rgb(), vt::bkgColour(BkgColour::Blue)));
