@@ -40,11 +40,20 @@ int fitZoom(QSize available, int chromeHeight, int chromeWidth) {
     return std::max(1, std::min((available.width() - chromeWidth) / kScreenW, (available.height() - chromeHeight) / kScreenH));
 }
 
-int defaultZoom(const QScreen& screen, int chromeHeight, int chromeWidth) {
+int windowedZoom(int fit, double devicePixelRatio) {
+    const int natural = int(std::ceil(devicePixelRatio - 1e-6));
+    return std::max(1, std::min(fit, natural));
+}
+
+int screenFitZoom(const QScreen& screen, int chromeHeight, int chromeWidth) {
     const double dpr = screen.devicePixelRatio();
     const QSize avail = screen.availableGeometry().size();
     return fitZoom(QSize(int(avail.width() * dpr), int(avail.height() * dpr)), int(std::ceil(chromeHeight * dpr)),
                    int(std::ceil(chromeWidth * dpr)));
+}
+
+int defaultZoom(const QScreen& screen, int chromeHeight, int chromeWidth) {
+    return windowedZoom(screenFitZoom(screen, chromeHeight, chromeWidth), screen.devicePixelRatio());
 }
 
 ProjectGrid::ProjectGrid() { compose(); }

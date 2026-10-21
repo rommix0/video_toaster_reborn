@@ -36,7 +36,7 @@ public:
     vt::media::RecordFormat recordingFormat = vt::media::RecordFormat::H264Mkv;
     QString audioOutDevice;                             // OutputDevice::id; "" = the default device
     PanelPalette panelPalette = PanelPalette::Rgb;
-    int screenZoom = 0;                                 // Switcher screen: 0 = fit the display, else 1..8
+    int screenZoom = 0;                                 // Switcher screen: 0 = windowed default, else 1..8
     int monitorZoom = 1;                                // Program/Preview monitors: 1..4
     bool underscan = false;                             // monitors show the whole 768 x 482 raster
     QByteArray windowGeometry;                          // the main window, QWidget::saveGeometry()

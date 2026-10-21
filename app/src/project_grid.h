@@ -19,8 +19,15 @@ class ToasterScreen;
 // plus chromeHeight of window chrome above and below it and chromeWidth beside it (the mixer dock)
 // inside `available`; all in device pixels.
 int fitZoom(QSize available, int chromeHeight = 40, int chromeWidth = 0);
+// The windowed default: about one Toaster pixel per logical screen pixel, i.e. the device pixel
+// ratio rounded up to a whole number, but never more than `fit` (and at least 1). The original was
+// a full-screen program beside separate Program/Preview monitors; here it is one window among the
+// monitor windows, so it opens at its natural size rather than filling the display.
+int windowedZoom(int fit, double devicePixelRatio);
 // fitZoom for the screen's available geometry (QScreen::availableGeometry), in its device pixels;
 // chromeHeight and chromeWidth are in logical pixels.
+int screenFitZoom(const QScreen&, int chromeHeight = 40, int chromeWidth = 0);
+// windowedZoom(screenFitZoom(...), the screen's device pixel ratio): the zoom the app opens at.
 int defaultZoom(const QScreen&, int chromeHeight = 40, int chromeWidth = 0);
 
 // What the grid holds and shows. Crouton i sits in slot i: column i % 8, row i / 8; visible rows

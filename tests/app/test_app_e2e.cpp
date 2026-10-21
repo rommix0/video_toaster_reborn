@@ -550,7 +550,7 @@ void TestAppE2e::menus() {
     QCOMPARE(w.logAction()->text(), QStringLiteral("&Log"));
 }
 
-// View -> Zoom: Fit, then 1x up to the fit for the display or the current zoom (the offscreen display
+// View -> Zoom: Default, then 1x up to the fit for the display or the current zoom (the offscreen display
 // fits only 1x; the stored zoom is 3). Choosing 2x sets the screen's zoom and the setting at once.
 void TestAppE2e::zoomMenu() {
     QTemporaryDir dir;
@@ -566,10 +566,10 @@ void TestAppE2e::zoomMenu() {
         if (a->isSeparator()) continue;
         names << a->text();
         if (a->text() == QStringLiteral("2×")) two = a;
-        if (a->text() == QStringLiteral("Fit")) fit = a;
+        if (a->text() == QStringLiteral("Default")) fit = a;
         QCOMPARE(a->isChecked(), a->text() == QStringLiteral("3×"));
     }
-    QCOMPARE(names, (QStringList{"Fit", "1×", "2×", "3×"}));
+    QCOMPARE(names, (QStringList{"Default", "1×", "2×", "3×"}));
     two->trigger();
     QCOMPARE(c.screen()->zoom(), 2);
     QCOMPARE(settings.screenZoom, 2);
@@ -580,7 +580,7 @@ void TestAppE2e::zoomMenu() {
     QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
 }
 
-// Moved to another display: with Fit (screenZoom 0) the zoom is picked anew for the display the
+// Moved to another display: with Default (screenZoom 0) the zoom is picked anew for the display the
 // window is on, and the window takes the new size.
 void TestAppE2e::zoomFollowsADevicePixelRatioChange() {
     QTemporaryDir dir;

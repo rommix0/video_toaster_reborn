@@ -60,6 +60,7 @@ private slots:
     void loadedBoxAndNextBracket();
     void drawerPicker();
     void fitZoomChoice();
+    void windowedZoomChoice();
 };
 
 // Ruling 3: the indexed screen keeps the panel clear colour under the grid; the RGB screen and the
@@ -213,6 +214,18 @@ void TestProjectGrid::fitZoomChoice() {
     QCOMPARE(fitZoom(QSize(3840, 2120), 130, 508), 4);
     // At 150 % the chrome is 1.5 times as many device pixels: 3.
     QCOMPARE(fitZoom(QSize(3840, 2100), 195, 762), 3);
+}
+
+// The windowed default: the device pixel ratio rounded up (about one Toaster pixel per logical
+// pixel), capped by the fit, never below 1.
+void TestProjectGrid::windowedZoomChoice() {
+    QCOMPARE(windowedZoom(4, 1.0), 1);   // 100 %: 768 x 481 on a 4K display
+    QCOMPARE(windowedZoom(4, 1.25), 2);
+    QCOMPARE(windowedZoom(4, 1.5), 2);   // 4K at 150 %: 1536 x 962 device = 1024 x 641 logical
+    QCOMPARE(windowedZoom(4, 2.0), 2);
+    QCOMPARE(windowedZoom(4, 2.5), 3);
+    QCOMPARE(windowedZoom(1, 1.5), 1);   // the fit still wins on a small display
+    QCOMPARE(windowedZoom(0, 1.0), 1);   // never below 1
 }
 
 std::unique_ptr<QObject> makeProjectGridTests() { return std::make_unique<TestProjectGrid>(); }

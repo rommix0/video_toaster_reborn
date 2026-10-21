@@ -63,11 +63,12 @@ namespace vt::media { class Recorder; }
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
 //   the log queue (the vt::setLogSink callback only queues: it runs under a global lock on worker
 //   threads) into the status bar and the log view (Help -> Log), and updates the status labels.
-// - The Switcher screen's zoom is settings.screenZoom, or with 0 the largest that fits the main
-//   window's display beside the mixer dock (defaultZoom); View -> Zoom offers Fit and 1x up to that
-//   fit (or the current zoom, if larger) and applies the choice at once, resizing the window to it.
-//   When the main window's device pixel ratio changes (another display), the zoom is applied again
-//   (with Fit, picked anew for that display) and the window resized to it.
+// - The Switcher screen's zoom is settings.screenZoom, or with 0 the windowed default (defaultZoom:
+//   about one Toaster pixel per logical screen pixel, never more than fits the main window's display
+//   beside the mixer dock); View -> Zoom offers Default and 1x up to the largest that fits (or the
+//   current zoom, if larger) and applies the choice at once, resizing the window to it. When the
+//   main window's device pixel ratio changes (another display), the zoom is applied again (with
+//   Default, picked anew for that display) and the window resized to it.
 // - Keys: the Switcher's key map works while the main window (with the mixer dock) or a monitor is
 //   the active window: an application event filter hands the mapped key presses meant for any of
 //   their widgets to the Switcher screen, unless a text field has the focus or a pop-up or modal
@@ -111,7 +112,7 @@ public:
     QPlainTextEdit* logView() const { return logView_; }
     size_t cachedEffects() const { return effects_.size(); }
     void show();  // the monitors, then the main window, activated
-    void setScreenZoom(int);  // 0 = fit the display; writes settings.screenZoom and applies it
+    void setScreenZoom(int);  // 0 = the windowed default; writes settings.screenZoom and applies it
 
     void runOffline(int64_t ticks);  // Mode::Offline: that many ticks, then poll()
     void poll();
@@ -147,8 +148,10 @@ private:
 
     void buildPanel();                       // the Switcher screen, or the data-root message
     void showDataMessage(const QString& why);
-    int fitScreenZoom() const;     // defaultZoom for the main window's display and chrome
-    void applyScreenZoom();        // the screen to settings.screenZoom (or the fit), the window to its size
+    int chromeHeight() const;      // the main window's chrome above and below the screen, logical px
+    int fitScreenZoom() const;     // the largest zoom that fits the main window's display and chrome
+    int defaultScreenZoom() const; // the windowed default for that display (defaultZoom)
+    void applyScreenZoom();        // the screen to settings.screenZoom (or the default), the window to its size
     void fillZoomMenu();
     bool forwardKey(QObject* receiver, QKeyEvent*);
     void placeMonitors();          // first launch: beside the main window, where there is room

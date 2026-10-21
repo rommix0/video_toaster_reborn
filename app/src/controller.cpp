@@ -260,7 +260,7 @@ void AppController::buildPanel() {
         window_->setSwitcherWidget(view);
         screen_ = screen;
         view_ = view;
-        screen->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : fitScreenZoom());
+        screen->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : defaultScreenZoom());
         screen->setState(loop_->switcherState());
         screen->setFocus();
         if (settings_.windowGeometry.isEmpty()) window_->resize(window_->sizeHint());
@@ -269,10 +269,18 @@ void AppController::buildPanel() {
     }
 }
 
-int AppController::fitScreenZoom() const {
+int AppController::chromeHeight() const {
     int chrome = window_->chromeHeight();
     if (view_) chrome += view_->drawerPicker()->sizeHint().height() + view_->layout()->spacing();
-    return defaultZoom(*window_->screen(), chrome, window_->chromeWidth());
+    return chrome;
+}
+
+int AppController::fitScreenZoom() const {
+    return screenFitZoom(*window_->screen(), chromeHeight(), window_->chromeWidth());
+}
+
+int AppController::defaultScreenZoom() const {
+    return defaultZoom(*window_->screen(), chromeHeight(), window_->chromeWidth());
 }
 
 void AppController::setScreenZoom(int z) {
@@ -282,19 +290,19 @@ void AppController::setScreenZoom(int z) {
 
 void AppController::applyScreenZoom() {
     if (!screen_) return;
-    screen_->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : fitScreenZoom());
+    screen_->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : defaultScreenZoom());
     screen_->updateGeometry();
     if (!(window_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen))) window_->resize(window_->sizeHint());
 }
 
-// Fit, then 1x up to the zoom that fits the display (or the current zoom, if larger); rebuilt each
-// time the menu opens, so it follows the display the window is on.
+// Default (the windowed size), then 1x up to the zoom that fits the display (or the current zoom,
+// if larger); rebuilt each time the menu opens, so it follows the display the window is on.
 void AppController::fillZoomMenu() {
     QMenu* menu = window_->zoomMenu();
     menu->clear();
     const int top = std::max(fitScreenZoom(), settings_.screenZoom);
     for (int z = 0; z <= top; ++z) {
-        QAction* a = menu->addAction(z ? tr("%1×").arg(z) : tr("Fit"));
+        QAction* a = menu->addAction(z ? tr("%1×").arg(z) : tr("Default"));
         a->setCheckable(true);
         a->setChecked(z == settings_.screenZoom);
         a->setEnabled(screen_ != nullptr);
