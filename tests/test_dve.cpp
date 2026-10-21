@@ -137,15 +137,18 @@ TEST_CASE("isDve and decodeDve on hand-made planes", "[dve]") {
     // cell nibbles: plane 1 high, plane 0 low; even cells take the byte's high nibble
     p.plane(1)[5 * 96 + 0] = 0xAB;
     p.plane(0)[5 * 96 + 0] = 0xCD;
-    // line table: header words 0-1, then line k = (word 3 + 2k) >> 12 << 4 | (word 2 + 2k) >> 12
-    auto putWord = [&](int w, uint16_t v) {
-        p.plane(2)[2 * w] = uint8_t(v >> 8);
-        p.plane(2)[2 * w + 1] = uint8_t(v);
+    // line table: header words 0-1, then line k = (word 3 + 2k) >> 12 << 4 | (word 2 + 2k) >> 12,
+    // read from the last plane with the signature (the sprite plane, here plane 4)
+    auto putWord = [&](int pl, int w, uint16_t v) {
+        p.plane(pl)[2 * w] = uint8_t(v >> 8);
+        p.plane(pl)[2 * w + 1] = uint8_t(v);
     };
-    putWord(2, 0x5123);  // line 0 low nibble 5
-    putWord(3, 0x1fff);  // line 0 high nibble 1 -> 0x15 = 21
-    putWord(4, 0xF000);
-    putWord(5, 0xF000);  // line 1 = 0xFF -> clipped to 240
+    putWord(4, 2, 0x5123);  // line 0 low nibble 5
+    putWord(4, 3, 0x1fff);  // line 0 high nibble 1 -> 0x15 = 21
+    putWord(4, 4, 0xF000);
+    putWord(4, 5, 0xF000);  // line 1 = 0xFF -> clipped to 240
+    putWord(2, 2, 0x7000);  // plane 2 repeats the header but is a picture plane: its words are ignored
+    putWord(2, 3, 0x3000);
     // plane 3: art bit 0; plane 4 carries the signature, so it is control and not art
     p.plane(3)[7 * 96 + 1] = 0x80;  // pixel 8 of line 7
     const uint8_t sig[4] = {0x15, 0x2D, 0x06, 0x83};
@@ -179,6 +182,28 @@ TEST_CASE("isDve and decodeDve on hand-made planes", "[dve]") {
     vt::Planes narrow = blankPlanes(3);
     narrow.rowbytes = 48;
     REQUIRE_FALSE(vt::isDve(narrow));
+}
+
+TEST_CASE("The \"!\" DVEs take the line table from the sprite plane, not plane 2", "[dve]") {
+    // In these effects plane 2 holds picture bits below the control rows; read as a table it gives
+    // lines up to 255 (Photo Fly Out !: line 0 for every control line from 23 on).
+    const char* effects[] = {
+        "4.2/Effects/4000FX/Digital/Hand Pull !",          "4.2/Effects/4000FX/Digital/Flip Chrome Edge !",
+        "4.2/Effects/4000FX/Digital/Warp To Globe !",      "4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !",
+        "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !", "4.2/Effects/4000FX/Space/Infinite Video Space !",
+        "4.2/Effects/4000FX/Trajectory/Photo Fly Out !",
+    };
+    for (const char* src : effects) {
+        INFO(src);
+        const auto f = openDve(src);
+        for (const auto& pl : f.anim.planes) {
+            const vt::DveControl c = vt::decodeDve(pl);
+            REQUIRE(*std::max_element(c.line.begin(), c.line.end()) <= 239);
+        }
+    }
+    const auto photo = openDve("4.2/Effects/4000FX/Trajectory/Photo Fly Out !");
+    const vt::DveControl c = vt::decodeDve(photo.anim.planes[0]);
+    for (int k = 3; k < 230; ++k) REQUIRE(c.line[size_t(k)] == k);  // frame 0: the photo is the whole picture
 }
 
 TEST_CASE("DVE reads exactly one source pixel", "[dve]") {

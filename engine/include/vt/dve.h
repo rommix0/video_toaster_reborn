@@ -6,7 +6,12 @@
 //   planes 0+1  per 4-pixel cell an 8-bit value (plane 1 nibble high, plane 0 nibble low),
 //               192 cells per line.
 //   plane 2     rows 0..10: per-line source-line table after a 2-word header; per line two
-//               big-endian words, line = (second word >> 12) << 4 | (first word >> 12).
+//               big-endian words, line = (second word >> 12) << 4 | (first word >> 12). This is
+//               Amiga sprite 1 data (header = SPR1POS 152D, SPR1CTL 0683, attached; the Switcher
+//               keeps only the words' top nibbles and fills the rest with its register stream,
+//               switcher.main 0x2b5e8), so the table is read from the LAST plane that starts with
+//               the signature: in the "!" effects plane 2 is a picture plane that merely repeats
+//               the sprite's row 0, and the sprite is plane 4, 5, 7 or 8.
 //   planes 3..  (8/9-plane "!" effects) an artwork layer: palette group per pixel, built from
 //               the planes that do not start with the 15 2D 06 83 signature (the i-th such plane
 //               gives bit i); any further plane that starts with it is control and skipped.

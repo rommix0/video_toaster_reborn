@@ -56,8 +56,12 @@ DveControl decodeDve(const Planes& p) {
         c.key[size_t(2 * i)] = uint8_t((p1[i] & 0xF0) | (p0[i] >> 4));
         c.key[size_t(2 * i + 1)] = uint8_t(((p1[i] & 0x0F) << 4) | (p0[i] & 0x0F));
     }
-    // line table: plane 2 rows 0..10 as big-endian words, skip 2, then a word pair per line
-    const uint8_t* t = p.plane(2);
+    // line table: the sprite plane's rows 0..10 as big-endian words, skip 2 (SPR1POS/CTL), then a
+    // word pair per line; the sprite plane is the last one with the signature (plane 2 unless "!")
+    int sprite = 2;
+    for (int pl = 3; pl < p.count; ++pl)
+        if (startsWithSig(p, pl)) sprite = pl;
+    const uint8_t* t = p.plane(sprite);
     static_assert(2 + 2 * kDveLines <= kCtrlRows * 96 / 2, "line table fits in the control rows");
     auto word = [t](int w) { return unsigned(t[2 * w] << 8 | t[2 * w + 1]); };
     for (int k = 0; k < kDveLines; ++k) {
