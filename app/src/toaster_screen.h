@@ -58,11 +58,14 @@ public:
                   SwitcherActions&, QWidget* parent = nullptr);
 
     // Zoom = device pixels per Toaster pixel (whole numbers >= 1), so one Toaster pixel is exactly
-    // zoom x zoom device pixels at any devicePixelRatio; sizeHint() is 768x481 x zoom device pixels.
-    // A change of the device pixel ratio (another display) updates the geometry and moves an open
-    // BKG list along.
+    // zoom x zoom device pixels at any devicePixelRatio. The widget takes any size from 768x481
+    // device pixels (minimumSizeHint) up: the zoom in effect is the largest that fits it, and the
+    // panel is drawn centred at a whole device-pixel offset, the margins around it in the panel clear
+    // colour (palette index 1). setZoom sets the preferred zoom: sizeHint() is 768x481 x that zoom
+    // device pixels. A change of the device pixel ratio (another display) updates the geometry, snaps
+    // the zoom anew and moves an open BKG list along.
     void setZoom(int);
-    int zoom() const { return zoom_; }
+    int zoom() const { return zoom_; }  // the zoom in effect
     void setPanelPalette(bool previewMode);             // false: RGB mode 000 555 999 DDD
     void setState(const vt::media::SwitcherSnapshot&);  // repaints only what changed
     // The Project grid: a single click on a crouton makes it "next" and loads it, a double click
@@ -86,9 +89,11 @@ public:
     QImage renderRgbForTest() const;
 
     QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
 protected:
     void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
@@ -120,6 +125,8 @@ private:
     void scale(const QRect&);              // composed -> device pixels (the one place zoom is applied)
     void projectChanged(bool changed);     // redraws the Project area when the grid's picture changed
     void rescaleAll();
+    bool snap();                           // the zoom and offset in effect for the widget's size
+    QSize sizeAt(int zoom) const;          // logical pixels covering the screen at that zoom
     QRect logicalRect(const QRect& screenRect) const;  // widget pixels covering a screen rect
     QPointF toScreen(const QPointF& logical) const;
     QPoint toScreenPixel(const QPointF& logical) const;
@@ -137,7 +144,9 @@ private:
     vt::media::SwitcherSnapshot state_;
     int dragTbar_ = -1;                              // last setTBar of a drag (only to skip repeats)
     int pressed_ = -1;                               // node drawn pressed while the mouse holds it
-    int zoom_ = 1;
+    int preferredZoom_ = 1;                          // setZoom: sizeHint()
+    int zoom_ = 1;                                   // in effect: the largest that fits the widget
+    QPoint offset_;                                  // the panel's top left in the widget, device pixels
     QList<QRgb> colours_;
     vt::assets::IndexedImage screen_;                // the indexed screen
     ProjectGrid project_;                            // drawn over screen_ in its own colours (Ruling 3)

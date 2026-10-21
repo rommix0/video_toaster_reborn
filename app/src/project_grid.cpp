@@ -137,7 +137,7 @@ ProjectView::ProjectView(const fs::path& effectsRoot, ToasterScreen* screen, QWi
     auto* box = new QVBoxLayout(this);
     box->setContentsMargins(0, 0, 0, 0);
     box->addWidget(picker_, 0, Qt::AlignLeft);
-    box->addWidget(screen_, 1, Qt::AlignLeft | Qt::AlignTop);
+    box->addWidget(screen_, 1);  // takes the room left: the panel snaps to the zoom that fits it
     const fs::path root = effectsRoot.lexically_normal();
     for (const auto& d : croutonDrawers(root))
         picker_->addItem(toQString(d.lexically_relative(root)), toQString(d));

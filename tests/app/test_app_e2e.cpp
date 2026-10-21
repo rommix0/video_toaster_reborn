@@ -550,50 +550,89 @@ void TestAppE2e::menus() {
     QCOMPARE(w.logAction()->text(), QStringLiteral("&Log"));
 }
 
-// View -> Zoom: Default, then 1x up to the fit for the display or the current zoom (the offscreen display
-// fits only 1x; the stored zoom is 3). Choosing 2x sets the screen's zoom and the setting at once.
+// View -> Zoom: Default, then 1x up to the fit for the display or the stored zoom (the offscreen display
+// fits only 1x; the stored zoom is 3), the stored choice checked. The window opens with the panel at
+// the stored zoom; a choice sets the setting and resizes the window so the panel is at that zoom.
+// Resized by hand, the window keeps its size and the panel snaps to the zoom that fits, never below 1x.
 void TestAppE2e::zoomMenu() {
     QTemporaryDir dir;
     AppSettings settings = testSettings(dir);
     settings.screenZoom = 3;
     AppController c(settings, Mode::Offline);
     QVERIFY(c.screen());
-    QCOMPARE(c.screen()->zoom(), 3);
+    QCOMPARE(c.screen()->sizeHint(), QSize(768 * 3, 481 * 3));  // offscreen: devicePixelRatio 1
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support raise()");
+    c.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&c.window()));
+    QTRY_COMPARE(c.screen()->zoom(), 3);
+    QCOMPARE(c.screen()->size(), QSize(768 * 3, 481 * 3));
     QStringList names;
-    QAction* two = nullptr;
-    QAction* fit = nullptr;
+    QAction *two = nullptr, *three = nullptr, *fit = nullptr;
     for (QAction* a : c.window().zoomMenu()->actions()) {
         if (a->isSeparator()) continue;
         names << a->text();
         if (a->text() == QStringLiteral("2×")) two = a;
+        if (a->text() == QStringLiteral("3×")) three = a;
         if (a->text() == QStringLiteral("Default")) fit = a;
         QCOMPARE(a->isChecked(), a->text() == QStringLiteral("3×"));
     }
     QCOMPARE(names, (QStringList{"Default", "1×", "2×", "3×"}));
     two->trigger();
-    QCOMPARE(c.screen()->zoom(), 2);
     QCOMPARE(settings.screenZoom, 2);
-    QCOMPARE(c.window().size(), c.window().sizeHint());
     QVERIFY(two->isChecked());
+    QTRY_COMPARE(c.screen()->zoom(), 2);
+    QCOMPARE(c.screen()->size(), QSize(768 * 2, 481 * 2));
+    three->trigger();
+    QCOMPARE(settings.screenZoom, 3);
+    QTRY_COMPARE(c.screen()->zoom(), 3);
+    QCOMPARE(c.screen()->size(), QSize(768 * 3, 481 * 3));
     fit->trigger();
     QCOMPARE(settings.screenZoom, 0);
-    QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
+    QTRY_COMPARE(c.screen()->zoom(), 1);  // the default: all the offscreen display fits
+
+    // By hand: larger snaps up, the size is kept; smaller stops at the 1x panel.
+    const QSize one = c.screen()->size();
+    c.window().resize(c.window().size() + QSize(768 + 40, 481 + 20));
+    QTRY_COMPARE(c.screen()->zoom(), 2);
+    QCOMPARE(c.screen()->size(), one + QSize(768 + 40, 481 + 20));
+    QCOMPARE(settings.screenZoom, 0);
+    c.window().resize(100, 100);
+    QTRY_COMPARE(c.screen()->size(), one);  // the smallest: 768 wide, as tall as the mixer needs
+    QCOMPARE(one.width(), 768);
+    QVERIFY(one.height() >= 481);
+    QCOMPARE(c.screen()->zoom(), 1);
 }
 
 // Moved to another display: with Default (screenZoom 0) the zoom is picked anew for the display the
-// window is on, and the window takes the new size.
+// window is on, and the window takes the new size. With a chosen zoom the window keeps its size (the
+// panel snaps to what fits it).
 void TestAppE2e::zoomFollowsADevicePixelRatioChange() {
     QTemporaryDir dir;
     AppSettings settings = testSettings(dir);
     settings.screenZoom = 0;
     AppController c(settings, Mode::Offline);
     QVERIFY(c.screen());
-    QCOMPARE(c.screen()->zoom(), 1);  // all the offscreen display fits
-    c.screen()->setZoom(3);           // as fitted on the display the window came from
+    QCOMPARE(c.screen()->sizeHint(), QSize(768, 481));  // the default: all the offscreen display fits
+    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");
+    c.window().show();
+    QVERIFY(QTest::qWaitForWindowExposed(&c.window()));
+    c.screen()->setZoom(3);  // as picked on the display the window came from
+    QTRY_VERIFY(c.window().sizeHint().width() >= 2304);
+    c.window().resize(c.window().sizeHint());
+    QTRY_COMPARE(c.screen()->zoom(), 3);
     apptest::sendRatioChange(c.window());
     QTRY_COMPARE(c.screen()->zoom(), 1);
-    QCOMPARE(c.window().size(), c.window().sizeHint());
     QCOMPARE(settings.screenZoom, 0);
+
+    c.setScreenZoom(2);
+    QTRY_COMPARE(c.screen()->zoom(), 2);
+    c.window().resize(c.window().size() + QSize(100, 50));
+    const QSize kept = c.window().size();
+    apptest::sendRatioChange(c.window());
+    QCoreApplication::processEvents();
+    QCOMPARE(c.window().size(), kept);
+    QCOMPARE(c.screen()->zoom(), 2);
 }
 
 // Review Focus 4 in real time: In1 = the desktop, In2 = the first video device, the audio output

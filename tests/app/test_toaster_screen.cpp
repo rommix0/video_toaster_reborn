@@ -2,6 +2,7 @@
 
 #include <QVBoxLayout>
 #include <QtTest>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -80,6 +81,23 @@ QList<QRgb> colourTable(const vt::assets::Palette& p) {
     return t;
 }
 
+// The widget as shown, in device pixels: every pixel of the panel at `offset` is exactly the zoom x
+// zoom block of its Toaster pixel in `scr` (renderRgbForTest), every pixel around it `margin`.
+// Names the first pixel that differs.
+bool exactPanel(const QImage& shown, const QImage& scr, int zoom, QPoint offset, QRgb margin, QString* why) {
+    const QRect panel(offset, scr.size() * zoom);
+    for (int y = 0; y < shown.height(); ++y)
+        for (int x = 0; x < shown.width(); ++x) {
+            const QRgb want =
+                panel.contains(x, y) ? scr.pixel((x - offset.x()) / zoom, (y - offset.y()) / zoom) : margin;
+            if (shown.pixel(x, y) != want) {
+                *why = QStringLiteral("device pixel (%1,%2)").arg(x).arg(y);
+                return false;
+            }
+        }
+    return true;
+}
+
 }  // namespace
 
 class TestToasterScreen : public QObject {
@@ -98,6 +116,8 @@ private slots:
     void paletteAndExactZoom();
     void rejectsALayoutWithMissingArt();
     void followsADevicePixelRatioChange();
+    void snapsToTheLargestZoomThatFits();
+    void staysAtZoom1BelowTheOneTimesSize();
 };
 
 void TestToasterScreen::defaultScreenIsTheOriginalWithTheActiveButtonsSelected() {
@@ -316,11 +336,10 @@ void TestToasterScreen::paletteAndExactZoom() {
     const QImage scr = w.renderIndexedForTest();
     QCOMPARE(scr.colorTable(), colourTable(layout().previewMode));
     const QImage shown = w.grab().toImage().convertToFormat(QImage::Format_RGB32);
+    QCOMPARE(w.zoom(), 3);
     QCOMPARE(shown.size(), QSize(768 * 3, 481 * 3));
-    for (int y = 0; y < shown.height(); ++y)
-        for (int x = 0; x < shown.width(); ++x)
-            if (shown.pixel(x, y) != scr.color(scr.constScanLine(y / 3)[x / 3]))
-                QFAIL(qPrintable(QStringLiteral("device pixel (%1,%2)").arg(x).arg(y)));
+    QString why;
+    QVERIFY2(exactPanel(shown, scr.convertToFormat(QImage::Format_RGB32), 3, {}, 0, &why), qPrintable(why));
 }
 
 // Art the screen would index past is refused up front, with the reason.
@@ -335,9 +354,10 @@ void TestToasterScreen::rejectsALayoutWithMissingArt() {
     QVERIFY_THROWS_EXCEPTION(std::runtime_error, ToasterScreen(small, font(), fake));
 }
 
-// Moved to a display at 150 %: sizeHint() becomes 768x481 x 3 / 1.5 logical pixels, the layout
-// holding the screen learns it (updateGeometry), an open BKG list follows, and every Toaster pixel is
-// still exactly 3 x 3 device pixels.
+// Moved to a display at 150 %: sizeHint() becomes 768x481 x 3 / 1.5 logical pixels and the layout
+// holding the screen learns it (updateGeometry); until the window takes it, the panel snaps to the
+// zoom its old size now fits (4) and an open BKG list follows. At the new size plus a few logical
+// pixels every Toaster pixel is exactly 3 x 3 device pixels, centred at a whole device-pixel offset.
 void TestToasterScreen::followsADevicePixelRatioChange() {
     FakeActions fake;
     QWidget holder;
@@ -348,6 +368,7 @@ void TestToasterScreen::followsADevicePixelRatioChange() {
     w->setZoom(3);
     QCOMPARE(holder.sizeHint(), QSize(768 * 3, 481 * 3));
     holder.resize(holder.sizeHint());
+    box->activate();  // the minimum size, before the window exists to be told
     holder.show();
     QVERIFY(QTest::qWaitForWindowExposed(&holder));
     expectPopupWarnings();
@@ -357,25 +378,108 @@ void TestToasterScreen::followsADevicePixelRatioChange() {
     QCOMPARE(popup->size(), QSize(popup->art().w * 3, popup->art().h * 3));
 
     w->ratio = 1.5;
-    QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");  // the new size hint
+    // The new size hints: the list's fixed size, and the holder's minimum size (from minimumSizeHint)
+    // once its layout runs.
+    for (int i = 0; i < 2; ++i)
+        QTest::ignoreMessage(QtWarningMsg, "This plugin does not support propagateSizeHints()");
     sendRatioChange(*w);
+    box->activate();
+    QCOMPARE(holder.minimumSize(), QSize(512, 321));
     QCOMPARE(w->sizeHint(), QSize(768 * 2, 962));
     QCOMPARE(holder.sizeHint(), QSize(768 * 2, 962));
+    QCOMPARE(w->zoom(), 4);  // 2304 x 1443 logical = 3456 x 2164 device pixels
     QVERIFY(popup->isVisible());
-    QCOMPARE(popup->size(), QSize(popup->art().w * 2, popup->art().h * 2));
+    QCOMPARE(popup->zoom(), 4);
+    QCOMPARE(popup->size(), QSize(int(std::ceil(popup->art().w * 4 / 1.5)), int(std::ceil(popup->art().h * 4 / 1.5))));
     popup->close();
 
-    w->resize(w->sizeHint());
+    w->resize(w->sizeHint() + QSize(20, 10));  // 2334 x 1458 device pixels: zoom 3, offset (15, 7)
+    QCOMPARE(w->zoom(), 3);
     const QImage scr = w->renderRgbForTest();
-    QImage shown(768 * 3, 481 * 3, QImage::Format_RGB32);
+    QImage shown(2334, 1458, QImage::Format_RGB32);
     shown.setDevicePixelRatio(1.5);
     shown.fill(Qt::white);
     w->render(&shown);
     shown.setDevicePixelRatio(1.0);
-    for (int y = 0; y < shown.height(); ++y)
-        for (int x = 0; x < shown.width(); ++x)
-            if (shown.pixel(x, y) != scr.pixel(x / 3, y / 3))
-                QFAIL(qPrintable(QStringLiteral("device pixel (%1,%2)").arg(x).arg(y)));
+    QString why;
+    QVERIFY2(exactPanel(shown, scr, 3, {15, 7}, colourTable(layout().rgbMode)[1], &why), qPrintable(why));
+}
+
+// A window larger than the preferred size: the panel takes the largest whole zoom that fits (2),
+// centred with margins in the clear colour (index 1); clicks, the T-bar and the BKG list follow the
+// offset.
+void TestToasterScreen::snapsToTheLargestZoomThatFits() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(768 * 2 + 50, 481 * 2 + 30);  // offscreen: devicePixelRatio 1
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    QCOMPARE(w.zoom(), 2);
+    QCOMPARE(w.sizeHint(), QSize(768, 481));  // the preferred zoom is still 1
+    QCOMPARE(layout().clearColour, 1);
+    const QPoint offset(25, 15);
+    const QImage shown = w.grab().toImage().convertToFormat(QImage::Format_RGB32);
+    QCOMPARE(shown.size(), w.size());
+    QString why;
+    const QRgb clear = colourTable(layout().rgbMode)[1];
+    QVERIFY2(exactPanel(shown, w.renderRgbForTest(), 2, offset, clear, &why), qPrintable(why));
+
+    QTest::mouseClick(&w, Qt::LeftButton, {}, offset + centre(node("main_3").hitRect) * 2);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, offset - QPoint(1, 1));  // the margin does nothing
+    QCOMPARE(fake.calls, QStringList{"select Main In3"});
+    const vt::Rect t = layout().tbarRect;
+    QTest::mousePress(&w, Qt::LeftButton, {}, offset + QPoint(t.x + t.w / 2, t.y + t.h - 1) * 2);
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, offset + QPoint(t.x + t.w / 2, t.y + t.h - 1) * 2);
+    QCOMPARE(fake.calls.last(), QStringLiteral("tbar 511"));
+
+    // The list opens above the pop-up, left edges aligned, at the zoom and offset in effect.
+    const vt::Rect r = node("bkg_popup").rect;
+    expectPopupWarnings();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, offset + centre(node("bkg_popup").hitRect) * 2);
+    auto* popup = w.findChild<BkgPopup*>();
+    QVERIFY(popup && popup->isVisible());
+    QCOMPARE(popup->zoom(), 2);
+    // Where it was moved (framePosition: the offscreen platform draws a frame even round a popup).
+    QCOMPARE(popup->windowHandle()->framePosition(), w.mapToGlobal(offset + QPoint(r.x, r.y - popup->art().h) * 2));
+    popup->close();
+
+    // Larger still: zoom 3 once both 768 x 3 and 481 x 3 fit, not before.
+    w.resize(768 * 3 + 10, 481 * 3 - 1);
+    QCOMPARE(w.zoom(), 2);
+    w.resize(768 * 3 + 10, 481 * 3);
+    QCOMPARE(w.zoom(), 3);
+    const QImage wider = w.grab().toImage().convertToFormat(QImage::Format_RGB32);
+    QVERIFY2(exactPanel(wider, w.renderRgbForTest(), 3, {5, 0}, clear, &why), qPrintable(why));
+}
+
+// Below 768 x 481 device pixels the zoom stays 1, the panel at the top left; minimumSizeHint() is
+// the 1x size, so the layout does not let its window shrink past it.
+void TestToasterScreen::staysAtZoom1BelowTheOneTimesSize() {
+    FakeActions fake;
+    QWidget holder;
+    auto* box = new QVBoxLayout(&holder);
+    box->setContentsMargins(0, 0, 0, 0);
+    auto* w = new ToasterScreen(layout(), font(), fake);
+    box->addWidget(w);
+    w->setZoom(2);
+    QCOMPARE(w->minimumSizeHint(), QSize(768, 481));
+    holder.resize(holder.sizeHint());
+    box->activate();  // the minimum size, before the window exists to be told
+    holder.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&holder));
+    QCOMPARE(w->zoom(), 2);
+    holder.resize(300, 200);
+    QTRY_COMPARE(w->size(), QSize(768, 481));
+    QCOMPARE(holder.size(), QSize(768, 481));
+    QCOMPARE(w->zoom(), 1);
+
+    w->resize(700, 400);  // squeezed anyway: zoom 1, drawn from the top left
+    QCOMPARE(w->zoom(), 1);
+    QTest::mouseClick(w, Qt::LeftButton, {}, centre(node("main_3").hitRect));
+    QCOMPARE(fake.calls, QStringList{"select Main In3"});
+    const QImage shown = w->grab().toImage().convertToFormat(QImage::Format_RGB32);
+    QString why;
+    QVERIFY2(exactPanel(shown, w->renderRgbForTest().copy(0, 0, 700, 400), 1, {}, 0, &why), qPrintable(why));
 }
 
 std::unique_ptr<QObject> makeToasterScreenTests() { return std::make_unique<TestToasterScreen>(); }

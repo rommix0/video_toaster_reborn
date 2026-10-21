@@ -214,6 +214,7 @@ void AppController::show() {
     program_->show();
     preview_->show();
     window_->show();
+    if (settings_.windowGeometry.isEmpty()) applyScreenZoom();  // shown: sized from its real layout
     window_->raise();
     window_->activateWindow();
     if (screen_) screen_->setFocus();
@@ -291,8 +292,20 @@ void AppController::setScreenZoom(int z) {
 void AppController::applyScreenZoom() {
     if (!screen_) return;
     screen_->setZoom(settings_.screenZoom > 0 ? settings_.screenZoom : defaultScreenZoom());
-    screen_->updateGeometry();
-    if (!(window_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen))) window_->resize(window_->sizeHint());
+    if (window_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen)) return;
+    // The widgets and layouts between the screen and the window cache their size hints until the
+    // posted layout requests run: drop them, so the window's hint follows the screen's at once.
+    for (QWidget* w = screen_; w; w = w->parentWidget()) {
+        w->updateGeometry();
+        if (QLayout* l = w->layout()) l->invalidate();
+    }
+    window_->resize(window_->sizeHint());
+    // The window's hint can be a few pixels off what its layouts then give the screen (the tab frame
+    // overlaps the tab bar, depending on the style): make up the difference.
+    if (window_->isVisible()) {
+        window_->layout()->activate();
+        window_->resize(window_->size() + screen_->sizeHint() - screen_->size());
+    }
 }
 
 // Default (the windowed size), then 1x up to the zoom that fits the display (or the current zoom,
@@ -334,9 +347,11 @@ void AppController::showDataMessage(const QString& why) {
 
 bool AppController::eventFilter(QObject* watched, QEvent* e) {
     if (e->type() == QEvent::KeyPress && forwardKey(watched, static_cast<QKeyEvent*>(e))) return true;
+    // The screen snaps to the new ratio itself; with Default the window also takes the new default.
     // Queued: the window's widgets get the event too, and the layout must see their new size hints.
     if (watched == window_.get() && e->type() == QEvent::DevicePixelRatioChange)
-        QMetaObject::invokeMethod(this, [this] { if (!shutDown_) applyScreenZoom(); }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(this, [this] { if (!shutDown_ && settings_.screenZoom == 0) applyScreenZoom(); },
+                                  Qt::QueuedConnection);
     return QObject::eventFilter(watched, e);
 }
 

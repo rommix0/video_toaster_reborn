@@ -188,9 +188,8 @@ int ToasterScreen::nodeIndex(const char* id) const {
 
 void ToasterScreen::setZoom(int z) {
     z = std::max(1, z);
-    if (z == zoom_) return;
-    zoom_ = z;
-    rescaleAll();
+    if (z == preferredZoom_) return;
+    preferredZoom_ = z;
     updateGeometry();
 }
 
@@ -232,9 +231,28 @@ void ToasterScreen::projectChanged(bool changed) {
     update(logicalRect(ProjectGrid::area()));
 }
 
-QSize ToasterScreen::sizeHint() const {
+QSize ToasterScreen::sizeAt(int zoom) const {
     const double dpr = devicePixelRatioF();
-    return {int(std::ceil(layout_.screenW * zoom_ / dpr)), int(std::ceil(layout_.screenH * zoom_ / dpr))};
+    return {int(std::ceil(layout_.screenW * zoom / dpr)), int(std::ceil(layout_.screenH * zoom / dpr))};
+}
+
+QSize ToasterScreen::sizeHint() const { return sizeAt(preferredZoom_); }
+QSize ToasterScreen::minimumSizeHint() const { return sizeAt(1); }
+
+// The largest whole zoom whose 768x481 x zoom device pixels fit the widget, centred at a whole
+// device-pixel offset (top left when even zoom 1 does not fit). Returns whether either changed.
+bool ToasterScreen::snap() {
+    const double dpr = devicePixelRatioF();
+    const int w = int(std::floor(width() * dpr + 1e-6)), h = int(std::floor(height() * dpr + 1e-6));
+    const int z = std::max(1, std::min(w / screen_.w, h / screen_.h));
+    const QPoint offset(std::max(0, (w - screen_.w * z) / 2), std::max(0, (h - screen_.h * z) / 2));
+    if (z == zoom_ && offset == offset_) return false;
+    const bool rezoom = z != zoom_;
+    zoom_ = z;
+    offset_ = offset;
+    if (rezoom) rescaleAll();
+    else update();
+    return true;
 }
 
 int ToasterScreen::lookOf(int node) const {
@@ -309,8 +327,9 @@ void ToasterScreen::redraw(const QRegion& region) {
 }
 
 QRect ToasterScreen::logicalRect(const QRect& r) const {
-    const double k = zoom_ / devicePixelRatioF();
-    return QRectF(r.x() * k, r.y() * k, r.width() * k, r.height() * k).toAlignedRect();
+    const double dpr = devicePixelRatioF();
+    return QRectF((r.x() * zoom_ + offset_.x()) / dpr, (r.y() * zoom_ + offset_.y()) / dpr, r.width() * zoom_ / dpr,
+                  r.height() * zoom_ / dpr).toAlignedRect();
 }
 
 void ToasterScreen::compose(const QRect& clip) {
@@ -349,18 +368,30 @@ void ToasterScreen::rescaleAll() {
     update();
 }
 
-void ToasterScreen::paintEvent(QPaintEvent*) {
-    QPainter p(this);
-    // scaled_ is in device pixels: at the widget's own ratio Qt copies it 1:1, without scaling.
-    scaled_.setDevicePixelRatio(devicePixelRatioF());
-    p.drawImage(QPointF(0, 0), scaled_);
-    const QSizeF shown = scaled_.deviceIndependentSize();
-    const QColor border(colours_[0]);
-    if (width() > shown.width()) p.fillRect(QRectF(shown.width(), 0, width() - shown.width(), height()), border);
-    if (height() > shown.height()) p.fillRect(QRectF(0, shown.height(), shown.width(), height() - shown.height()), border);
+void ToasterScreen::resizeEvent(QResizeEvent*) {
+    if (snap() && bkgPopup_ && bkgPopup_->isVisible()) openBkgPopup();
 }
 
-QPointF ToasterScreen::toScreen(const QPointF& logical) const { return logical * devicePixelRatioF() / zoom_; }
+void ToasterScreen::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    // scaled_ is in device pixels: at the widget's own ratio Qt copies it 1:1, without scaling, to
+    // the whole device-pixel offset_. The margins around it (filled first: the panel covers any
+    // pixel they share) are the panel clear colour.
+    const double dpr = devicePixelRatioF();
+    scaled_.setDevicePixelRatio(dpr);
+    const QRectF panel(QPointF(offset_) / dpr, scaled_.deviceIndependentSize());
+    const QColor clear(colours_[layout_.clearColour]);
+    const qreal w = width(), h = height();
+    for (const QRectF& m : {QRectF(0, 0, w, panel.top()), QRectF(0, panel.bottom(), w, h - panel.bottom()),
+                            QRectF(0, panel.top(), panel.left(), panel.height()),
+                            QRectF(panel.right(), panel.top(), w - panel.right(), panel.height())})
+        if (!m.isEmpty()) p.fillRect(m, clear);
+    p.drawImage(panel.topLeft(), scaled_);
+}
+
+QPointF ToasterScreen::toScreen(const QPointF& logical) const {
+    return (logical * devicePixelRatioF() - QPointF(offset_)) / zoom_;
+}
 
 QPoint ToasterScreen::toScreenPixel(const QPointF& logical) const {
     const QPointF pos = toScreen(logical);
@@ -437,8 +468,9 @@ void ToasterScreen::wheelEvent(QWheelEvent* e) {
 
 bool ToasterScreen::event(QEvent* e) {
     if (e->type() == QEvent::DevicePixelRatioChange) {
-        rescaleAll();
         updateGeometry();
+        snap();
+        update();
         if (bkgPopup_ && bkgPopup_->isVisible()) openBkgPopup();
     }
     if (e->type() != QEvent::ToolTip) return QWidget::event(e);
@@ -456,7 +488,7 @@ bool ToasterScreen::event(QEvent* e) {
 void ToasterScreen::openBkgPopup() {
     const vt::Rect& r = layout_.nodes[size_t(bkgNode_)].rect;
     const int top = std::max(0, r.y - bkgPopup_->art().h);
-    const QPointF at = QPointF(r.x, top) * zoom_ / devicePixelRatioF();
+    const QPointF at = (QPointF(r.x, top) * zoom_ + QPointF(offset_)) / devicePixelRatioF();
     bkgPopup_->open(mapToGlobal(at.toPoint()), zoom_, colours_);
 }
 
