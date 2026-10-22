@@ -64,9 +64,12 @@ public:
 
     // The current effect's matte colour, its "Effect Color" (Ruling 26): effect().effectColour()
     // until overridden here (the UI's Effect Color pop-up); setEffect resets it to the new
-    // effect's own. Independent of the BKG source's colour (setBackground).
+    // effect's own. An effect without one (no tag 0x80000023/0x24) leaves the colour generator
+    // as it is (switcher.main 0xe723e), so effectColour() is then the BKG source's colour
+    // (setBackground), following it; effectHasOwnColour() tells the two apart.
     void setEffectColour(EffectColour c) { effectColour_ = c; }
-    EffectColour effectColour() const { return effectColour_; }
+    EffectColour effectColour() const { return effectColour_.value_or(bkg_); }
+    bool effectHasOwnColour() const { return effectColour_.has_value(); }
 
     // --- speed buttons, hardware guesses ---
     // The operator's S/M/F/V button. It is what renders resolve (effect().timing().resolve) and
@@ -141,7 +144,8 @@ public:
     //    Animated ones loop: frame (ticks since engagement / fieldsPerFrame) mod frameCount at
     //    the speed button (RenderCtx::animFrame), so frame 0 again after frameCount x
     //    fieldsPerFrame ticks.
-    // RenderCtx::background is effectColour().rgb() (black for Snow), whatever BKG shows. Never
+    // RenderCtx::background is effectColour().rgb() (black for Snow); with a Snow effect colour
+    // RenderCtx::generator is this tick's noise frame, the same one an overlay's B gets. Never
     // reads or writes `program` before it is finished, so it may alias an input frame.
     // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
     // steady-state renders allocation-free), so program.px.data() alternates between two
@@ -181,9 +185,9 @@ private:
     bool soundPending_ = false;
     uint32_t tickCount_ = 0;
     EffectColour bkg_;           // the BKG source
-    EffectColour effectColour_;  // the effect's matte colour
+    std::optional<EffectColour> effectColour_;  // the effect's matte colour; none: BKG's
     mutable Frame bkgScratch_, blackScratch_, outScratch_;  // render's working frames
-    mutable Frame colourScratch_;      // an overlay's effect-colour B
+    mutable Frame colourScratch_;      // the effect colour as a picture (an overlay's B, Snow)
     mutable bool colourValid_ = false;  // colourScratch_ holds colourBuilt_ (never for Snow)
     mutable EffectColour colourBuilt_;
     Frame dv_;  // DV1 and DV2 stay black until freeze / framestores exist (spec 3)

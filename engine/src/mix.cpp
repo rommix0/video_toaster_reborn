@@ -35,20 +35,24 @@ bool isVideo(const AnimPlan& p, int i) {
 }
 
 // toaster_fx_convert.overlay_colours for the indices < 1 << planes. Video indices are 0,0,0,0.
+// *stoodIn (if given) says whether the colours are `bg` (an all-black palette) or the palette's.
 std::vector<Rgba8> overlayColours(const Anim& a, const AnimPlan& p, const std::vector<Rgb>& cm,
-                                  const std::array<bool, 256>& used, Rgba8 bg) {
+                                  const std::array<bool, 256>& used, Rgba8 bg, bool* stoodIn = nullptr) {
     const int n = 1 << a.bm.planes;
     std::vector<Rgba8> rgba(size_t(n), Rgba8{0, 0, 0, 0});
     std::vector<int> over;
     for (int i = 0; i < n; ++i)
         if (!isVideo(p, i)) over.push_back(i);
     for (int i : over) rgba[size_t(i)] = Rgba8{bg.r, bg.g, bg.b, 255};
+    if (stoodIn) *stoodIn = true;
     if (int(cm.size()) >= n) {
         int mx = 0;
         for (int i : over) mx = std::max({mx, int(cm[size_t(i)].r), int(cm[size_t(i)].g), int(cm[size_t(i)].b)});
         // tiny values are control codes, not colours; an all-zero set has max 0 < 16 as well
-        if (mx >= 16)
+        if (mx >= 16) {
             for (int i : over) rgba[size_t(i)] = Rgba8{cm[size_t(i)].r, cm[size_t(i)].g, cm[size_t(i)].b, 255};
+            if (stoodIn) *stoodIn = false;
+        }
     }
     std::vector<int> lv;
     for (int i : over)
@@ -76,7 +80,43 @@ bool anyOverlay(const std::vector<Rgba8>& rgba, const std::array<bool, 256>& use
     return false;
 }
 
+void applyRoutes(std::array<MixEntry, 256>& t, const AnimPlan& plan, int n, Rgba8 bg) {
+    for (size_t i = 0; i < plan.routes.size() && i < size_t(n); ++i) {
+        switch (plan.routes[i]) {
+            case PaletteRoute::Palette: break;
+            case PaletteRoute::A: t[i] = MixEntry{MixSrc::A, 0, {0, 0, 0, 0}, false}; break;
+            case PaletteRoute::B: t[i] = MixEntry{MixSrc::B, 255, {0, 0, 0, 0}, false}; break;
+            case PaletteRoute::Generator: t[i] = MixEntry{MixSrc::Colour, 0, {bg.r, bg.g, bg.b, 255}, true}; break;
+        }
+    }
+}
+
+uint16_t be16(const std::vector<uint8_t>& b, size_t o) { return uint16_t(b[o] << 8 | b[o + 1]); }
+
 }  // namespace
+
+std::vector<PaletteRoute> paletteRoutes(const std::vector<uint8_t>& tag1b, int planes) {
+    // 0xe80e4: word rows, word step, word first index, word count, 8 mask longs, then rows x
+    // count longs. Every shipped 2-plane table has one row; more rows (picked by the T-bar)
+    // are not modelled.
+    if (planes != 2 || tag1b.size() < 40) return {};
+    const int rows = be16(tag1b, 0), first = be16(tag1b, 4), count = be16(tag1b, 6);
+    const int n = 1 << planes;
+    if (rows != 1 || first + count > n || tag1b.size() < 40 + size_t(count) * 4) return {};
+    std::vector<PaletteRoute> r(size_t(n), PaletteRoute::Palette);
+    for (int k = 0; k < count; ++k) {
+        const size_t o = 40 + size_t(k) * 4;
+        const uint32_t e = uint32_t(be16(tag1b, o)) << 16 | be16(tag1b, o + 2);
+        if (e & ~0x0000f000u) continue;  // other bits (levels): not a plain source select
+        switch (e >> 12) {
+            case 1: r[size_t(first + k)] = PaletteRoute::A; break;
+            case 3: r[size_t(first + k)] = PaletteRoute::B; break;
+            case 9: r[size_t(first + k)] = PaletteRoute::Generator; break;
+            default: break;
+        }
+    }
+    return r;
+}
 
 AnimPlan planAnim(const Anim& an, std::optional<uint32_t> mode) {
     AnimPlan plan;
@@ -132,15 +172,19 @@ std::array<MixEntry, 256> mixTable(const Anim& an, const AnimPlan& plan, const s
         t[size_t(i)].bLevel = uint8_t(v);
         t[size_t(i)].src = v == 255 ? MixSrc::B : MixSrc::A;
     }
-    if (plan.kind == AnimKind::Soft) return t;
-    const auto used = usedIndices(an);
-    const auto rgba = overlayColours(an, plan, cmap, used, background);
-    if (!anyOverlay(rgba, used)) return t;
-    for (int i = 0; i < n; ++i)
-        if (!isVideo(plan, i)) {
-            t[size_t(i)].src = MixSrc::Colour;
-            t[size_t(i)].colour = rgba[size_t(i)];
-        }
+    if (plan.kind != AnimKind::Soft) {
+        const auto used = usedIndices(an);
+        bool stoodIn = false;
+        const auto rgba = overlayColours(an, plan, cmap, used, background, &stoodIn);
+        if (anyOverlay(rgba, used))
+            for (int i = 0; i < n; ++i)
+                if (!isVideo(plan, i)) {
+                    t[size_t(i)].src = MixSrc::Colour;
+                    t[size_t(i)].colour = rgba[size_t(i)];
+                    t[size_t(i)].generator = stoodIn;
+                }
+    }
+    applyRoutes(t, plan, n, background);
     return t;
 }
 

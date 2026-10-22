@@ -45,7 +45,8 @@ public:
     //   level  = the entry's bLevel (B's share, 0..255); out = A + (B - A) * level / 255 per channel
     //            with round-half-up integer arithmetic (mix255), so level 0 is A and 255 is B exactly;
     //   Colour entries are then composited over that mix with the colour's own alpha, using the
-    //   same formula: out = mix + (colour - mix) * colour.a / 255.
+    //   same formula: out = mix + (colour - mix) * colour.a / 255. Entries showing the colour
+    //   generator take each pixel's colour from ctx.generator when it is set (Snow).
     // Overlay plans have no matte: a flash (flashPeak) shows A in animation frames before the peak
     // and B from it, with the overlay on top; other overlay-only effects have no peak, so their
     // clip is cut A -> B at the T-bar midpoint (tbar 256), like the cut (GUESS). An Overlays-drawer
@@ -75,12 +76,14 @@ public:
             const uint8_t* src = &f.px[size_t(line) * size_t(f.w)];
             const Rgba8* pa = &a.at(0, y);
             const Rgba8* pb = &b.at(0, y);
+            const Rgba8* pg = ctx.generator ? &ctx.generator->at(0, y) : nullptr;
             for (int x = 0; x < kRasterW; ++x) {
                 const MixEntry& e = table[src[map_.x(x)]];
                 Rgba8 m = mixPixel(pa[x], pb[x], forced >= 0 ? forced : e.bLevel);
                 if (e.src == MixSrc::Colour) {
+                    const Rgba8 c = e.generator && pg ? pg[x] : e.colour;
                     const int ca = e.colour.a;
-                    m = {mix255(m.r, e.colour.r, ca), mix255(m.g, e.colour.g, ca), mix255(m.b, e.colour.b, ca), m.a};
+                    m = {mix255(m.r, c.r, ca), mix255(m.g, c.g, ca), mix255(m.b, c.b, ca), m.a};
                 }
                 dst[x] = m;
             }

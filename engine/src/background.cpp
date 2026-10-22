@@ -52,11 +52,14 @@ Rgba8 EffectColour::rgb() const {
     return custom ? customBkgColour(word) : bkgColour(preset);
 }
 
-EffectColour effectColourFromTags(std::optional<uint32_t> tag23, std::optional<uint32_t> tag24) {
-    const uint32_t v = tag23.value_or(0);
-    if (v & 0x80000000u) return EffectColour::customWord(tag24.value_or(0));
+std::optional<EffectColour> effectColourFromTags(std::optional<uint32_t> tag23, std::optional<uint32_t> tag24) {
+    if (tag24) return EffectColour::customWord(*tag24);
+    if (!tag23) return std::nullopt;
+    const auto v = int8_t(uint8_t(*tag23 & 0xff));  // ext.w of the tag's low byte
+    if (v < 0) return EffectColour::customWord(0);
     if (v >= 1 && v <= 9) return EffectColour::of(BkgColour(v));
-    return {};
+    if (v == 0) return EffectColour{};  // GUESS (see background.h)
+    return std::nullopt;
 }
 
 namespace {

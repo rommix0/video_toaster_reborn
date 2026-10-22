@@ -27,6 +27,7 @@ namespace {
 constexpr std::array<char, 4> kAnim{'A', 'N', 'I', 'M'};
 constexpr std::array<char, 4> kIlbm{'I', 'L', 'B', 'M'};
 constexpr uint32_t kTagMode = 0x80000022;
+constexpr uint32_t kTagSourceWords = 0x1000001B;
 const vt::Rgba8 kA{10, 20, 30, 255}, kB{200, 150, 100, 255};
 const vt::Rgba8 kWhite{255, 255, 255, 255}, kBlack{0, 0, 0, 255};
 
@@ -123,6 +124,7 @@ AnimFile openAnim(const std::string& source) {
     REQUIRE(f);
     vt::Anim a = vt::readAnim(c->bytes, *f);
     vt::AnimPlan p = vt::planAnim(a, c->tag(kTagMode));
+    if (auto it = c->blobs.find(kTagSourceWords); it != c->blobs.end()) p.routes = vt::paletteRoutes(it->second, a.bm.planes);
     return {std::move(*c), std::move(a), std::move(p)};
 }
 
@@ -448,9 +450,20 @@ const Mix& mixRecords() {
 
 // Expected pixel for a golden mixtables record (first palette only: use it for effects whose
 // palette does not change). An Overlays-drawer effect of the matte-less kind shows A under its
-// art (Ruling 32; the converter knows nothing of drawers).
+// art (Ruling 32; the converter knows nothing of drawers). Indices with a tag 0x1B route show
+// their source instead (the converter knows nothing of the tag): A, B, or the generator, here
+// the default render context's white.
 vt::Rgba8 goldenPixel(const golden::Record& r, int idx, int frame, int tbar, vt::Rgba8 pa = kA,
-                      vt::Rgba8 pb = kB, bool drawerOverlay = false) {
+                      vt::Rgba8 pb = kB, bool drawerOverlay = false,
+                      const std::vector<vt::PaletteRoute>& routes = {}) {
+    if (size_t(idx) < routes.size()) {
+        switch (routes[size_t(idx)]) {
+            case vt::PaletteRoute::A: return pa;
+            case vt::PaletteRoute::B: return pb;
+            case vt::PaletteRoute::Generator: return {kWhite.r, kWhite.g, kWhite.b, pa.a};
+            case vt::PaletteRoute::Palette: break;
+        }
+    }
     const std::string& kind = str(r, "kind");
     const auto& over_rgba = arr(r, "over_rgba");
     int level;
@@ -487,7 +500,7 @@ void requireAnimGolden(const std::string& source, int tbar) {
         const int line = ctl.line(y);
         if (line < 0) return kBlack;
         const int idx = f.px[size_t(line) * size_t(f.w) + size_t(ctl.x(x))];
-        return goldenPixel(rec, idx, frame, tbar, kA, kB, e->isOverlay());
+        return goldenPixel(rec, idx, frame, tbar, kA, kB, e->isOverlay(), af.plan.routes);
     });
 }
 
@@ -575,7 +588,7 @@ TEST_CASE("a 384-wide effect maps control pixel (10, 5) to raster (20..21, 10..1
         const int tbar = tbarForFrame(frame, n);
         const vt::Frame out = renderAt(*e, tbar, black, white);
         auto ctrl = [&](int cx, int cy) {
-            return goldenPixel(rec, f.px[size_t(cy) * 384 + size_t(cx)], frame, tbar, kBlack, kWhite);
+            return goldenPixel(rec, f.px[size_t(cy) * 384 + size_t(cx)], frame, tbar, kBlack, kWhite, false, af.plan.routes);
         };
         // control pixel (10, 5) covers exactly raster (20..21, 10..11)
         for (int y = 10; y <= 11; ++y)
@@ -737,6 +750,79 @@ TEST_CASE("black palettes use the background colour from the render context", "[
         break;
     }
     REQUIRE(found);
+}
+
+TEST_CASE("tag 0x1B routes the palette indices of 2-plane wipes to A, B or the colour generator", "[effect][anim][colour]") {
+    // One named effect per cause (tools/re/FINDINGS.md "Which colour an effect's matte shows").
+    struct Case {
+        const char* src;
+        int idx;
+        vt::PaletteRoute route;
+    };
+    const Case named[] = {
+        // a black palette index the converter's rules make matte colour is B on the hardware
+        {"4.2/Effects/2000FX/Wipes/Square B-T", 3, vt::PaletteRoute::B},
+        // a border in a preview palette colour (blue) is the generator (tag 0x23: White)
+        {"4.2/Effects/2000FX/Border/Border BR-TL", 3, vt::PaletteRoute::Generator},
+        // black notes in a palette that has colours are the generator too (White)
+        {"4.2/Effects/2000FX/Special/Flying Notes", 3, vt::PaletteRoute::Generator},
+    };
+    const vt::Rgba8 red = vt::bkgColour(vt::BkgColour::Red);
+    for (const auto& c : named) {
+        INFO(c.src);
+        auto af = openAnim(c.src);
+        REQUIRE(af.plan.routes.size() == 4);
+        REQUIRE(af.plan.routes[size_t(c.idx)] == c.route);
+        // the converter's palette rules alone draw a colour there: the matte colour stand-in
+        // (Square B-T, whose missing tag 0x23 made it black) or a palette colour
+        vt::AnimPlan plain = af.plan;
+        plain.routes.clear();
+        const auto t = vt::mixTable(af.anim, plain, af.anim.bm.cmap, red);
+        REQUIRE(t[size_t(c.idx)].src == vt::MixSrc::Colour);
+        if (c.route == vt::PaletteRoute::Generator) REQUIRE_FALSE(same(t[size_t(c.idx)].colour, {red.r, red.g, red.b, 255}));
+    }
+    REQUIRE(load(named[1].src)->effectColour() == vt::EffectColour::of(vt::BkgColour::White));
+    REQUIRE(load(named[2].src)->effectColour() == vt::EffectColour::of(vt::BkgColour::White));
+
+    // Every routed index of every routed effect renders its source alone.
+    int routed = 0;
+    const vt::Frame a = pattern(1), b = pattern(2);
+    for (const auto& src : mixRecords().order) {
+        auto af = openAnim(src);
+        if (af.plan.routes.empty()) continue;
+        INFO(src);
+        auto e = load(src);
+        REQUIRE(e);
+        ++routed;
+        const int n = int(af.anim.frames.size());
+        for (int frame : {0, n / 2, n - 1}) {
+            const int tbar = tbarForFrame(frame, n);
+            const vt::Frame out = renderAt(*e, tbar, a, b, ctxWith(red));
+            const auto& f = af.anim.frames[size_t(frame)];
+            const Ctl ctl{f.w, f.h};
+            for (int y = 0; y < vt::kRasterH; y += 3)
+                for (int x = 0; x < vt::kRasterW; x += 3) {
+                    const int line = ctl.line(y);
+                    if (line < 0) continue;
+                    const int idx = f.px[size_t(line) * size_t(f.w) + size_t(ctl.x(x))];
+                    const vt::Rgba8 got = out.at(x, y);
+                    switch (af.plan.routes[size_t(idx)]) {
+                        case vt::PaletteRoute::Palette: break;
+                        case vt::PaletteRoute::A:
+                            if (!same(got, a.at(x, y))) FAIL("frame " << frame << " at " << x << "," << y << ": not A");
+                            break;
+                        case vt::PaletteRoute::B:
+                            if (!same(got, b.at(x, y))) FAIL("frame " << frame << " at " << x << "," << y << ": not B");
+                            break;
+                        case vt::PaletteRoute::Generator:
+                            if (!same(got, {red.r, red.g, red.b, a.at(x, y).a}))
+                                FAIL("frame " << frame << " at " << x << "," << y << ": not the generator");
+                            break;
+                    }
+                }
+        }
+    }
+    REQUIRE(routed == 125);  // the distinct 2-plane wipes with a tag 0x1B (the golden list skips duplicates)
 }
 
 TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {

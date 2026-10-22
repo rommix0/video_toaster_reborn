@@ -18,10 +18,14 @@
 namespace vt {
 
 struct RenderCtx {
-    // The effect's matte colour (black palettes in colour effects use it). The Switcher passes
-    // its effect colour (Switcher::effectColour(): the effect's own unless overridden), not the
-    // BKG source's colour (Ruling 26); black for Snow.
+    // The colour generator's colour while the effect runs, which an animated wipe's matte areas
+    // show (its tag 0x1000001B colour entries, or a black palette). The Switcher passes its
+    // effect colour (Switcher::effectColour(): the effect's own unless overridden, else the BKG
+    // source's colour); black for Snow.
     Rgba8 background{0, 0, 0, 255};
+    // When the generator is in Snow: its noise picture (kRasterW x kRasterH), which those matte
+    // areas show instead of `background`. Null otherwise.
+    const Frame* generator = nullptr;
     // Switcher ticks since the current ChromaFX or overlay was engaged, 0 otherwise. Cycling
     // ChromaFX take their cycle phase from it; other effects ignore it.
     uint32_t frameNumber = 0;
@@ -54,8 +58,9 @@ public:
     // The effect's 8SVX sound, or nullptr (none, or one that cannot be decoded).
     virtual const Sound* sound() const { return nullptr; }
     // The effect's own matte colour, its "Effect Color" (crouton tags 0x80000023/0x24, see
-    // effectColourFromTags); Black for the built-in effects.
-    virtual EffectColour effectColour() const { return {}; }
+    // effectColourFromTags). nullopt when it has none (the built-in effects, and croutons without
+    // the tags): the generator then keeps the BKG source's colour.
+    virtual std::optional<EffectColour> effectColour() const { return std::nullopt; }
     // True for effects that use the DV memory (DVE moves, ChromaFX): at most one can run at a time.
     virtual bool usesDvMemory() const { return false; }
     // True for ChromaFX effects. The Switcher keeps one engaged after its T-bar run instead of

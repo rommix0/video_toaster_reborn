@@ -42,10 +42,16 @@ struct EffectColour {
     bool operator==(const EffectColour&) const = default;
 };
 
-// An effect's own colour from its crouton tags: tag 0x80000023 = 1..9 picks that preset; a
-// negative 0x23 (bit 31 set) means the custom word in tag 0x80000024 (missing: 0, black).
-// GUESS: a missing tag, 0 (crouton.library's default) or a value above 9 gives Black - the
-// Switcher would leave the generator as it was, which vtoast_reborn does not model.
-EffectColour effectColourFromTags(std::optional<uint32_t> tag23, std::optional<uint32_t> tag24);
+// An effect's own colour from its crouton tags, as switcher.main sets the generator when the
+// effect plays (0xe723e..0xe72be; tools/re/FINDINGS.md "Which colour an effect's matte shows"):
+//  * tag 0x80000024 present: that custom word (its tag handler 0xe6db4 sets 0x23 to -1);
+//  * tag 0x80000023, read as a signed byte (ext.w): 1..9 picks that preset; negative means the
+//    custom word in tag 0x24 (missing: 0, black);
+//  * no tag 0x23 (and no 0x24), or 0x23 = 10..127: nullopt. The Switcher leaves the generator
+//    as it is, so the matte shows the BKG source's colour (the handler 0xe6dac that arms the
+//    colour change only runs for a crouton that has the tag; 0xe727c skips values above 9).
+// GUESS: 0x23 = 0 gives Black. The Switcher uses the last Effect Color loaded or picked
+// ($332(a5), 0xe69a0), which vtoast_reborn does not model; no shipped crouton has 0.
+std::optional<EffectColour> effectColourFromTags(std::optional<uint32_t> tag23, std::optional<uint32_t> tag24);
 
 }  // namespace vt

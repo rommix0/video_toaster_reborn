@@ -63,7 +63,7 @@ struct CroutonBasics {
     std::string name;
     Timing timing;
     std::optional<Sound> sound;
-    EffectColour colour;   // tags 0x80000023/0x24 (effectColourFromTags)
+    std::optional<EffectColour> colour;  // tags 0x80000023/0x24 (effectColourFromTags)
     bool overlay = false;  // from an Overlays drawer (Effect::isOverlay)
 };
 
@@ -74,7 +74,7 @@ public:
     std::string name() const override { return b_.name; }
     Timing timing() const override { return b_.timing; }
     const Sound* sound() const override { return b_.sound ? &*b_.sound : nullptr; }
-    EffectColour effectColour() const override { return b_.colour; }
+    std::optional<EffectColour> effectColour() const override { return b_.colour; }
     bool isOverlay() const override { return b_.overlay; }
 
 protected:

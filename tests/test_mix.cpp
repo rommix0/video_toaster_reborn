@@ -1,6 +1,7 @@
 #include <array>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
@@ -138,6 +139,76 @@ TEST_CASE("mix tables match the Python converter", "[mix][golden]") {
                  << " background stand-ins " << stood_in);
     CHECK(flashes == 7);
     CHECK(stood_in > 0);
+}
+
+namespace {
+
+// A tag 0x1000001B body as 0xe80e4 reads it: rows, step, first index, count, 8 mask longs, entries.
+std::vector<uint8_t> tag1b(std::vector<uint32_t> entries, uint16_t rows = 1, uint16_t first = 0) {
+    std::vector<uint8_t> b;
+    auto w16 = [&](uint32_t v) {
+        b.push_back(uint8_t(v >> 8));
+        b.push_back(uint8_t(v));
+    };
+    auto w32 = [&](uint32_t v) {
+        w16(v >> 16);
+        w16(v & 0xffff);
+    };
+    w16(rows);
+    w16(0);
+    w16(first);
+    w16(uint32_t(entries.size()));
+    w32(0x8fff0fff);
+    for (int i = 0; i < 7; ++i) w32(0);
+    for (int r = 0; r < rows; ++r)
+        for (uint32_t e : entries) w32(e);
+    return b;
+}
+
+}  // namespace
+
+TEST_CASE("paletteRoutes reads the source nibble of each 2-plane palette word", "[mix][colour]") {
+    using R = vt::PaletteRoute;
+    const auto r = vt::paletteRoutes(tag1b({0x0000, 0x1000, 0x3000, 0x9000}), 2);
+    REQUIRE(r == std::vector<R>{R::Palette, R::A, R::B, R::Generator});
+    // the first index offsets the entries; indices it does not reach keep the palette
+    REQUIRE(vt::paletteRoutes(tag1b({0x1000, 0x9000}, 1, 2), 2) == std::vector<R>{R::Palette, R::Palette, R::A, R::Generator});
+    // level bits mean more than a source select; S = 2 and others are not modelled
+    REQUIRE(vt::paletteRoutes(tag1b({0x9003, 0x1020, 0x2000, 0xf000}), 2) == std::vector<R>(4, R::Palette));
+    // no routes: other depths, T-bar dependent tables (rows > 1), short or overlong tables
+    REQUIRE(vt::paletteRoutes(tag1b({0x1000, 0x3000, 0x9000, 0x9000}), 3).empty());
+    REQUIRE(vt::paletteRoutes(tag1b({0x1000, 0x3000, 0x9000, 0x9000}, 2), 2).empty());
+    auto shortened = tag1b({0x1000, 0x3000, 0x9000, 0x9000});
+    shortened.pop_back();
+    REQUIRE(vt::paletteRoutes(shortened, 2).empty());
+    REQUIRE(vt::paletteRoutes(tag1b({0x1000, 0x3000, 0x9000, 0x9000, 0x9000}), 2).empty());
+    REQUIRE(vt::paletteRoutes({}, 2).empty());
+}
+
+TEST_CASE("mix table: routes override the palette rules, the generator entries are marked", "[mix][colour]") {
+    // Border BR-TL: palette 1 green (A), 2 red (B), 3 blue (the border); tag 0x1B 1 A, 2 B, 3 generator
+    auto [a, mode] = open("4.2/Effects/2000FX/Border/Border BR-TL");
+    auto plan = vt::planAnim(a, mode);
+    REQUIRE(plan.kind == vt::AnimKind::Roles);
+    const vt::Rgba8 red = vt::bkgColour(vt::BkgColour::Red);
+    const auto before = vt::mixTable(a, plan, a.bm.cmap, red);
+    REQUIRE(before[3].src == vt::MixSrc::Colour);
+    REQUIRE(same(before[3].colour, {0, 0, 255, 255}));  // the palette's blue
+    REQUIRE_FALSE(before[3].generator);
+    plan.routes = {vt::PaletteRoute::Palette, vt::PaletteRoute::A, vt::PaletteRoute::B, vt::PaletteRoute::Generator};
+    const auto t = vt::mixTable(a, plan, a.bm.cmap, red);
+    REQUIRE(t[1].src == vt::MixSrc::A);
+    REQUIRE(t[1].bLevel == 0);
+    REQUIRE(t[2].src == vt::MixSrc::B);
+    REQUIRE(t[2].bLevel == 255);
+    REQUIRE(t[3].src == vt::MixSrc::Colour);
+    REQUIRE(same(t[3].colour, {red.r, red.g, red.b, 255}));
+    REQUIRE(t[3].generator);
+    // an all-black palette's stand-in is the generator as well
+    auto [bear, bmode] = open("4.2/Effects/2000FX/Animals/Bear-L");
+    const auto tb = vt::mixTable(bear, vt::planAnim(bear, bmode), bear.bm.cmap, red);
+    REQUIRE(tb[1].src == vt::MixSrc::Colour);
+    REQUIRE(tb[1].generator);
 }
 
 TEST_CASE("mix table: entries past the palette are harmless", "[mix]") {
