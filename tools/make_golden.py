@@ -26,6 +26,10 @@ JSON-lines files to vtoast_reborn/tests/golden/:
   fonts.jsonl     the Amiga colour fonts of the interface (tools/ref/amiga_font.py): one "font" line
                   per size file (metrics, colours as 12-bit words, strike CRC, CRC of the glyph
                   width / advance / kern tables), "render" lines (JAM2 text drawn at (0, baseline))
+  algo.jsonl      ALGO Switcher croutons (4.2/Effects, kinds 0..4) run through tools/ref/algo_ref.py: one line
+                  per distinct (kind, descriptor, program) with "path", "kind", "desc", "flags" and 149 "frames"
+                  (segment 0 = T-bar sweep, segment 1 = Auto from a fresh Algo; "t" is the t given to step):
+                  CRCs of the H / V tables or the wipe spans, cell / line / pixel ranges, ink, level "lv"
 
     python -P -E vtoast_reborn/tools/make_golden.py --only chromafx_rows
 
@@ -51,6 +55,8 @@ sys.path.insert(0, os.path.join(HERE, 'ref'))
 import hunk as H
 import render_layout as RL
 import amiga_font as AF
+import algo_ref as AR
+import algo_scan as AS
 
 TAG_MODE, TAG_SPEED = 0x80000022, 0x80000055
 TAG_SLOW, TAG_MED, TAG_FAST, TAG_VAR = 0x80000057, 0x80000058, 0x80000059, 0x80000056
@@ -244,12 +250,58 @@ def font_records():
     return recs
 
 
+ALGO_YELLOW = 5                                           # Effect Color digital index of every Algo
+ALGO_TBAR = list(range(7, 512, 7)) + list(range(500, 4, -11))     # segment 0: up, then back down
+ALGO_AUTO_FIELDS = 30
+
+
+def algo_frame(a, kind, seg, t):
+    r = a.step(t)
+    f = dict(seg=seg, t=t)
+    lv = r['colour'][0] if a.flags & 0x10 else -1
+    if kind in (0, 3):
+        l0, l1 = r['lines'] or (-1, -1)
+        f.update(h=crc(r['H']), v=crc(r['V']), c0=r['cells'][0], c1=r['cells'][1], l0=l0, l1=l1, lv=lv)
+    elif kind in (1, 4):
+        f.update(s=crc(b''.join(struct.pack('>hh', *sp) for sp in r['spans'])), p0=r['pixels'][0],
+                 p1=r['pixels'][1], ink=r['ink'], b0=r['band'][0], b1=r['band'][1], vink=r['vink'], lv=lv)
+    else:
+        f.update(lv=lv)
+    return f
+
+
+def algo_records():
+    """One record per distinct (kind, descriptor, program) of the ALGO croutons under 4.2/Effects."""
+    AR.set_root(ROOT)
+    found = []
+    for p, t in AS.algos(os.path.join(ROOT, '4.2', 'Effects')):
+        if t.get(0x80000063, 0) != 5:                      # Art Card Key has no program
+            found.append((os.path.relpath(p, ROOT).replace(os.sep, '/'), t))
+    progs = {}
+    for rel, t in sorted(found, key=lambda x: x[0]):
+        progs.setdefault((t.get(0x80000063, 0), t.get(0x80000007), t[0x1000001c]), rel)
+    recs = []
+    for (kind, desc, payload), rel in progs.items():
+        render = {3: 0, 4: 1}.get(kind, kind)              # 3 / 4 = positionable 0 / 1, as algo_check.py
+        a = AR.Algo(payload, render, ALGO_YELLOW)
+        frames = [algo_frame(a, kind, 0, AR.tbar_t(pos, a.flags)) for pos in ALGO_TBAR]
+        a = AR.Algo(payload, render, ALGO_YELLOW)
+        frames += [algo_frame(a, kind, 1, t) for t in AR.auto_ts(ALGO_AUTO_FIELDS, a.flags)]
+        recs.append(dict(path=rel, kind=kind, desc=desc, flags=a.flags, frames=frames))
+        if kind == 2:                                      # ALGO.md 8: the level fades
+            for t in (0, 0x8000, 0x10000):
+                lv = AR.Algo(payload, 2, ALGO_YELLOW).step(t)['colour'][0]
+                want = 127.5 + 127.5 * np.sin(2 * np.pi * (t / 2 / 65536 + 0.75)) if a.flags & 8 == 0 else 255 * t / 65536
+                assert abs(lv - want) <= 0.5 + 1e-6, (rel, hex(t), lv, want)
+    return recs
+
+
 def main():
     only = None
     if '--only' in sys.argv:
         only = set(sys.argv[sys.argv.index('--only') + 1].split(','))
     os.makedirs(OUT, exist_ok=True)
-    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel', 'fonts')}
+    files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel', 'fonts', 'algo')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
             if r['status'] == 'converted']
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
@@ -333,6 +385,9 @@ def main():
         files['panel'] = panel_records()
     if only is None or 'fonts' in only:
         files['fonts'] = font_records()
+
+    if only is None or 'algo' in only:
+        files['algo'] = algo_records()
 
     for name, recs in files.items():
         if only is not None and name not in only:
