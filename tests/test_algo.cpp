@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 #include "vt/background.h"
 #include "vt/crc32.h"
 #include "vt/crouton.h"
+#include "vt/dve.h"
 
 namespace {
 
@@ -46,14 +48,25 @@ TEST_CASE("algo VM matches the reference", "[algo][golden]") {
         const int kind = int(num(r, "kind"));
         std::optional<vt::AlgoVm> vm;
         int64_t seg = -1;
+        size_t pos = 0, k = 0;  // frame counters within the segment
         for (const auto& f : std::get<std::vector<std::map<std::string, int64_t>>>(r.at("frames").v)) {
             if (f.at("seg") != seg) {  // each segment starts from a fresh VM
                 seg = f.at("seg");
+                pos = k = 0;
                 vm.emplace(blob, kind, 5);
                 REQUIRE(vm->flags() == uint32_t(num(r, "flags")));
                 REQUIRE(int(vm->kind()) == kind);
             }
             INFO("seg " << seg << " t " << f.at("t"));
+            // make_golden: segment 0 is the T-bar run 7, 14 .. 511 then 500, 489 .. 5; segment 1 is Auto at 30 ticks
+            if (seg == 0) {
+                const int tbar = pos < 73 ? int(7 * (pos + 1)) : int(500 - 11 * (pos - 73));
+                REQUIRE(uint32_t(f.at("t")) == vt::algoTBarT(tbar, vm->flags()));
+            } else {
+                REQUIRE(uint32_t(f.at("t")) == vt::algoAutoT(int(k + 1), 30, vm->flags()));
+            }
+            ++pos;
+            ++k;
             const vt::AlgoStep& s = vm->step(uint32_t(f.at("t")));
             if (kind == 0 || kind == 3) {
                 REQUIRE(vt::crc32(s.h) == uint32_t(f.at("h")));
@@ -196,8 +209,64 @@ TEST_CASE("border fill for custom and snow colours", "[algo]") {
     REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Cyan)) == 7);
     REQUIRE(vt::algoColourIndex(vt::EffectColour::customWord(0x1234)) == 0);
     REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Snow)) == 0);
-    REQUIRE(vt::algoBorderFill(5) == 18);
+    REQUIRE(vt::algoBorderFill(5) == 21);  // Yellow: 255 - YIQ byte 0xea (ALGO.md 5.4)
     REQUIRE(vt::algoBorderFill(0) == 23);
     REQUIRE(vt::algoBorderFill(-1) == 23);
     REQUIRE(vt::algoBorderFill(8) == 23);
+}
+
+namespace {
+// Every distinct loadable digital program of the golden list (one record per program).
+struct DigitalProgram {
+    std::string path;
+    std::vector<uint8_t> blob;
+    int kind;
+};
+std::vector<DigitalProgram> digitalPrograms() {
+    std::vector<DigitalProgram> out;
+    for (const auto& r : golden::readLines("algo.jsonl")) {
+        const int kind = int(num(r, "kind"));
+        if (kind != 0 && kind != 3) continue;
+        const auto c = vt::loadCrouton(golden::sourcePath(str(r, "path")));
+        REQUIRE(c);
+        out.push_back({str(r, "path"), c->blobs.at(0x1000001C), kind});
+    }
+    return out;
+}
+}  // namespace
+
+TEST_CASE("border fill matches the border cells the VM draws", "[algo]") {
+    // Push On Border L-R (tag 0x80000064): its left/right border cells carry the Effect Color
+    // (c1[0x16] = kYiq0[i]); the top/bottom border fill must be the same key.
+    const auto path = dataRoot() / "4.2/Effects/4000FX/Push-Pull/Push On Border L-R";
+    const auto c = vt::loadCrouton(path);
+    REQUIRE(c);
+    REQUIRE(c->tag(0x80000064).has_value());
+    for (int i = 0; i < 8; ++i) {
+        INFO("colour " << i);
+        vt::AlgoVm vm(c->blobs.at(0x1000001C), int(c->tag(0x80000063).value_or(0)), i);
+        std::set<int> keys;
+        for (int pos = 0; pos <= 255; pos += 5) {
+            const vt::DveControl ctl = vt::algoControl(vm.step(vt::algoTBarT(pos, vm.flags())));
+            for (uint8_t k : ctl.key)
+                if (k >= 16 && k <= 23) keys.insert(k);
+        }
+        REQUIRE(keys.count(vt::algoBorderFill(i)) == 1);
+    }
+    REQUIRE(vt::algoBorderFill(5) == 21);
+}
+
+TEST_CASE("algo digital library renders with no unknown codes", "[algo]") {
+    const vt::Frame a = solidFrame(kA), b = solidFrame(kB);
+    vt::Frame out;
+    for (const auto& p : digitalPrograms()) {
+        INFO(p.path);
+        for (int pos : {0, 256, 511}) {
+            vt::AlgoVm vm(p.blob, p.kind, 5);  // a fresh take each
+            vt::DveControl ctl = vt::algoControl(vm.step(vt::algoTBarT(pos, vm.flags())));
+            ctl.borderFill = uint8_t(vt::algoBorderFill(5));
+            INFO("tbar " << pos);
+            REQUIRE(vt::renderDve(ctl, a, b, {}, out, {}) == 0);
+        }
+    }
 }

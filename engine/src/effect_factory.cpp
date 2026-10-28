@@ -72,7 +72,7 @@ std::unique_ptr<Effect> fail(std::string* why, std::string reason) {
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::string* why) {
     try {
         auto c = loadCrouton(path);
-        if (!c || c->type == CroutonType::None)  // Ruling 9
+        if (c && c->type == CroutonType::None)  // Ruling 9: only for a file that exists
             if (auto icon = algoSibling(path)) c = std::move(icon);
         if (!c) return fail(why, "not a crouton file: " + path.string());
         const auto u8 = path.filename().u8string();

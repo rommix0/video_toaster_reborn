@@ -994,6 +994,21 @@ TEST_CASE("algo moves start and end on the right picture", "[algo]") {
     CHECK(failures.empty());
 }
 
+// Ruling 9 is for a file that exists: a missing path is refused even with an ALGO icon beside it,
+// and a readable file with no CrUD plays its icon's program.
+TEST_CASE("icon-file fallback needs the effect file to exist", "[algo]") {
+    namespace fs = std::filesystem;
+    REQUIRE(vt::loadEffect(dataRoot() / "4.2/Effects/4000FX/no such effect") == nullptr);
+    const fs::path tmp = fs::temp_directory_path() / "vt_icon_fallback";
+    fs::create_directories(tmp);
+    fs::copy_file(dataRoot() / "4.2/Effects/4000FX/Smooth Fade.I", tmp / "Fade.I", fs::copy_options::overwrite_existing);
+    std::string why;
+    REQUIRE(vt::loadEffect(tmp / "Fade", &why) == nullptr);  // no Fade file
+    std::ofstream(tmp / "Fade", std::ios::binary) << "not a crouton";
+    REQUIRE(vt::loadEffect(tmp / "Fade", &why) != nullptr);  // exists, no CrUD
+    fs::remove_all(tmp);
+}
+
 // Ruling 9: the plain Smooth Fade files hold no CrUD; the program is in the sibling .I file.
 TEST_CASE("algo program read from the icon file (Smooth Fade)", "[algo]") {
     const vt::Frame b = algoPicture(true);

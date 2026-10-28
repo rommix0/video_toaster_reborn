@@ -6,7 +6,7 @@ Python reference: `../tools/re/algo_ref.py`; it matches the original 68000 code 
 
 ## 1. Intent
 
-The Wipes, Digital and Transitions drawers are full of ALGO croutons that the app refuses today ("Switcher move (ALGO) not reverse-engineered yet"). There are 462 of them, of 115 distinct programs: Crop To Center, Squeeze, Push On, Fly In, Slats, Mosaic, Infinite Tiles, Wipe 3 Slots In, Smooth Fade, Dip To Matte and the rest. The owner wants them to play as the Toaster played them. As with the DVE moves, the moves must be bit-exact: the per-step control tables must equal the original's.
+The Wipes, Digital and Transitions drawers are full of ALGO croutons that the app refuses today ("Switcher move (ALGO) not reverse-engineered yet"). There are 230 of them (228 playable, 2 Art Card Key), of 114 distinct programs: Crop To Center, Squeeze, Push On, Fly In, Slats, Mosaic, Infinite Tiles, Wipe 3 Slots In, Smooth Fade, Dip To Matte and the rest. The owner wants them to play as the Toaster played them. As with the DVE moves, the moves must be bit-exact: the per-step control tables must equal the original's.
 
 An ALGO crouton holds no picture. It holds a small bytecode program (tag `0x1000001C`) for an animation VM. At each step the VM turns the effect position t into one of these:
 - **Digital moves (kinds 0 and 3):** a DVE control row and line table, the same data the DVE ANIMs carry.
@@ -69,7 +69,7 @@ These wait for later work:
   - Test: with the offset, T-bar 0 of a descriptor-3 move equals A pixel for pixel.
   - This changes existing DVE output. The DVE goldens are updated, and the owner judges the result by eye.
 - **Wipe polarity.** Row 0 is all set (B) and row 1 is all clear (A). This is a guess from two effects (ALGO.md §6); it lives in one place so it is easy to flip.
-- **Auto stepping.** During Auto, `RenderCtx::animFrame` carries the step k, as it already does for ANIMs (Ruling 25). `frameCount()` reports N for the current speed.
+- **Auto stepping.** During a forward Auto started at T-bar 0, `RenderCtx::autoStep` carries the step k (1..`autoSteps`, the running Auto's own tick count, Ruling 7), and `RenderCtx::take` marks the take so the effect starts a fresh VM per take. `frameCount()` is 1: an ALGO move is not a frame sequence, so `animFrame` plays no part. Outside Auto the steps follow the T-bar position.
 
 ## 5. Tests
 

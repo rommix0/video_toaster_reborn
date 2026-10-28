@@ -43,7 +43,7 @@ struct RenderCtx {
     // effect is replaced. ALGO moves keep state within a take (ALGO.md 15.1) and start afresh
     // when it changes; other effects ignore it.
     uint64_t take = 0;
-    // Forward Auto started at T-bar 0: ticks elapsed + 1, in 1..durationTicks; else -1. ALGO
+    // Forward Auto started at T-bar 0: ticks elapsed + 1, in 1..autoSteps; else -1. ALGO
     // moves step through Auto's t values by it (ALGO.md 15.1); other effects ignore it.
     int autoStep = -1;
     // With autoStep: the running Auto's total ticks, the N autoStep counts to (Ruling 7; it can
@@ -100,7 +100,7 @@ std::unique_ptr<Effect> makeDissolve();
 // wipe. Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: MAIN/CTRL
 // (Switcher code), Art Card Key and unsupported ALGO programs, bar pictures, unsupported control
 // image sizes, undecodable files.
-// A file with no CrUD whose sibling icon (<name>.i or .I) is an ALGO crouton plays that crouton's
+// An existing, readable file with no CrUD whose sibling icon (<name>.i or .I) is an ALGO crouton plays that crouton's
 // program (the original reads the CrUD from the icon file; the two Smooth Fade files); the
 // effect keeps the original file name.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);

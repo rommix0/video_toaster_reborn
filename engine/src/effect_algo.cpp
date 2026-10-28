@@ -49,7 +49,8 @@ public:
                           : basics().timing.durationTicks[size_t(ctx.speed.value_or(Speed::Medium))];
         // A new take starts from a fresh VM: install + init (ALGO.md 15.1), its colour latched.
         if (!vm_ || ctx.take != take_) {
-            vm_.emplace(program_, kind_, algoColourIndex(ctx.colour));
+            colour_ = algoColourIndex(ctx.colour);
+            vm_.emplace(program_, kind_, colour_);
             take_ = ctx.take;
             lastKey_ = INT_MIN;  // Ruling 2: no key equals it, so the take's first render steps
         }
@@ -68,7 +69,9 @@ public:
 
         if (isDigital(kind_)) {
             DveControl control = algoControl(s);
-            control.borderFill = uint8_t(algoBorderFill(algoColourIndex(ctx.colour)));  // ALGO.md 15.5
+            // ALGO.md 15.5: the colour is latched at take init, so the top/bottom border always
+            // agrees with the VM's left/right one.
+            control.borderFill = uint8_t(algoBorderFill(colour_));
             const Frame* moving = &a;
             const Frame* background = &b;
             switch (desc_) {
@@ -96,6 +99,7 @@ private:
     uint32_t flags_;
     mutable std::optional<AlgoVm> vm_;  // the current take's VM
     mutable uint64_t take_ = 0;
+    mutable int colour_ = 0;            // the Effect Color index latched at this take's start
     mutable int lastKey_ = INT_MIN;     // ctx.autoStep if >= 1, else -1 - tbar
     mutable const AlgoStep* step_ = nullptr;  // vm_'s last step
     mutable Frame matte_;

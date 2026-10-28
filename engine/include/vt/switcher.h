@@ -149,8 +149,8 @@ public:
     // RenderCtx::colour is effectColour(), RenderCtx::take the take number (it changes when a
     // transition starts from idle and on setEffect), and during a forward Auto started at T-bar 0
     // RenderCtx::autoStep is the elapsed ticks + 1 (1..autoSteps, the Auto's total ticks; the
-    // ALGO moves step by it, ALGO.md 15.1, Ruling 7). Never reads or writes `program` before it is finished, so it may alias an
-    // input frame.
+    // ALGO moves step by it, ALGO.md 15.1, Ruling 7). Never reads or writes `program` before it
+    // is finished, so it may alias an input frame.
     // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
     // steady-state renders allocation-free), so program.px.data() alternates between two
     // buffers: do not keep a pointer into program.px across renders.

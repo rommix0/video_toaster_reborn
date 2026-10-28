@@ -831,7 +831,7 @@ DveControl algoControl(const AlgoStep& s) {
     return c;
 }
 
-int algoBorderFill(int colourIndex) { return colourIndex >= 0 && colourIndex <= 7 ? 23 - colourIndex : 23; }
+int algoBorderFill(int colourIndex) { return colourIndex >= 0 && colourIndex <= 7 ? 255 - kYiq0[colourIndex] : 23; }
 
 int algoColourIndex(const EffectColour& c) {
     if (c.custom || c.preset == BkgColour::Snow) return 0;

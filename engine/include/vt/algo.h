@@ -83,7 +83,8 @@ bool algoSecondStep(int tbar, int autoStep, int n, uint32_t flags);
 // line[k] = v[k] raw for k 0..240 (0xfc = kDveColourLine and other values above 240 included).
 // art stays empty; borderFill keeps its default (the caller sets it from algoBorderFill).
 DveControl algoControl(const AlgoStep&);
-// ALGO.md 15.5: border fill code 23 - colour index for 0..7; 23 (Black) otherwise.
+// ALGO.md 5.4 / 15.5: the top and bottom border key, 23 - c where c = YIQ byte 0 - 0xe8, the same
+// colour the left and right borders take (255 - kYiq0[i]); 23 (Black) outside 0..7. Not 23 - i.
 int algoBorderFill(int colourIndex);
 // Effect Color preset Black..Cyan -> 0..7; a custom word or Snow -> 0 (Black).
 int algoColourIndex(const EffectColour&);
@@ -94,7 +95,8 @@ int algoColourIndex(const EffectColour&);
 // row bandInk ^ 1 inside the band, the span row outside. GUESS: the polarity (1 = B) is not
 // confirmed against the hardware.
 void renderAlgoWipe(const AlgoStep&, const Frame& a, const Frame& b, Frame& out);
-// Per channel (in0 * (255 - L) + in1 * L + 127) / 255, L clamped to 0..255; alpha 255. Works
+// Per channel (in0 * (255 - L) + in1 * L + 127) / 255, L clamped to 0..255; alpha 255 (unlike the
+// DVE paths, which keep the source alpha). Works
 // pixel by pixel, so `out` may alias `in0` or `in1` (Ruling 1).
 void mixLevel(const Frame& in0, const Frame& in1, int level, Frame& out);
 
