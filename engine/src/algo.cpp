@@ -821,4 +821,47 @@ bool algoSecondStep(int tbar, int autoStep, int n, uint32_t flags) {
     return uint32_t(std::clamp(autoStep, 1, n)) * autoDelta(n, flags) >= (flags & 8 ? 0x10000u : 0x8000u);
 }
 
+DveControl algoControl(const AlgoStep& s) {
+    DveControl c;
+    std::copy_n(s.v.begin(), kDveLines, c.line.begin());
+    if (s.lineLo >= 0)
+        for (int k = s.lineLo; k <= std::min(s.lineHi, kDveLines - 1); ++k)
+            for (int cell = std::max(s.cellLo, 0); cell <= std::min(s.cellHi, kDveCells - 1); ++cell)
+                c.key[size_t(k) * kDveCells + size_t(cell)] = uint8_t(255 - s.h[size_t(cell)]);
+    return c;
+}
+
+int algoBorderFill(int colourIndex) { return colourIndex >= 0 && colourIndex <= 7 ? 23 - colourIndex : 23; }
+
+int algoColourIndex(const EffectColour& c) {
+    if (c.custom || c.preset == BkgColour::Snow) return 0;
+    return int(c.preset) - int(BkgColour::Black);
+}
+
+void renderAlgoWipe(const AlgoStep& s, const Frame& a, const Frame& b, Frame& out) {
+    std::array<uint8_t, kRasterW> spanRow{};
+    for (int x = 0; x < kRasterW; ++x) {
+        bool inSpan = false;
+        for (const auto& [s0, s1] : s.spans) inSpan |= s0 >= 0 && s0 <= x && x <= s1;
+        spanRow[size_t(x)] = inSpan ? uint8_t(s.ink & 1) : x >= s.pixelLo && x <= s.pixelHi ? uint8_t((s.ink & 1) ^ 1) : 0;
+    }
+    for (int y = 0; y < kRasterH; ++y) {
+        const bool inBand = s.bandLo >= 0 && s.bandLo <= y && y <= s.bandHi;
+        const bool constant = s.inverse ? inBand : !inBand;
+        // constant row r: row 0 all 1 (B), row 1 all 0 (A)
+        const int constBit = (s.bandInk ^ (s.inverse ? 1 : 0)) & 1 ? 0 : 1;
+        for (int x = 0; x < kRasterW; ++x)
+            out.at(x, y) = (constant ? constBit : spanRow[size_t(x)]) ? b.at(x, y) : a.at(x, y);
+    }
+}
+
+void mixLevel(const Frame& in0, const Frame& in1, int level, Frame& out) {
+    const int l = std::clamp(level, 0, 255);
+    auto mix = [l](int p, int q) { return uint8_t((p * (255 - l) + q * l + 127) / 255); };
+    for (size_t i = 0; i < out.px.size(); ++i) {
+        const Rgba8 p = in0.px[i], q = in1.px[i];
+        out.px[i] = {mix(p.r, q.r), mix(p.g, q.g), mix(p.b, q.b), 255};
+    }
+}
+
 }  // namespace vt

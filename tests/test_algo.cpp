@@ -1,5 +1,6 @@
 // ALGO VM: every shipped program against the Python reference (tools/ref/algo_ref.py, golden
 // algo.jsonl), the T-bar / Auto t mappings and the routing step switch.
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -11,6 +12,7 @@
 #include "catch_amalgamated.hpp"
 #include "golden.h"
 #include "vt/algo.h"
+#include "vt/background.h"
 #include "vt/crc32.h"
 #include "vt/crouton.h"
 
@@ -101,4 +103,101 @@ TEST_CASE("algo VM refuses what it cannot play", "[algo]") {
     op15.resize(op15.size() + 20, 0);
     REQUIRE_THROWS_AS(vt::AlgoVm({}, 0, 0), std::runtime_error);
     REQUIRE_THROWS_AS(vt::AlgoVm(op15, 0, 0), std::runtime_error);
+}
+
+namespace {
+vt::Frame solidFrame(vt::Rgba8 c) {
+    vt::Frame f;
+    std::fill(f.px.begin(), f.px.end(), c);
+    return f;
+}
+const vt::Rgba8 kA{10, 20, 30, 255}, kB{200, 150, 100, 255};
+}  // namespace
+
+TEST_CASE("algo control follows the ranges", "[algo]") {
+    vt::AlgoStep s;
+    s.h.fill(0x50);
+    for (size_t k = 0; k < s.v.size(); ++k) s.v[k] = uint8_t(k * 3 + 1);
+    s.v[7] = 0xfc;
+    s.cellLo = 10;
+    s.cellHi = 20;
+    s.lineLo = 5;
+    s.lineHi = 6;
+    const vt::DveControl c = vt::algoControl(s);
+    for (int k = 0; k < vt::kDveLines; ++k) {
+        REQUIRE(c.line[size_t(k)] == s.v[size_t(k)]);
+        for (int cell = 0; cell < vt::kDveCells; ++cell)
+            REQUIRE(c.key[size_t(k) * 192 + size_t(cell)] == ((k == 5 || k == 6) && cell >= 10 && cell <= 20 ? 255 - 0x50 : 0));
+    }
+    REQUIRE(c.line[7] == vt::kDveColourLine);
+    REQUIRE(c.art.empty());
+    s.lineLo = -1;  // no line shows the row
+    for (uint8_t k : vt::algoControl(s).key) REQUIRE(k == 0);
+}
+
+TEST_CASE("algo wipe rows", "[algo]") {
+    const vt::Frame a = solidFrame(kA), b = solidFrame(kB);
+    vt::AlgoStep s;
+    s.spans = {{100, 199}};
+    s.ink = 1;
+    s.pixelLo = 0;
+    s.pixelHi = 735;
+    s.bandLo = 50;
+    s.bandHi = 60;
+    s.bandInk = 1;
+    vt::Frame out;
+    vt::renderAlgoWipe(s, a, b, out);
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x)
+            REQUIRE(out.at(x, y) == (y >= 50 && y <= 60 && x >= 100 && x <= 199 ? kB : kA));
+    s.ink = 0;
+    vt::renderAlgoWipe(s, a, b, out);
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x)
+            REQUIRE(out.at(x, y) == (y >= 50 && y <= 60 && x <= 735 && !(x >= 100 && x <= 199) ? kB : kA));
+    // flag 0x80: the constant row bandInk ^ 1 inside the band (row 0 = all B for bandInk 1), the span row outside
+    s.ink = 1;
+    s.inverse = true;
+    vt::renderAlgoWipe(s, a, b, out);
+    for (int y : {0, 55, 481}) {
+        REQUIRE(out.at(150, y) == kB);
+        REQUIRE(out.at(50, y) == (y == 55 ? kB : kA));
+    }
+    s.bandInk = 0;  // row 1 = all A inside the band
+    vt::renderAlgoWipe(s, a, b, out);
+    REQUIRE(out.at(150, 55) == kA);
+    REQUIRE(out.at(150, 0) == kB);
+}
+
+TEST_CASE("mix level", "[algo]") {
+    const vt::Rgba8 p{0, 100, 200, 7}, q{255, 50, 10, 9};
+    const vt::Frame in0 = solidFrame(p), in1 = solidFrame(q);
+    vt::Frame out;
+    vt::mixLevel(in0, in1, 0, out);
+    REQUIRE(out.at(5, 5) == vt::Rgba8{0, 100, 200, 255});
+    vt::mixLevel(in0, in1, 255, out);
+    REQUIRE(out.at(5, 5) == vt::Rgba8{255, 50, 10, 255});
+    vt::mixLevel(in0, in1, 128, out);
+    REQUIRE(out.at(5, 5) == vt::Rgba8{128, 75, 105, 255});
+    vt::mixLevel(in0, in1, 999, out);  // clamped
+    REQUIRE(out.at(5, 5) == vt::Rgba8{255, 50, 10, 255});
+    // Ruling 1: out may alias either input
+    vt::Frame x0 = in0, x1 = in1, ref;
+    vt::mixLevel(in0, in1, 77, ref);
+    vt::mixLevel(x0, in1, 77, x0);
+    REQUIRE(x0.px == ref.px);
+    vt::mixLevel(in0, x1, 77, x1);
+    REQUIRE(x1.px == ref.px);
+}
+
+TEST_CASE("border fill for custom and snow colours", "[algo]") {
+    REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Yellow)) == 5);
+    REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Black)) == 0);
+    REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Cyan)) == 7);
+    REQUIRE(vt::algoColourIndex(vt::EffectColour::customWord(0x1234)) == 0);
+    REQUIRE(vt::algoColourIndex(vt::EffectColour::of(vt::BkgColour::Snow)) == 0);
+    REQUIRE(vt::algoBorderFill(5) == 18);
+    REQUIRE(vt::algoBorderFill(0) == 23);
+    REQUIRE(vt::algoBorderFill(-1) == 23);
+    REQUIRE(vt::algoBorderFill(8) == 23);
 }

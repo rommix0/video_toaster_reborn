@@ -110,6 +110,8 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
     for (int y = 0; y < kRasterH; ++y) {
         const int k = y / 2, parity = y & 1;
         const uint8_t* key = &c.key[size_t(k) * kDveCells];
+        const bool colourLine = c.line[size_t(k)] == kDveColourLine;
+        const Rgba8 border = kBars[std::clamp<int>(c.borderFill, 16, 23) - 16];
         const int sy = std::min<int>(c.line[size_t(k)], kDveLines - 1) * 2 + parity;
         const Rgba8* bg = &background.at(0, y);
         const Rgba8* src = &moving.at(0, sy);
@@ -117,7 +119,9 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
         for (int x = 0; x < kRasterW; ++x) {
             const int v = key[x / 4];
             if (v >= 64) {
-                dst[x] = src[(255 - v) * 4 + (cellPixel < 0 ? x % 4 : cellPixel)];
+                dst[x] = colourLine ? border
+                                    : src[std::clamp(4 * (255 - v - g.dveSourceCellOffset) + (cellPixel < 0 ? x % 4 : cellPixel),
+                                                     0, kRasterW - 1)];
             } else if (v == 0) {
                 dst[x] = bg[x];
             } else if (v < 16) {

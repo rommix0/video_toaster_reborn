@@ -225,7 +225,7 @@ TEST_CASE("DVE reads exactly one source pixel", "[dve]") {
                 const int v = c.key[size_t(k) * 192 + size_t(x / 4)];
                 const vt::Rgba8 o = out.at(x, y);
                 if (v >= 64) {
-                    const int sx = (255 - v) * 4 + (cellPixel < 0 ? x % 4 : cellPixel);
+                    const int sx = std::clamp((255 - v - g.dveSourceCellOffset) * 4 + (cellPixel < 0 ? x % 4 : cellPixel), 0, 767);
                     const int sy = c.line[size_t(k)] * 2 + p;
                     if (decodedX(o) != sx || decodedY(o) != sy || o.a != 255)
                         FAIL("pixel (" << x << "," << y << ") v " << v << " read (" << decodedX(o) << ","
@@ -243,6 +243,45 @@ TEST_CASE("DVE reads exactly one source pixel", "[dve]") {
         REQUIRE(mapped > 10000);
         REQUIRE(background > 10000);
     }
+}
+
+TEST_CASE("dve source cell offset", "[dve]") {
+    vt::DveControl c;
+    for (int k = 0; k < vt::kDveLines; ++k) {
+        c.line[size_t(k)] = uint8_t(k);
+        for (int cell = 0; cell < vt::kDveCells; ++cell) c.key[size_t(k) * 192 + size_t(cell)] = uint8_t(255 - (cell + 3));
+    }
+    const vt::Frame moving = coordinateFrame();
+    const vt::Frame black = solid(kBlack);
+    auto render = [&](int offset) {
+        vt::HardwareGuesses g;
+        g.dveSourceCellOffset = offset;
+        vt::Frame out;
+        vt::renderDve(c, moving, black, {}, out, g);
+        return out;
+    };
+    const vt::Frame same = render(3), shifted = render(0);
+    const vt::Rect r = vt::kVisibleArea;
+    for (int y = r.y; y < r.y + r.h; ++y)
+        for (int x = r.x; x < r.x + r.w; ++x) {
+            REQUIRE(same.at(x, y) == moving.at(x, y));
+            REQUIRE(shifted.at(x, y) == moving.at(x + 12, y));
+        }
+}
+
+TEST_CASE("dve colour line draws the border fill", "[dve]") {
+    vt::DveControl c;
+    c.borderFill = 21;
+    c.key[5 * 192 + 40] = 200;  // one moving cell on control line 5
+    c.line.fill(0xfc);
+    const vt::Frame moving = pattern(3);
+    const vt::Frame bg = solid({10, 20, 30, 255});
+    vt::Frame out;
+    vt::renderDve(c, moving, bg, {}, out, vt::HardwareGuesses{});
+    for (int y : {10, 11})
+        for (int x = 160; x < 164; ++x) REQUIRE(out.at(x, y) == vt::Rgba8{191, 191, 0, 255});
+    REQUIRE(out.at(164, 10) == bg.at(164, 10));
+    REQUIRE(out.at(159, 10) == bg.at(159, 10));
 }
 
 TEST_CASE("DVE shadows, colour bars, unknown codes and art", "[dve]") {
@@ -288,7 +327,7 @@ TEST_CASE("DVE shadows, colour bars, unknown codes and art", "[dve]") {
                 } else if (x == 4 * 64 + 1) {
                     want = {cmap[16].r, cmap[16].g, cmap[16].b, 255};
                 } else if (v == 64) {
-                    want = moving.at(x % 4, (c.line[3] * 2) + (y & 1));  // source cell 0
+                    want = moving.at(0, (c.line[3] * 2) + (y & 1));  // source cell 0 reads x clamp(4 * (0 - 3) + inner) = 0
                 } else if (v == 0) {
                     want = bgc;
                 } else if (v <= 15) {

@@ -29,11 +29,15 @@
 namespace vt {
 
 inline constexpr int kDveLines = 241, kDveCells = 192, kDveWidth = 768;
+// ALGO.md 15.5: a control line value of 0xfc (above 240) is not a source line; it marks the border
+// colour (DveControl::borderFill). decodeDve never produces it; algoControl copies the V table raw.
+inline constexpr uint8_t kDveColourLine = 0xfc;
 
 struct DveControl {
     std::array<uint8_t, kDveLines * kDveCells> key{};  // cell value per control line
     std::array<uint8_t, kDveLines> line{};              // source line per control line, 0..240
     std::vector<uint8_t> art;                           // 241 x 768 palette groups (line-major); empty if none
+    uint8_t borderFill = 23;  // fill code (16..23) drawn where a moving cell's line is kDveColourLine
 };
 
 // DVE content: >= 3 planes, at least one row, rowbytes 96, plane 2 row 0 starts 15 2D 06 83.
@@ -60,9 +64,11 @@ DveInfo dveInfo(const Anim&);  // uses Anim::planes (the 9-plane effect has no i
 
 // Render one control frame. Per output pixel (x, y): k = y / 2 (control line, spec 5.10),
 // p = y & 1, c = x / 4, v = key[k * 192 + c]:
-//   v >= 64     out = moving.at(sc * 4 + (dveCellPixel < 0 ? x % 4 : dveCellPixel), line[k] * 2 + p),
-//               sc = 255 - v: one read, no filtering (dveCellPixel above 3 acts as 3, line[k] above
-//               240 as 240; decodeDve never produces such lines).
+//   v >= 64     out = moving.at(clamp(4 * (sc - dveSourceCellOffset) + inner, 0, 767), line[k] * 2 + p),
+//               sc = 255 - v, inner = dveCellPixel < 0 ? x % 4 : dveCellPixel: one read, no
+//               filtering (dveCellPixel above 3 acts as 3, line[k] above 240 as 240;
+//               decodeDve never produces such lines). A line of kDveColourLine instead draws the
+//               fill code borderFill (as 16..23 below).
 //   v == 0      out = background.at(x, y).
 //   1..15       shadow: background darkened by s = min(v, 7). With
 //               a = floor(s * (255 * dveShadowOpacity) / 7) (opacity clamped to 0..1; the same

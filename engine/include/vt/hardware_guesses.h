@@ -17,6 +17,12 @@ struct HardwareGuesses {
     // HARDWARE GUESS.
     int dveCellPixel = -1;
 
+    // DVE: source cell sc (255 - key) reads raster x 4 * (sc - dveSourceCellOffset) + inner,
+    // clamped to 0..767 (ALGO.md 9; the ALGO digital moves' cell row is offset against the
+    // picture the same way). Cells 12..171 of the visible area then show the picture unshifted
+    // for a key of 255 - (c + 3). HARDWARE GUESS.
+    int dveSourceCellOffset = 3;
+
     // ChromaFX: a pixel of Rec.601 luma Y (0..255) reads colour-map entry
     // floor(chromaLumaOffset + Y / 4), clamped to 0..95 (the identity table's own spacing).
     // HARDWARE GUESS: the hardware addresses the map with the DV luma sample, which the code does

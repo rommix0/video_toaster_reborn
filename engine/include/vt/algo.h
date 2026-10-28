@@ -16,6 +16,10 @@
 #include <utility>
 #include <vector>
 
+#include "vt/background.h"
+#include "vt/dve.h"
+#include "vt/raster.h"
+
 namespace vt {
 
 enum class AlgoKind { Digital = 0, Wipe = 1, Fade = 2, PosDigital = 3, PosWipe = 4, ArtCardKey = 5 };
@@ -71,5 +75,27 @@ uint32_t algoAutoT(int k, int n, uint32_t flags);  // auto_ts(n, flags)[k - 1]; 
 // The routing walker's step for these effects (ALGO.md 15.2): T-bar >= 256, or in Auto the
 // unfolded k * floor((flags & 8 ? 0x20000 : 0x10000) / n) >= (flags & 8 ? 0x10000 : 0x8000).
 bool algoSecondStep(int tbar, int autoStep, int n, uint32_t flags);
+
+// --- pictures from steps ---------------------------------------------------------------------
+
+// ALGO.md 5.3: control line k shows the H row only when lineLo >= 0 and lineLo <= k <= lineHi, in
+// cells cellLo..cellHi (the clip range, Ruling 4): key = 255 - h[c]. Every other key is 0.
+// line[k] = v[k] raw for k 0..240 (0xfc = kDveColourLine and other values above 240 included).
+// art stays empty; borderFill keeps its default (the caller sets it from algoBorderFill).
+DveControl algoControl(const AlgoStep&);
+// ALGO.md 15.5: border fill code 23 - colour index for 0..7; 23 (Black) otherwise.
+int algoBorderFill(int colourIndex);
+// Effect Color preset Black..Cyan -> 0..7; a custom word or Snow -> 0 (Black).
+int algoColourIndex(const EffectColour&);
+// ALGO.md 6: one bit per pixel picks B (1) or A (0). Span row at raster x: 1 inside a span with
+// ink 1, 0 inside a span with ink 0, else ink ^ 1 within pixelLo..pixelHi, else 0. Raster line y
+// takes the span row inside the band (bandLo >= 0, bandLo <= y <= bandHi) and the constant row
+// bandInk outside (row 0 all 1, row 1 all 0); flag 0x80 (step.inverse) swaps them: the constant
+// row bandInk ^ 1 inside the band, the span row outside. GUESS: the polarity (1 = B) is not
+// confirmed against the hardware.
+void renderAlgoWipe(const AlgoStep&, const Frame& a, const Frame& b, Frame& out);
+// Per channel (in0 * (255 - L) + in1 * L + 127) / 255, L clamped to 0..255; alpha 255. Works
+// pixel by pixel, so `out` may alias `in0` or `in1` (Ruling 1).
+void mixLevel(const Frame& in0, const Frame& in1, int level, Frame& out);
 
 }  // namespace vt
