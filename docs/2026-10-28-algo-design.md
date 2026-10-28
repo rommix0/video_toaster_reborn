@@ -1,6 +1,6 @@
 # ALGO Switcher moves: design
 
-Status: draft for the owner's approval (2026-10-28).
+Status: implemented on branch plan4-algo (2026-10-28); still to judge by eye: the registration offset, wipe polarity, the fade-move mix, borders.
 Reverse-engineering source: `../tools/re/ALGO.md`.
 Python reference: `../tools/re/algo_ref.py`; it matches the original 68000 code byte for byte under emulation (`algo_check.py`: 112 programs, 118,160 steps, no mismatches).
 
