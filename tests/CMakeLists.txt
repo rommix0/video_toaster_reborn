@@ -3,6 +3,7 @@ add_library(catch2_amalgamated STATIC
 target_include_directories(catch2_amalgamated SYSTEM PUBLIC ${CMAKE_SOURCE_DIR}/third_party/catch2)
 
 add_executable(vt_tests
+    test_algo.cpp
     test_anim.cpp
     test_background.cpp
     test_chromafx.cpp

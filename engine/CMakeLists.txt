@@ -1,4 +1,5 @@
 add_library(vt_engine STATIC
+    src/algo.cpp
     src/anim.cpp
     src/background.cpp
     src/chromafx.cpp
