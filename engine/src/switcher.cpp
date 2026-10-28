@@ -251,8 +251,10 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         ctx.take = take_;
         ctx.colour = colour;
         // A forward Auto from 0 renders elapsed ticks 0 .. total-1 as Auto steps 1 .. total.
-        if (auto_ && autoFrom0_ && autoDir_ == Direction::Forward)
+        if (auto_ && autoFrom0_ && autoDir_ == Direction::Forward) {
             ctx.autoStep = static_cast<int>(std::min<int64_t>(autoDur_, autoAcc_ / kTBarEnd + 1));
+            ctx.autoSteps = autoDur_;  // Ruling 7: the Auto's own rate, whatever setSpeed did since
+        }
         // Auto: the exact animation frame for the elapsed ticks (Ruling 25). Forward shows
         // elapsed ticks 0 .. total-1, reverse total-1 .. 0, each frame for autoFpf_ ticks.
         if (auto_ && autoFpf_ > 0) {

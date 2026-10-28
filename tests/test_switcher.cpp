@@ -1202,6 +1202,7 @@ TEST_CASE("algo auto runs N fields and swaps", "[switcher][algo]") {
         ctx.speed = vt::Speed::Fast;
         ctx.take = 1;
         ctx.autoStep = k;
+        ctx.autoSteps = n;
         vt::Frame want;
         ref->render(0, r.in3, r.in4, want, ctx);
         REQUIRE(r.render().px == want.px);
@@ -1220,9 +1221,9 @@ TEST_CASE("algo auto step clamps", "[switcher][algo]") {
     auto renderTick = [&] {
         r.render();
         const vt::RenderCtx& c = rec->lastCtx;
-        const int n = ticksAt(*rec, c.speed.value_or(vt::Speed::Medium));
+        REQUIRE(c.autoSteps == ticksAt(*rec, c.speed.value_or(vt::Speed::Medium)));
         REQUIRE(c.autoStep >= 1);
-        REQUIRE(c.autoStep <= n);
+        REQUIRE(c.autoStep <= c.autoSteps);
         r.sw.tick();
         return c.autoStep;
     };
@@ -1237,6 +1238,43 @@ TEST_CASE("algo auto step clamps", "[switcher][algo]") {
     REQUIRE(ticks == 60);
     REQUIRE(last == 90);
     REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
+}
+
+// Ruling 7: setSpeed mid-Auto keeps the Auto's rate, and autoSteps follows the Auto, not the
+// speed button: the move reaches its end picture only on the last step.
+TEST_CASE("algo auto steps follow the running Auto after setSpeed", "[switcher][algo]") {
+    Rig r;
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    auto rec = std::make_shared<Recorder>(cropToCenter());
+    REQUIRE(r.sw.setEffect(rec));
+    r.sw.autoTransition(vt::Speed::Slow, vt::Direction::Forward);
+    vt::Frame end;  // the end picture: the move at its last Auto step
+    {
+        vt::RenderCtx ctx;
+        ctx.colour = r.sw.effectColour();
+        ctx.background = ctx.colour.rgb();
+        ctx.take = 1;
+        ctx.autoStep = ctx.autoSteps = ticksAt(*rec, vt::Speed::Slow);
+        cropToCenter()->render(0, r.in3, r.in4, end, ctx);
+    }
+    int ticks = 0, last = 0;
+    while (r.sw.autoRunning() && ticks < 1000) {
+        if (ticks == 10) r.sw.setSpeed(vt::Speed::Fast);
+        const vt::Frame f = r.render();
+        const vt::RenderCtx& c = rec->lastCtx;
+        REQUIRE(c.autoSteps == 90);
+        REQUIRE(c.autoStep >= 1);
+        REQUIRE(c.autoStep <= c.autoSteps);
+        // With N = 30 (the speed button) the move would sit on its end picture from step 30.
+        if (ticks < 60) REQUIRE(f.px != end.px);
+        last = c.autoStep;
+        r.sw.tick();
+        ++ticks;
+    }
+    REQUIRE(ticks == 90);
+    REQUIRE(last == 90);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
 }
 
 TEST_CASE("algo auto from mid T-bar uses the T-bar", "[switcher][algo]") {

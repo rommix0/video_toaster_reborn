@@ -43,7 +43,10 @@ public:
 
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         tbar = clampTBar(tbar);
-        const int n = basics().timing.durationTicks[size_t(ctx.speed.value_or(Speed::Medium))];
+        // Ruling 7: in Auto, N is the running Auto's own tick count.
+        const int n = ctx.autoStep >= 1 && ctx.autoSteps > 0
+                          ? ctx.autoSteps
+                          : basics().timing.durationTicks[size_t(ctx.speed.value_or(Speed::Medium))];
         // A new take starts from a fresh VM: install + init (ALGO.md 15.1), its colour latched.
         if (!vm_ || ctx.take != take_) {
             vm_.emplace(program_, kind_, algoColourIndex(ctx.colour));

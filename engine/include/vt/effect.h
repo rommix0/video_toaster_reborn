@@ -46,6 +46,9 @@ struct RenderCtx {
     // Forward Auto started at T-bar 0: ticks elapsed + 1, in 1..durationTicks; else -1. ALGO
     // moves step through Auto's t values by it (ALGO.md 15.1); other effects ignore it.
     int autoStep = -1;
+    // With autoStep: the running Auto's total ticks, the N autoStep counts to (Ruling 7; it can
+    // differ from durationTicks[speed] after a setSpeed mid-Auto). 0 = durationTicks[speed].
+    int autoSteps = 0;
     // The effect colour in force (Switcher::effectColour()): an ALGO move's border colour.
     EffectColour colour;
 };
