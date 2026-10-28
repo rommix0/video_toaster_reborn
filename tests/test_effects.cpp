@@ -995,18 +995,20 @@ TEST_CASE("algo moves start and end on the right picture", "[algo]") {
 }
 
 TEST_CASE("algo take resets", "[algo]") {
+    // The history 100 -> 300 reaches V[239] (ALGO.md 15.1, raster lines 478..479, outside the
+    // visible area), so its frame at 300 differs from a fresh take's. Without a reset, take 2 would
+    // reuse F1's step (same key) and F2 would be F1.
+    const vt::Frame fresh = algoRender(*loadAlgo("Squeeze T-B"), 300, 1);
     const auto e = loadAlgo("Squeeze T-B");
-    algoRender(*e, 300, 1);
     algoRender(*e, 100, 1);
     const vt::Frame f1 = algoRender(*e, 300, 1);
     const vt::Frame f2 = algoRender(*e, 300, 2);
     algoRender(*e, 100, 3);
     const vt::Frame f3 = algoRender(*e, 300, 3);
-    // The history (300 before 100) reaches V[239] (ALGO.md 15.1), raster lines 478..479, outside
-    // the visible area.
-    REQUIRE(visibleDiff(f3, f1) == "");
-    const auto fresh = loadAlgo("Squeeze T-B");
-    REQUIRE(f2.px == algoRender(*fresh, 300, 1).px);
+    REQUIRE(f1.px != fresh.px);
+    REQUIRE(visibleDiff(f1, fresh) == "");
+    REQUIRE(f2.px == fresh.px);
+    REQUIRE(f3.px == f1.px);
 }
 
 TEST_CASE("algo repeated render does not step", "[algo]") {

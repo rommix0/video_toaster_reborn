@@ -1277,6 +1277,39 @@ TEST_CASE("algo auto steps follow the running Auto after setSpeed", "[switcher][
     REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
 }
 
+// RenderCtx::take: a new take on setEffect and on every start from idle, the same one through a
+// drag and its reversal (ALGO.md 15.1).
+TEST_CASE("the take number changes only when a take starts", "[switcher][algo]") {
+    Rig r;
+    auto rec = std::make_shared<Recorder>(cropToCenter());
+    auto takeAt = [&](int tbar) {
+        r.sw.setTBar(tbar);
+        r.render();
+        return rec->lastCtx.take;
+    };
+    REQUIRE(r.sw.setEffect(rec));
+    const uint64_t first = takeAt(100);
+    REQUIRE(takeAt(300) == first);  // drag on
+    REQUIRE(takeAt(50) == first);   // and back: still the same take
+    r.sw.setTBar(0);                // aborted
+    const uint64_t second = takeAt(100);
+    REQUIRE(second != first);
+    r.sw.setTBar(0);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Forward);  // Auto from idle
+    r.render();
+    const uint64_t third = rec->lastCtx.take;
+    REQUIRE(third != second);
+    r.sw.tick();
+    r.render();
+    REQUIRE(rec->lastCtx.take == third);
+    r.sw.setTBar(0);  // the hand stops Auto, back at 0
+    REQUIRE(r.sw.setEffect(rec));  // the same effect selected again: a new take
+    const uint64_t fourth = takeAt(100);
+    REQUIRE(fourth != third);
+    REQUIRE(r.sw.setEffect(rec));  // setEffect mid-take: the drag after it is a new take
+    REQUIRE(takeAt(100) != fourth);
+}
+
 TEST_CASE("algo auto from mid T-bar uses the T-bar", "[switcher][algo]") {
     Rig r;
     auto rec = std::make_shared<Recorder>(cropToCenter());
