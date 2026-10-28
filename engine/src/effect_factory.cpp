@@ -51,6 +51,17 @@ const Form* firstForm(const Crouton& c, std::array<char, 4> type) {
     return nullptr;
 }
 
+// Ruling 9: the original reads a crouton's CrUD from its icon file. Two files (the Smooth Fade pair
+// in 2000FX and 4000FX) hold no CrUD themselves; their program is in the sibling <name>.i / .I.
+std::optional<Crouton> algoSibling(const std::filesystem::path& p) {
+    for (const char* ext : {".i", ".I"}) {
+        auto sib = p;
+        sib += ext;
+        if (auto c = loadCrouton(sib); c && c->type == CroutonType::Algo) return c;
+    }
+    return std::nullopt;
+}
+
 std::unique_ptr<Effect> fail(std::string* why, std::string reason) {
     if (why) *why = std::move(reason);
     return nullptr;
@@ -61,6 +72,8 @@ std::unique_ptr<Effect> fail(std::string* why, std::string reason) {
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::string* why) {
     try {
         auto c = loadCrouton(path);
+        if (!c || c->type == CroutonType::None)  // Ruling 9
+            if (auto icon = algoSibling(path)) c = std::move(icon);
         if (!c) return fail(why, "not a crouton file: " + path.string());
         const auto u8 = path.filename().u8string();
         const std::string name(u8.begin(), u8.end());

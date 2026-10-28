@@ -100,6 +100,9 @@ std::unique_ptr<Effect> makeDissolve();
 // wipe. Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: MAIN/CTRL
 // (Switcher code), Art Card Key and unsupported ALGO programs, bar pictures, unsupported control
 // image sizes, undecodable files.
+// A file with no CrUD whose sibling icon (<name>.i or .I) is an ALGO crouton plays that crouton's
+// program (the original reads the CrUD from the icon file; the two Smooth Fade files); the
+// effect keeps the original file name.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);
 
 // The gradient wipe's decision for one pixel: B's share (0..255) for a pixel of the given gray at

@@ -994,6 +994,28 @@ TEST_CASE("algo moves start and end on the right picture", "[algo]") {
     CHECK(failures.empty());
 }
 
+// Ruling 9: the plain Smooth Fade files hold no CrUD; the program is in the sibling .I file.
+TEST_CASE("algo program read from the icon file (Smooth Fade)", "[algo]") {
+    const vt::Frame b = algoPicture(true);
+    for (const char* dir : {"4.2/Effects/2000FX", "4.2/Effects/4000FX"}) {
+        const auto p = dataRoot() / dir / "Smooth Fade";
+        INFO(p.string());
+        std::string why;
+        const auto e = vt::loadEffect(p, &why);
+        INFO(why);
+        REQUIRE(e);
+        REQUIRE(e->name() == "Smooth Fade");
+        // A fade writes opaque pixels (mixLevel), so compare against opaque pictures.
+        vt::Frame a = algoPicture(false), bo = b, out;
+        for (auto& px : a.px) px.a = 255;
+        for (auto& px : bo.px) px.a = 255;
+        vt::RenderCtx c;
+        c.take = 1;
+        e->render(511, a, bo, out, c);
+        REQUIRE(visibleDiff(out, bo) == "");
+    }
+}
+
 TEST_CASE("algo take resets", "[algo]") {
     // The history 100 -> 300 reaches V[239] (ALGO.md 15.1, raster lines 478..479, outside the
     // visible area), so its frame at 300 differs from a fresh take's. Without a reset, take 2 would

@@ -13,7 +13,7 @@ FX = REPO.parent / "4.2" / "Effects" / "4000FX"
 EXE = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "build" / "msvc" / "cli" / "vt_render.exe"
 OUT = REPO / "build" / "algo_sheets"
 
-# (sheet name, path under 4000FX; Smooth Fade is the ".I" file, the plain "Smooth Fade" is not an ALGO crouton). The border crouton carries tag 0x80000064 (ALGO.md 3).
+# (sheet name, path under 4000FX). The border crouton carries tag 0x80000064 (ALGO.md 3).
 EFFECTS = [
     ("Crop To Center", "Wipes/Crop To Center"),
     ("Squeeze T-B", "Digital/Squeeze T-B"),
@@ -21,7 +21,7 @@ EFFECTS = [
     ("Slats Slip On", "Blinds/Slats Slip On"),
     ("Mosaic Transition", "Digital/Mosaic Transition"),
     ("Wipe 3 Slots In", "Wipes/Wipe 3 Slots In"),
-    ("Smooth Fade", "Smooth Fade.I"),
+    ("Smooth Fade", "Smooth Fade"),
     ("Dip To Matte", "Dissolves/Dip To Matte"),
     ("Push On Border L-R", "Push-Pull/Push On Border L-R"),
 ]
