@@ -26,7 +26,7 @@ JSON-lines files to vtoast_reborn/tests/golden/:
   fonts.jsonl     the Amiga colour fonts of the interface (tools/ref/amiga_font.py): one "font" line
                   per size file (metrics, colours as 12-bit words, strike CRC, CRC of the glyph
                   width / advance / kern tables), "render" lines (JAM2 text drawn at (0, baseline))
-  algo.jsonl      ALGO Switcher croutons (4.2/Effects, kinds 0..4) run through tools/ref/algo_ref.py: one line
+  algo.jsonl      ALGO Switcher croutons (all of 4.2, kinds 0..4) run through tools/ref/algo_ref.py: one line
                   per distinct (kind, descriptor, program) with "path", "kind", "desc", "flags" and 149 "frames"
                   (segment 0 = T-bar sweep, segment 1 = Auto from a fresh Algo; "t" is the t given to step):
                   CRCs of the H / V tables or the wipe spans, cell / line / pixel ranges, ink, level "lv"
@@ -271,10 +271,10 @@ def algo_frame(a, kind, seg, t):
 
 
 def algo_records():
-    """One record per distinct (kind, descriptor, program) of the ALGO croutons under 4.2/Effects."""
+    """One record per distinct (kind, descriptor, program) of the ALGO croutons under 4.2 (incl. 3rdparty)."""
     AR.set_root(ROOT)
     found = []
-    for p, t in AS.algos(os.path.join(ROOT, '4.2', 'Effects')):
+    for p, t in AS.algos(os.path.join(ROOT, '4.2')):
         if t.get(0x80000063, 0) != 5:                      # Art Card Key has no program
             found.append((os.path.relpath(p, ROOT).replace(os.sep, '/'), t))
     progs = {}
