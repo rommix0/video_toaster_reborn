@@ -140,3 +140,15 @@ TEST_CASE("T-bar maps to frames") {
     REQUIRE(vt::animFrameForTBar(-100000, 60) == 0);
     REQUIRE(vt::animFrameForTBar(100, 0) == 0);
 }
+
+// ALGO.md 3: an ALGO crouton's speed tags are fields (ticks), not frames.
+TEST_CASE("algo timing counts fields") {
+    auto c = vt::loadCrouton(dataRoot() / "4.2/Effects/4000FX/Wipes/Crop To Center");
+    REQUIRE(c);
+    for (uint32_t id : {0x80000055u, 0x80000056u, 0x80000057u, 0x80000058u, 0x80000059u}) REQUIRE(!c->tag(id));
+    const vt::Timing t = vt::algoTiming(*c);
+    REQUIRE(t.durationTicks == std::array{0x5a, 0x3c, 0x1e, 0x3c});
+    REQUIRE(t.durationFrames == std::array{45, 30, 15, 30});
+    REQUIRE(t.fieldsPerFrame == std::array{0, 0, 0, 0});
+    REQUIRE(t.defaultSpeed == vt::Speed::Medium);
+}

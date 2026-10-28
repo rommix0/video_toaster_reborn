@@ -145,8 +145,12 @@ public:
     //    the speed button (RenderCtx::animFrame), so frame 0 again after frameCount x
     //    fieldsPerFrame ticks.
     // RenderCtx::background is effectColour().rgb() (black for Snow); with a Snow effect colour
-    // RenderCtx::generator is this tick's noise frame, the same one an overlay's B gets. Never
-    // reads or writes `program` before it is finished, so it may alias an input frame.
+    // RenderCtx::generator is this tick's noise frame, the same one an overlay's B gets.
+    // RenderCtx::colour is effectColour(), RenderCtx::take the take number (it changes when a
+    // transition starts from idle and on setEffect), and during a forward Auto started at T-bar 0
+    // RenderCtx::autoStep is the elapsed ticks + 1 (1..durationTicks; the ALGO moves step by it,
+    // ALGO.md 15.1). Never reads or writes `program` before it is finished, so it may alias an
+    // input frame.
     // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
     // steady-state renders allocation-free), so program.px.data() alternates between two
     // buffers: do not keep a pointer into program.px across renders.
@@ -178,6 +182,8 @@ private:
     int autoDur_ = 1;      // ticks for the full 0..511 trip
     int autoFpf_ = 0;      // fields (ticks) per animation frame at Auto's speed; 0 = no frames
     Direction autoDir_ = Direction::Forward;
+    bool autoFrom0_ = false;  // this Auto runs forward from T-bar 0 (RenderCtx::autoStep); only while auto_
+    uint64_t take_ = 0;       // RenderCtx::take: bumped when a transition starts from idle, setEffect
     Speed speed_ = Speed::Medium;
     HardwareGuesses guesses_;
     bool engaged_ = false;       // a ChromaFX or overlay is engaged

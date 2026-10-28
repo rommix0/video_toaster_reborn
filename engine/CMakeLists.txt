@@ -9,6 +9,7 @@ add_library(vt_engine STATIC
     src/dve.cpp
     src/dv_colour.cpp
     src/crc32.cpp
+    src/effect_algo.cpp
     src/effect_anim.cpp
     src/effect_basic.cpp
     src/effect_chromafx.cpp

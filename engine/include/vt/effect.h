@@ -39,6 +39,15 @@ struct RenderCtx {
     // Cycling ChromaFX take their cycle rate from it.
     std::optional<Speed> speed;
     HardwareGuesses guesses;
+    // The Switcher's take number: it changes when a transition starts from idle and when the
+    // effect is replaced. ALGO moves keep state within a take (ALGO.md 15.1) and start afresh
+    // when it changes; other effects ignore it.
+    uint64_t take = 0;
+    // Forward Auto started at T-bar 0: ticks elapsed + 1, in 1..durationTicks; else -1. ALGO
+    // moves step through Auto's t values by it (ALGO.md 15.1); other effects ignore it.
+    int autoStep = -1;
+    // The effect colour in force (Switcher::effectColour()): an ALGO move's border colour.
+    EffectColour colour;
 };
 
 class Effect {
@@ -82,10 +91,12 @@ std::unique_ptr<Effect> makeCut();
 std::unique_ptr<Effect> makeDissolve();
 
 // Reads a crouton file. A CRFX crouton -> ChromaFX (vt/chromafx.h: recolours B at every T-bar
-// position, uses the DV memory). Otherwise the kind is decided by its content: an ANIM form -> DVE
-// move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient wipe.
-// Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: ALGO/MAIN/CTRL
-// (Switcher code), bar pictures, unsupported control image sizes, undecodable files.
+// position, uses the DV memory). An ALGO crouton -> Switcher move (vt/algo.h: digital moves, which
+// use the DV memory, wipes and fades). Otherwise the kind is decided by its content: an ANIM form
+// -> DVE move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient
+// wipe. Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: MAIN/CTRL
+// (Switcher code), Art Card Key and unsupported ALGO programs, bar pictures, unsupported control
+// image sizes, undecodable files.
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path&, std::string* whyNot = nullptr);
 
 // The gradient wipe's decision for one pixel: B's share (0..255) for a pixel of the given gray at

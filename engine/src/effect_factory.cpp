@@ -74,7 +74,7 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         };
 
         switch (c->type) {
-            case CroutonType::Algo: return fail(why, "Switcher move (ALGO) not reverse-engineered yet");
+            case CroutonType::Algo: return detail::makeAlgoEffect(basics(algoTiming(*c)), *c, why);
             case CroutonType::Main: return fail(why, "Switcher move (MAIN) not reverse-engineered yet");
             case CroutonType::Ctrl: return fail(why, "Switcher move (CTRL) not reverse-engineered yet");
             case CroutonType::Crfx: return detail::makeChromaEffect(basics(fixedTiming(*c)), *c, why);

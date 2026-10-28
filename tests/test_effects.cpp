@@ -845,27 +845,187 @@ TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][fac
     REQUIRE(vt::loadEffect(dataRoot() / "no such effect") == nullptr);  // whyNot is optional
 }
 
-TEST_CASE("ALGO, MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
-    std::map<vt::CroutonType, int> seen;
-    const char* names[] = {"ALGO", "MAIN", "CTRL"};
-    for (auto& ent : std::filesystem::recursive_directory_iterator(dataRoot() / "4.2" / "Effects")) {
+namespace {
+
+// Every crouton of one TYPE under 4.2/Effects, or another folder of the data tree (icons skipped).
+std::vector<std::filesystem::path> croutonsOfType(vt::CroutonType type, const char* folder = "4.2/Effects") {
+    std::vector<std::filesystem::path> out;
+    for (auto& ent : std::filesystem::recursive_directory_iterator(dataRoot() / folder)) {
         if (!ent.is_regular_file()) continue;
         auto ext = ent.path().extension().string();
         if (ext == ".i" || ext == ".I") continue;
         auto c = vt::loadCrouton(ent.path());
-        if (!c) continue;
-        int which = -1;
-        if (c->type == vt::CroutonType::Algo) which = 0;
-        else if (c->type == vt::CroutonType::Main) which = 1;
-        else if (c->type == vt::CroutonType::Ctrl) which = 2;
-        if (which < 0) continue;
-        ++seen[c->type];
-        std::string why;
-        INFO(ent.path().string());
-        REQUIRE(vt::loadEffect(ent.path(), &why) == nullptr);
-        REQUIRE(why == std::string("Switcher move (") + names[which] + ") not reverse-engineered yet");
+        if (c && c->type == type) out.push_back(ent.path());
     }
-    REQUIRE(!seen.empty());
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+}  // namespace
+
+TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
+    int seen = 0;
+    for (auto [type, name] : {std::pair{vt::CroutonType::Main, "MAIN"}, std::pair{vt::CroutonType::Ctrl, "CTRL"}})
+        for (const auto& p : croutonsOfType(type)) {
+            ++seen;
+            std::string why;
+            INFO(p.string());
+            REQUIRE(vt::loadEffect(p, &why) == nullptr);
+            REQUIRE(why == std::string("Switcher move (") + name + ") not reverse-engineered yet");
+        }
+    REQUIRE(seen > 0);
+}
+
+// ALGO.md 3 counts 462 ALGO files in 4.2: 230 croutons and their 232 icons (the .i files carry
+// the tags too). Of the croutons, 2 are Art Card Key (4 with the icons) and 228 play.
+TEST_CASE("every ALGO crouton but Art Card Key loads", "[effect][factory][algo]") {
+    int loaded = 0, artCardKey = 0;
+    for (const auto& p : croutonsOfType(vt::CroutonType::Algo, "4.2")) {
+        std::string why;
+        INFO(p.string());
+        const auto c = vt::loadCrouton(p);
+        if (c->tag(0x80000063).value_or(0) == 5) {
+            REQUIRE(vt::loadEffect(p, &why) == nullptr);
+            REQUIRE(why == "Art Card Key needs keys (not built yet)");
+            ++artCardKey;
+            continue;
+        }
+        INFO(why);
+        REQUIRE(vt::loadEffect(p, &why) != nullptr);
+        ++loaded;
+    }
+    REQUIRE(artCardKey == 2);
+    REQUIRE(loaded == 228);
+}
+
+namespace {
+
+// Coordinate gradients: every pixel differs from the other picture's and from its neighbours,
+// and the alpha says which picture a pixel came from (renderDve keeps the source alpha).
+vt::Frame algoPicture(bool b) {
+    vt::Frame f;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const int r = x & 255, g = y & 255, hi = (x >> 8) * 4 + (y >> 8);
+            f.at(x, y) = b ? vt::Rgba8{uint8_t(255 - r), uint8_t(255 - g), uint8_t(200 + hi), 251}
+                           : vt::Rgba8{uint8_t(r), uint8_t(g), uint8_t(hi), 250};
+        }
+    return f;
+}
+
+// "" if the frames agree in kVisibleArea, else the first difference.
+std::string visibleDiff(const vt::Frame& got, const vt::Frame& want) {
+    const vt::Rect r = vt::kVisibleArea;
+    for (int y = r.y; y < r.y + r.h; ++y)
+        for (int x = r.x; x < r.x + r.w; ++x)
+            if (!same(got.at(x, y), want.at(x, y))) return "first difference at (" + std::to_string(x) + "," + std::to_string(y) + ")";
+    return "";
+}
+
+// The first ALGO crouton under 4.2/Effects with this file name.
+std::filesystem::path algoNamed(const std::string& name) {
+    static const auto all = croutonsOfType(vt::CroutonType::Algo);
+    for (const auto& p : all)
+        if (p.filename().string() == name) return p;
+    return {};
+}
+
+std::unique_ptr<vt::Effect> loadAlgo(const std::string& name) {
+    const auto p = algoNamed(name);
+    INFO(name);
+    REQUIRE(!p.empty());
+    std::string why;
+    auto e = vt::loadEffect(p, &why);
+    INFO(why);
+    REQUIRE(e);
+    return e;
+}
+
+vt::Frame algoRender(const vt::Effect& e, int tbar, uint64_t take, int autoStep = -1) {
+    vt::RenderCtx c;
+    c.take = take;
+    c.autoStep = autoStep;
+    static const vt::Frame a = algoPicture(false), b = algoPicture(true);
+    vt::Frame out;
+    e.render(tbar, a, b, out, c);
+    return out;
+}
+
+}  // namespace
+
+TEST_CASE("algo moves start and end on the right picture", "[algo]") {
+    const vt::Frame a = algoPicture(false), b = algoPicture(true);
+    for (const char* name : {"Crop To Center", "Squeeze T-B"}) {  // descriptor 3: A moves over B
+        INFO(name);
+        const auto e = loadAlgo(name);
+        REQUIRE(visibleDiff(algoRender(*e, 0, 1), a) == "");
+    }
+    // Descriptor 2: B moves over A, and fills the screen at the end.
+    std::string push = "Push On L-R";
+    if (algoNamed(push).empty())
+        for (const auto& p : croutonsOfType(vt::CroutonType::Algo)) {
+            const auto c = vt::loadCrouton(p);
+            const auto dir = p.parent_path().filename().string();
+            if ((dir == "Wipes" || dir == "Digital") && c->tag(0x80000007).value_or(0) == 2) {
+                push = p.filename().string();
+                break;
+            }
+        }
+    {
+        INFO(push);
+        const auto e = loadAlgo(push);
+        REQUIRE(visibleDiff(algoRender(*e, 511, 1), b) == "");
+        REQUIRE(visibleDiff(algoRender(*e, 511, 2), b) == "");
+    }
+    // Every wipe starts on A and ends on B.
+    int wipes = 0;
+    std::vector<std::string> failures;
+    for (const auto& p : croutonsOfType(vt::CroutonType::Algo)) {
+        if (vt::loadCrouton(p)->tag(0x80000063).value_or(0) != 1) continue;
+        ++wipes;
+        const auto e = vt::loadEffect(p);
+        REQUIRE(e);
+        for (auto [tbar, want] : {std::pair{0, &a}, std::pair{511, &b}})
+            if (auto d = visibleDiff(algoRender(*e, tbar, 1), *want); !d.empty())
+                failures.push_back(p.filename().string() + " at T-bar " + std::to_string(tbar) + ": " + d);
+    }
+    for (const auto& f : failures) WARN(f);
+    REQUIRE(wipes > 0);
+    CHECK(failures.empty());
+}
+
+TEST_CASE("algo take resets", "[algo]") {
+    const auto e = loadAlgo("Squeeze T-B");
+    algoRender(*e, 300, 1);
+    algoRender(*e, 100, 1);
+    const vt::Frame f1 = algoRender(*e, 300, 1);
+    const vt::Frame f2 = algoRender(*e, 300, 2);
+    algoRender(*e, 100, 3);
+    const vt::Frame f3 = algoRender(*e, 300, 3);
+    // The history (300 before 100) reaches V[239] (ALGO.md 15.1), raster lines 478..479, outside
+    // the visible area.
+    REQUIRE(visibleDiff(f3, f1) == "");
+    const auto fresh = loadAlgo("Squeeze T-B");
+    REQUIRE(f2.px == algoRender(*fresh, 300, 1).px);
+}
+
+TEST_CASE("algo repeated render does not step", "[algo]") {
+    const auto e = loadAlgo("Squeeze T-B");
+    const vt::Frame f = algoRender(*e, 300, 1);
+    REQUIRE(algoRender(*e, 300, 1).px == f.px);
+    REQUIRE(algoRender(*e, 300, 1).px == f.px);
+    // Descriptor 5: A over A below T-bar 256, B over B from 256 (ALGO.md 15.2).
+    std::string name = algoNamed("Stretch").empty() ? "Infinity Slide" : "Stretch";
+    const auto d5 = loadAlgo(name);
+    INFO(name);
+    auto count = [](const vt::Frame& f, uint8_t alpha) {
+        return std::count_if(f.px.begin(), f.px.end(), [&](const vt::Rgba8& p) { return p.a == alpha; });
+    };
+    const vt::Frame before = algoRender(*d5, 255, 1), after = algoRender(*d5, 256, 1);
+    REQUIRE(count(before, 250) > 0);
+    REQUIRE(count(before, 251) == 0);
+    REQUIRE(count(after, 251) > 0);
+    REQUIRE(count(after, 250) == 0);
 }
 
 TEST_CASE("every corpus animated and gradient wipe loads and renders", "[effect][corpus]") {

@@ -57,6 +57,17 @@ Timing fixedTiming(const Crouton& c) {
     return t;
 }
 
+Timing algoTiming(const Crouton& c) {
+    static constexpr uint32_t kDefault[4] = {0x5a, 0x3c, 0x1e, 0x3c};
+    Timing t;
+    for (size_t i = 0; i < 4; ++i) {
+        t.durationTicks[i] = sat(c.tag(kTags[i]).value_or(kDefault[i]));
+        t.durationFrames[i] = sat((int64_t(t.durationTicks[i]) + 1) / 2);
+    }
+    t.defaultSpeed = decodeSpeedTag(c.tag(kSpeedTag).value_or(0));
+    return t;
+}
+
 int animFrameForTBar(int tbar, int frameCount) {
     if (frameCount <= 0) return 0;
     const int t = std::clamp(tbar, 0, 511);  // a negative T-bar gave a negative frame

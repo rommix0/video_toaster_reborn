@@ -52,13 +52,16 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     disengage();
     soundPending_ = false;
     effect_ = std::move(e);
+    ++take_;  // the new effect starts a new take (ALGO.md 15.1: a crouton selected ends the take)
     effectColour_ = effect_->effectColour();
     speed_ = effect_->timing().defaultSpeed;
     return true;
 }
 
 void Switcher::beginTransitionIfIdle() {
-    if (!transitionActive()) soundPending_ = effect_->sound() != nullptr;
+    if (transitionActive()) return;
+    soundPending_ = effect_->sound() != nullptr;
+    ++take_;
 }
 
 void Switcher::engage() {
@@ -113,6 +116,10 @@ void Switcher::autoTransition(Speed speed, Direction dir) {
     } else if (tbar_ == 0 && !auto_) {
         return;  // nothing to run back
     }
+    // Only a forward Auto from T-bar 0 has Auto steps; a reverse one, or one turned round,
+    // follows the T-bar. (Read only while auto_, so an Auto that ends needs no clearing: the
+    // next one sets it afresh.)
+    autoFrom0_ = dir == Direction::Forward && (auto_ ? autoFrom0_ : tbar_ == 0);
     const auto s = static_cast<size_t>(t.resolve(speed));
     // (Over 2^24 ticks, 78 hours, only corrupt tags; the cap keeps the fixed point in range.)
     const int dur = std::clamp(t.durationTicks[s], 1, 1 << 24);
@@ -241,6 +248,11 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         ctx.frameNumber = engaged_ ? engagedTicks_ : 0;
         ctx.speed = speed;
         ctx.guesses = guesses_;
+        ctx.take = take_;
+        ctx.colour = colour;
+        // A forward Auto from 0 renders elapsed ticks 0 .. total-1 as Auto steps 1 .. total.
+        if (auto_ && autoFrom0_ && autoDir_ == Direction::Forward)
+            ctx.autoStep = static_cast<int>(std::min<int64_t>(autoDur_, autoAcc_ / kTBarEnd + 1));
         // Auto: the exact animation frame for the elapsed ticks (Ruling 25). Forward shows
         // elapsed ticks 0 .. total-1, reverse total-1 .. 0, each frame for autoFpf_ ticks.
         if (auto_ && autoFpf_ > 0) {

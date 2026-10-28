@@ -174,20 +174,26 @@ private slots:
     void realtimeRecordingWithLiveInputs();  // live: tools/live.bat (VT_APP_LIVE=1)
 };
 
-// Crouton "Crop To Center" (4000FX/Wipes) is an ALGO move the engine cannot play yet: clicking it
-// shows why in the status bar. Clicking "Wipe Diag TL-BR" from the same drawer and then AUTO runs that
-// wipe from In1 to In2.
+// Crouton "ART CARD KEY" (4000FX/Control) is an ALGO move the engine cannot play yet: clicking it
+// shows why in the status bar. The ALGO move "Crop To Center" (4000FX/Wipes) loads. Clicking "Wipe
+// Diag TL-BR" from the same drawer and then AUTO runs that wipe from In1 to In2.
 void TestAppE2e::croutonThenAutoRunsTheEffect() {
     QTemporaryDir dir;
     AppSettings settings = testSettings(dir);
     AppController c(settings, Mode::Offline);
     QVERIFY(c.screen());
+    const int card = showCrouton(c, "4000FX/Control", "ART CARD KEY");
+    QVERIFY(card >= 0);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), card));
+    const QString why = c.window().statusBar()->currentMessage();
+    QVERIFY2(why.startsWith(QStringLiteral("Cannot load ART CARD KEY: ")) && why.contains(QStringLiteral("Art Card Key")),
+             qPrintable(why));
+    c.window().statusBar()->clearMessage();
     const int crop = showCrouton(c, "4000FX/Wipes", "Crop To Center");
     QVERIFY(crop >= 0);
     QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), crop));
-    const QString why = c.window().statusBar()->currentMessage();
-    QVERIFY2(why.startsWith(QStringLiteral("Cannot load Crop To Center: ")) && why.contains(QStringLiteral("ALGO")),
-             qPrintable(why));
+    const QString cropMessage = c.window().statusBar()->currentMessage();
+    QVERIFY2(!cropMessage.contains(QStringLiteral("Cannot load")), qPrintable(cropMessage));
 
     const int i = showCrouton(c, "4000FX/Wipes", "Wipe Diag TL-BR");
     QVERIFY(i >= 0);

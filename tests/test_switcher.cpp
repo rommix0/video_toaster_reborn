@@ -1175,3 +1175,96 @@ TEST_CASE("renderSource ignores the effect and matches render's Snow", "[switche
     s.sw.renderSource(Source::Bkg, s.src, next);
     CHECK(next.px != snow.px);
 }
+
+namespace {
+
+std::shared_ptr<const vt::Effect> cropToCenter() { return load("4.2/Effects/4000FX/Wipes/Crop To Center"); }
+
+int ticksAt(const vt::Effect& e, vt::Speed s) { return e.timing().durationTicks[static_cast<size_t>(s)]; }
+
+}  // namespace
+
+TEST_CASE("algo auto runs N fields and swaps", "[switcher][algo]") {
+    Rig r;
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Preview, Source::In4);
+    REQUIRE(r.sw.setEffect(cropToCenter()));
+    const auto ref = cropToCenter();  // a fresh take stepped through 1..k
+    const int n = ticksAt(*ref, vt::Speed::Fast);
+    REQUIRE(n == 30);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Forward);
+    for (int k = 1; k <= n; ++k) {
+        INFO("k = " << k);
+        REQUIRE(r.sw.autoRunning());
+        vt::RenderCtx ctx;
+        ctx.background = r.sw.effectColour().rgb();
+        ctx.colour = r.sw.effectColour();
+        ctx.speed = vt::Speed::Fast;
+        ctx.take = 1;
+        ctx.autoStep = k;
+        vt::Frame want;
+        ref->render(0, r.in3, r.in4, want, ctx);
+        REQUIRE(r.render().px == want.px);
+        r.sw.tick();
+    }
+    REQUIRE(!r.sw.autoRunning());
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In4);
+    REQUIRE(r.sw.selected(Bus::Preview) == Source::In3);
+}
+
+TEST_CASE("algo auto step clamps", "[switcher][algo]") {
+    Rig r;
+    auto rec = std::make_shared<Recorder>(cropToCenter());
+    REQUIRE(r.sw.setEffect(rec));
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Forward);
+    auto renderTick = [&] {
+        r.render();
+        const vt::RenderCtx& c = rec->lastCtx;
+        const int n = ticksAt(*rec, c.speed.value_or(vt::Speed::Medium));
+        REQUIRE(c.autoStep >= 1);
+        REQUIRE(c.autoStep <= n);
+        r.sw.tick();
+        return c.autoStep;
+    };
+    for (int k = 1; k <= 10; ++k) REQUIRE(renderTick() == k);
+    // Fast (30) -> Slow (90): the 10 elapsed ticks become 30, the remaining 60 run at Slow.
+    r.sw.autoTransition(vt::Speed::Slow, vt::Direction::Forward);
+    int ticks = 0, last = 0;
+    while (r.sw.autoRunning() && ticks < 1000) {
+        last = renderTick();
+        ++ticks;
+    }
+    REQUIRE(ticks == 60);
+    REQUIRE(last == 90);
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
+}
+
+TEST_CASE("algo auto from mid T-bar uses the T-bar", "[switcher][algo]") {
+    Rig r;
+    auto rec = std::make_shared<Recorder>(cropToCenter());
+    REQUIRE(r.sw.setEffect(rec));
+    auto runOut = [&] {
+        int renders = 0;
+        while (r.sw.autoRunning() && renders < 1000) {
+            r.render();
+            REQUIRE(rec->lastCtx.autoStep == -1);
+            r.sw.tick();
+            ++renders;
+        }
+        REQUIRE(renders > 0);
+    };
+    r.sw.setTBar(100);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Forward);
+    runOut();
+    REQUIRE(r.sw.selected(Bus::Main) == Source::In2);
+    // Reverse Auto, and a forward Auto from 0 turned round.
+    r.sw.setTBar(300);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+    runOut();
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Forward);
+    r.render();
+    REQUIRE(rec->lastCtx.autoStep == 1);
+    r.sw.tick();
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+    runOut();
+}

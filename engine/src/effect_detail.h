@@ -94,5 +94,8 @@ std::unique_ptr<Effect> makeAnimEffect(CroutonBasics, Anim, AnimPlan, std::strin
 std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, std::string* why);
 // CRFX crouton: its ` LUT` record, settings from the tags (vt/chromafx.h).
 std::unique_ptr<Effect> makeChromaEffect(CroutonBasics, const Crouton&, std::string* why);
+// ALGO crouton: its program (tag 0x1000001C) run by vt::AlgoVm, kind 0x80000063, routing
+// descriptor 0x80000007 (vt/algo.h).
+std::unique_ptr<Effect> makeAlgoEffect(CroutonBasics, const Crouton&, std::string* why);
 
 }  // namespace vt::detail
