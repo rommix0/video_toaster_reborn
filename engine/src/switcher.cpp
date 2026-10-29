@@ -345,7 +345,7 @@ const Frame* Switcher::delayed(int input) const {
         // Ruling 4: a frame older than the ring's span is stale (left from an earlier spell as
         // the DV input), so "the oldest" is the oldest of the current unbroken run. Checked
         // here rather than in record so a freeze before the switch-back's first render is covered.
-        if (t < 0 || t + int64_t(ticks.size()) <= now) continue;
+        if (t < 0 || t + int64_t(ticks.size()) < now) continue;
         if (t <= want && (newest < 0 || t > ticks[size_t(newest)])) newest = i;
         if (oldest < 0 || t < ticks[size_t(oldest)]) oldest = i;
     }

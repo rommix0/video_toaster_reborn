@@ -1454,6 +1454,17 @@ TEST_CASE("switching the DV input back does not show its old frames (Ruling 4)",
     CHECK(q.sw.still(Source::DV2).px == blackFrame().px);
 }
 
+TEST_CASE("with digitalDelay 0 a freeze keeps the last frame shown", "[switcher][dv]") {
+    Rig r;
+    vt::HardwareGuesses g;
+    g.digitalDelay = 0;
+    r.sw.setGuesses(g);
+    r.sw.select(Bus::Main, Source::DV1);  // live: input 1, no lag
+    run(r, r.in1, 0, 6);                  // the last render showed tick 5's frame
+    REQUIRE(r.sw.setFrozen(true));
+    CHECK(r.sw.still(Source::DV1).px == numbered(5).px);
+}
+
 TEST_CASE("freeze, live and grab are refused during a transition", "[switcher][dv]") {
     Rig r;
     r.sw.setTBar(100);
