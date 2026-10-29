@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -26,17 +27,24 @@ namespace {
 
 void usage(std::ostream& o) {
     o << "usage: vt_render <effect-path> --out <dir> [--speed slow|medium|fast|variable]\n"
-         "                 [--a slide|bars] [--b slide|bars] [--underscan]\n"
+         "                 [--a PIC] [--b PIC] [--c PIC] [--key black|white] [--level L]\n"
+         "                 [--tbar N] [--after N] [--underscan]\n"
          "\n"
          "Renders one Auto transition of the crouton at <effect-path> (Main = A, Preview = B)\n"
          "and writes NNNN.ppm frames (P6, from 0001) to <dir>, plus effect.wav (16-bit PCM at the\n"
          "effect's native rate) if the effect has a sound.\n"
          "\n"
          "  --speed     the speed button; omitted = the effect's own default speed\n"
-         "  --a, --b    test picture for A (default slide) and B (default slide):\n"
+         "  --a, --b    test picture PIC for A (default slide) and B (default slide):\n"
          "                slide  solid colour with a lighter 64-pixel grid\n"
          "                       (A navy 0x1B2A80, B crimson 0xB5122E)\n"
          "                bars   75% colour bars\n"
+         "                card   a key card: black, a white disc, a grey ramp, eight grey steps\n"
+         "  --c         a picture on input 3, put on Superimpose (the key source)\n"
+         "  --key       turn the keyer on with Key Black or Key White\n"
+         "  --level     the clip level L, 0..257 (default 128)\n"
+         "  --tbar      no Auto: set the T-bar to N (0..511) and render that one frame\n"
+         "  --after     render N more frames after the transition ends (the end state)\n"
          "  --underscan write the full 768x482 raster; default is the 640x432 visible area\n"
          "\n"
          "Frames are 59.94 fps, one per Switcher tick; 0001 shows the T-bar at 0. An ordinary\n"
@@ -52,6 +60,22 @@ void usage(std::ostream& o) {
 
 vt::Frame makePicture(const std::string& kind, bool isB) {
     vt::Frame f;
+    if (kind == "card") {
+        // Black, a white disc (upper left), a grey ramp 0..255 across the middle, and eight grey
+        // steps (0, 36, ... 255) along the bottom: the luma key cuts where each meets the clip.
+        for (int y = 0; y < vt::kRasterH; ++y)
+            for (int x = 0; x < vt::kRasterW; ++x) {
+                uint8_t g = 0;
+                const int dx = x - 230, dy = y - 140;
+                if (dx * dx + dy * dy < 80 * 80) g = 255;
+                else if (y >= 210 && y < 290 && x >= 64 && x < vt::kRasterW - 64)
+                    g = uint8_t((x - 64) * 255 / (vt::kRasterW - 129));
+                else if (y >= 320 && y < 400 && x >= 64 && x < vt::kRasterW - 64)
+                    g = uint8_t((x - 64) * 8 / (vt::kRasterW - 128) * 255 / 7);
+                f.at(x, y) = {g, g, g, 255};
+            }
+        return f;
+    }
     if (kind == "bars") {
         // 75% bars: white yellow cyan green magenta red blue black.
         static const uint8_t bars[8][3] = {{191, 191, 191}, {191, 191, 0}, {0, 191, 191}, {0, 191, 0},
@@ -157,8 +181,10 @@ bool writeWav(const fs::path& path, const vt::Sound& s) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    std::string effectPath, outDir, a = "slide", b = "slide";
+    std::string effectPath, outDir, a = "slide", b = "slide", c, key;
     std::optional<vt::Speed> speed;
+    std::optional<int> level, tbar;
+    int after = 0;
     bool underscan = false;
     auto needValue = [&](int& i, const char* opt) -> const char* {
         if (i + 1 >= argc) { std::cerr << "vt_render: " << opt << " needs a value\n"; return nullptr; }
@@ -172,6 +198,15 @@ int main(int argc, char** argv) {
         else if (arg == "--out") { if (!(v = needValue(i, "--out"))) return 2; outDir = v; }
         else if (arg == "--a") { if (!(v = needValue(i, "--a"))) return 2; a = v; }
         else if (arg == "--b") { if (!(v = needValue(i, "--b"))) return 2; b = v; }
+        else if (arg == "--c") { if (!(v = needValue(i, "--c"))) return 2; c = v; }
+        else if (arg == "--key") {
+            if (!(v = needValue(i, "--key"))) return 2;
+            key = v;
+            if (key != "black" && key != "white") { std::cerr << "vt_render: unknown key '" << key << "'\n"; return 2; }
+        }
+        else if (arg == "--level") { if (!(v = needValue(i, "--level"))) return 2; level = std::atoi(v); }
+        else if (arg == "--tbar") { if (!(v = needValue(i, "--tbar"))) return 2; tbar = std::clamp(std::atoi(v), 0, 511); }
+        else if (arg == "--after") { if (!(v = needValue(i, "--after"))) return 2; after = std::max(0, std::atoi(v)); }
         else if (arg == "--speed") {
             if (!(v = needValue(i, "--speed"))) return 2;
             std::string s = v;
@@ -186,8 +221,11 @@ int main(int argc, char** argv) {
         else { std::cerr << "vt_render: more than one effect path\n"; return 2; }
     }
     if (effectPath.empty() || outDir.empty()) { usage(std::cerr); return 2; }
-    for (const std::string* k : {&a, &b})
-        if (*k != "slide" && *k != "bars") { std::cerr << "vt_render: unknown picture '" << *k << "'\n"; return 2; }
+    for (const std::string* k : {&a, &b, &c})
+        if (!(k == &c && k->empty()) && *k != "slide" && *k != "bars" && *k != "card") {
+            std::cerr << "vt_render: unknown picture '" << *k << "'\n";
+            return 2;
+        }
 
     if (std::optional<vt::Frame> still; vt::isFramestore(fs::path(effectPath), &still)) {
         std::string why;
@@ -221,9 +259,11 @@ int main(int argc, char** argv) {
     const bool fixedCount = effect->isChromaFx() || effect->isOverlay();
 
     const vt::Frame picA = makePicture(a, false), picB = makePicture(b, true);
+    const vt::Frame picC = c.empty() ? vt::Frame{} : makePicture(c, false);
     vt::SourceFrames src;
     src.inputs[0] = &picA;
     src.inputs[1] = &picB;
+    src.inputs[2] = &picC;
 
     vt::Switcher sw;
     sw.select(vt::Bus::Main, vt::Source::In1);
@@ -233,7 +273,12 @@ int main(int argc, char** argv) {
         std::cerr << "vt_render: effect refused: " << whyNotSet << "\n";
         return 1;
     }
-    sw.autoTransition(sp);
+    // The keyer after the effect: loading Art Card Key re-applies the card on each of these.
+    if (!c.empty()) sw.select(vt::Bus::Superimpose, vt::Source::In3);
+    if (!key.empty()) sw.setKeyMode(key == "black" ? vt::KeyMode::Black : vt::KeyMode::White);
+    if (level) sw.setKeyLevel(*level);
+    if (tbar) sw.setTBar(*tbar);
+    else sw.autoTransition(sp);
     if (const auto snd = sw.pendingSound(); snd && snd->rate > 0 && snd->channels > 0) {
         if (!writeWav(fs::path(outDir) / "effect.wav", *snd)) { std::cerr << "vt_render: cannot write effect.wav\n"; return 1; }
     }
@@ -244,13 +289,24 @@ int main(int argc, char** argv) {
     // Cap: an ordinary transition must end at `duration` ticks; never loop forever if it does not.
     const int cap = std::max(duration, 1) + 2;
     // The Switcher's contract (switcher.h): render the frame, then tick.
-    do {
+    auto frame = [&] {
         sw.render(src, program);
         char name[32];
         std::snprintf(name, sizeof name, "%04d.ppm", ++n);
-        if (!writePpm(fs::path(outDir) / name, program, area)) { std::cerr << "vt_render: cannot write " << name << "\n"; return 1; }
+        if (!writePpm(fs::path(outDir) / name, program, area)) { std::cerr << "vt_render: cannot write " << name << "\n"; return false; }
         sw.tick();
-    } while (fixedCount ? n < duration : (sw.transitionActive() && n < cap));
+        return true;
+    };
+    if (tbar) {
+        // A held T-bar: the one frame at that position (Art Card Key's clip, or the key alone at 0).
+        if (!frame()) return 1;
+    } else {
+        do {
+            if (!frame()) return 1;
+        } while (fixedCount ? n < duration : (sw.transitionActive() && n < cap));
+        for (int k = 0; k < after; ++k)
+            if (!frame()) return 1;
+    }
 
     std::cout << "rendered " << n << " frames (" << area.w << "x" << area.h << ") of " << effect->name() << " to " << outDir << "\n";
     return 0;

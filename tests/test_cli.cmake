@@ -94,3 +94,25 @@ file(SHA256 "${out5}/still.png" sha5)
 if(NOT sha5 STREQUAL "a8570f842cae5fcb0bece6022b678bc739a025b865e9e80b72335a8aecdbf919")
     message(FATAL_ERROR "underscan still.png changed (sha256 ${sha5})")
 endif()
+
+# 5. The keyer: Superimpose = the key card (--c), Key Black. At L 0 the key source shows alone (the
+#    same frame as the card on Main), at L 257 Main shows alone; --tbar 0 renders one held frame.
+set(fade "${VT_DATA_ROOT}/4.2/Effects/2000FX/Smooth Fade")
+foreach(run "card;--a;card" "l0;--c;card;--key;black;--level;0" "plain" "l257;--c;card;--key;black;--level;257")
+    list(POP_FRONT run name)
+    execute_process(
+        COMMAND "${VT_RENDER}" "${fade}" --out "${WORK_DIR}/key_${name}" --tbar 0 ${run}
+        RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE se)
+    if(NOT rc EQUAL 0)
+        message(FATAL_ERROR "vt_render key run ${name} failed (${rc}): ${se}")
+    endif()
+    file(GLOB held "${WORK_DIR}/key_${name}/*.ppm")
+    list(LENGTH held nh)
+    if(NOT nh EQUAL 1)
+        message(FATAL_ERROR "--tbar renders one frame, ${name} gave ${nh}")
+    endif()
+    file(SHA256 "${WORK_DIR}/key_${name}/0001.ppm" sha_${name})
+endforeach()
+if(NOT sha_l0 STREQUAL sha_card OR NOT sha_l257 STREQUAL sha_plain OR sha_card STREQUAL sha_plain)
+    message(FATAL_ERROR "key at L 0 / 257 is not the key source / Main alone")
+endif()
