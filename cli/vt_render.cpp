@@ -28,7 +28,7 @@ namespace {
 void usage(std::ostream& o) {
     o << "usage: vt_render <effect-path> --out <dir> [--speed slow|medium|fast|variable]\n"
          "                 [--a PIC] [--b PIC] [--c PIC] [--key black|white] [--level L]\n"
-         "                 [--tbar N] [--after N] [--underscan]\n"
+         "                 [--tbar N] [--after N] [--stride N] [--underscan]\n"
          "\n"
          "Renders one Auto transition of the crouton at <effect-path> (Main = A, Preview = B)\n"
          "and writes NNNN.ppm frames (P6, from 0001) to <dir>, plus effect.wav (16-bit PCM at the\n"
@@ -45,6 +45,7 @@ void usage(std::ostream& o) {
          "  --level     the clip level L, 0..257 (default 128)\n"
          "  --tbar      no Auto: set the T-bar to N (0..511) and render that one frame\n"
          "  --after     render N more frames after the transition ends (the end state)\n"
+         "  --stride    write only every Nth frame (0001, 1+N, ...) and the --after frames\n"
          "  --underscan write the full 768x482 raster; default is the 640x432 visible area\n"
          "\n"
          "Frames are 59.94 fps, one per Switcher tick; 0001 shows the T-bar at 0. An ordinary\n"
@@ -184,7 +185,7 @@ int main(int argc, char** argv) {
     std::string effectPath, outDir, a = "slide", b = "slide", c, key;
     std::optional<vt::Speed> speed;
     std::optional<int> level, tbar;
-    int after = 0;
+    int after = 0, stride = 1;
     bool underscan = false;
     auto needValue = [&](int& i, const char* opt) -> const char* {
         if (i + 1 >= argc) { std::cerr << "vt_render: " << opt << " needs a value\n"; return nullptr; }
@@ -207,6 +208,7 @@ int main(int argc, char** argv) {
         else if (arg == "--level") { if (!(v = needValue(i, "--level"))) return 2; level = std::atoi(v); }
         else if (arg == "--tbar") { if (!(v = needValue(i, "--tbar"))) return 2; tbar = std::clamp(std::atoi(v), 0, 511); }
         else if (arg == "--after") { if (!(v = needValue(i, "--after"))) return 2; after = std::max(0, std::atoi(v)); }
+        else if (arg == "--stride") { if (!(v = needValue(i, "--stride"))) return 2; stride = std::max(1, std::atoi(v)); }
         else if (arg == "--speed") {
             if (!(v = needValue(i, "--speed"))) return 2;
             std::string s = v;
@@ -289,11 +291,11 @@ int main(int argc, char** argv) {
     // Cap: an ordinary transition must end at `duration` ticks; never loop forever if it does not.
     const int cap = std::max(duration, 1) + 2;
     // The Switcher's contract (switcher.h): render the frame, then tick.
-    auto frame = [&] {
+    auto frame = [&](bool keep = false) {
         sw.render(src, program);
         char name[32];
         std::snprintf(name, sizeof name, "%04d.ppm", ++n);
-        if (!writePpm(fs::path(outDir) / name, program, area)) { std::cerr << "vt_render: cannot write " << name << "\n"; return false; }
+        if ((keep || (n - 1) % stride == 0) && !writePpm(fs::path(outDir) / name, program, area)) { std::cerr << "vt_render: cannot write " << name << "\n"; return false; }
         sw.tick();
         return true;
     };
@@ -305,7 +307,7 @@ int main(int argc, char** argv) {
             if (!frame()) return 1;
         } while (fixedCount ? n < duration : (sw.transitionActive() && n < cap));
         for (int k = 0; k < after; ++k)
-            if (!frame()) return 1;
+            if (!frame(true)) return 1;
     }
 
     std::cout << "rendered " << n << " frames (" << area.w << "x" << area.h << ") of " << effect->name() << " to " << outDir << "\n";

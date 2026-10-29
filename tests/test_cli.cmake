@@ -116,3 +116,17 @@ endforeach()
 if(NOT sha_l0 STREQUAL sha_card OR NOT sha_l257 STREQUAL sha_plain OR sha_card STREQUAL sha_plain)
     message(FATAL_ERROR "key at L 0 / 257 is not the key source / Main alone")
 endif()
+
+# 6. --stride writes frame 0001 and every Nth after it; --after frames are always written.
+execute_process(
+    COMMAND "${VT_RENDER}" "${fade}" --out "${WORK_DIR}/stride" --stride 1000 --after 1
+    RESULT_VARIABLE rc OUTPUT_VARIABLE so ERROR_VARIABLE se)
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "vt_render --stride failed (${rc}): ${se}")
+endif()
+string(REGEX MATCH "rendered ([0-9]+) frames" _ "${so}")
+file(GLOB strided "${WORK_DIR}/stride/*.ppm")
+list(LENGTH strided ns)
+if(NOT ns EQUAL 2 OR NOT EXISTS "${WORK_DIR}/stride/0001.ppm" OR NOT CMAKE_MATCH_1 GREATER 2)
+    message(FATAL_ERROR "--stride 1000 --after 1: expected 0001 and the end frame of ${CMAKE_MATCH_1}, got ${ns} files")
+endif()
