@@ -122,6 +122,7 @@ std::vector<DveRoute> dveRoutes(const std::vector<uint8_t>& tag1b, const std::ve
     const size_t first = be16(4), count = be16(6);
     if (tag1b.size() < 40 + count * 4) return {};
     std::vector<DveRoute> r(first + count);
+    for (size_t i = 0; i < first && i < cmap.size(); ++i) r[i].level = uint8_t(cmap[i].b & 3);
     for (size_t k = 0; k < count; ++k) {
         const size_t i = first + k;
         const unsigned e = be32(40 + k * 4), mask = be32(8 + 4 * ((e >> 28) & 7));
@@ -177,7 +178,11 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
             for (int x = 0; x < kRasterW; ++x) {
                 if (index[x] >= routes.size() || routes[index[x]].source == 0) continue;
                 const DveRoute rt = routes[index[x]];
-                const Frame* bus = rt.source == 1 ? mix->s1 : rt.source == 3 ? mix->s3 : mix->generator;
+                if (rt.source == 3) {  // the DVE picture itself: d mixed with d is d
+                    routedPx[x] = true;
+                    continue;
+                }
+                const Frame* bus = rt.source == 1 ? mix->s1 : mix->generator;
                 Rgba8 s = mix->colour;
                 if (bus) s = bus->at(x, y);
                 else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule
@@ -190,9 +195,22 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
         }
         if (!c.art.empty()) {
             const uint8_t* art = &c.art[size_t(k) * kDveWidth];
+            const uint8_t* index = c.index.empty() ? nullptr : &c.index[size_t(k) * kDveWidth];
+            const std::vector<DveRoute>* routes = mix ? mix->routes : nullptr;
             for (int x = 0; x < kRasterW; ++x) {
-                const size_t idx = size_t(art[x]) * 8;
-                if (art[x] != 0 && idx < cmap.size() && !routedPx[x]) dst[x] = {cmap[idx].r, cmap[idx].g, cmap[idx].b, 255};
+                if (art[x] == 0 || routedPx[x]) continue;
+                const size_t ci = index ? size_t(index[x] & 0xFC) : size_t(art[x]) * 8;
+                if (ci >= cmap.size()) continue;
+                const Rgba8 a{cmap[ci].r, cmap[ci].g, cmap[ci].b, 255};
+                if (key[x / 4] < 64) {
+                    dst[x] = a;
+                    continue;
+                }
+                const int level = routes && ci < routes->size() ? (*routes)[ci].level : cmap[ci].b & 3;
+                const int w = g.dveLevelMix[level & 3];
+                const Rgba8 d = dst[x];
+                auto m = [w](int ac, int dc) { return uint8_t((ac * (255 - w) + dc * w + 127) / 255); };
+                dst[x] = {m(a.r, d.r), m(a.g, d.g), m(a.b, d.b), 255};
             }
         }
     }

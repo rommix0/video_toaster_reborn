@@ -316,8 +316,13 @@ TEST_CASE("dveRoutes reads source and level through the mask", "[dve]") {
     r = vt::dveRoutes(tag1b({0x00000113, 0x80000717}, 0, entries), cmap);
     REQUIRE(r[0].source == 0);
 
-    // sized first + count
-    REQUIRE(vt::dveRoutes(tag1b({0x80000714, 0x80000717}, 3, {0x00001000}), cmap).size() == 4);
+    // sized first + count; the indexes before first keep the CMAP's level (cmap covers 0 and 1)
+    r = vt::dveRoutes(tag1b({0x80000714, 0x80000717}, 3, {0x00001000}), cmap);
+    REQUIRE(r.size() == 4);
+    REQUIRE(r[0].level == 2);
+    REQUIRE(r[1].level == 1);
+    REQUIRE(r[2].level == 0);
+    REQUIRE(r[0].source == 0);
 
     // a table shorter than its count
     auto shortTag = tag1b({0x80000714, 0x80000717}, 0, entries);
@@ -335,13 +340,19 @@ TEST_CASE("renderDve mixes a routed pixel by its level", "[dve]") {
     }
     c.index.assign(size_t(vt::kDveLines) * vt::kDveWidth, 0);
     c.index[100 * 768 + 300] = 1;
-    const std::vector<vt::DveRoute> routes = {{1, 0}, {9, 2}};
+    c.index[110 * 768 + 300] = 2;
+    c.index[120 * 768 + 300] = 3;
+    const std::vector<vt::DveRoute> routes = {{1, 0}, {9, 2}, {3, 0}, {3, 2}};
     const vt::Frame moving = solid({200, 100, 0, 255}), a = solid({10, 20, 30, 255});
-    const vt::DveMix mix{&routes, &a, nullptr, {255, 255, 255, 255}, nullptr};
+    const vt::DveMix mix{&routes, &a, {255, 255, 255, 255}, nullptr};
     vt::Frame plain, mixed;
     vt::renderDve(c, moving, a, {}, plain, vt::HardwareGuesses{});
     vt::renderDve(c, moving, a, {}, mixed, vt::HardwareGuesses{}, &mix);
     REQUIRE(mixed.at(100, 50) == a.at(100, 50));
+    // S = 3 is the DVE picture itself, at any level: the moved pixel, not the bus frame at (x, y)
+    REQUIRE(mixed.at(300, 220) == plain.at(300, 220));
+    REQUIRE(mixed.at(300, 240) == plain.at(300, 240));
+    REQUIRE(mixed.at(300, 220) == moving.at(0, 0));
     const vt::Rgba8 d = plain.at(300, 200), m = mixed.at(300, 200);
     auto want = [](int dc) { return uint8_t((255 * (255 - 170) + dc * 170 + 127) / 255); };
     REQUIRE(m == vt::Rgba8{want(d.r), want(d.g), want(d.b), 255});
@@ -360,6 +371,48 @@ TEST_CASE("decodeDve fills the display index only for \"!\" DVEs", "[dve]") {
     REQUIRE(c.index[50 * 768 + 0] == 4);
     REQUIRE(c.index[50 * 768 + 8] == 16);
     REQUIRE(c.index[50 * 768 + 16] == 0);
+}
+
+TEST_CASE("DVE art: colour from the display index, mixed toward the moving picture by its level", "[dve]") {
+    vt::DveControl c;
+    c.key[3 * 192 + 1] = 0;    // pixels 4..7: background
+    c.key[3 * 192 + 2] = 255;  // pixels 8..11: moving
+    c.art.assign(size_t(241) * 768, 0);
+    c.index.assign(size_t(241) * 768, 0);
+    auto put = [&](int x, uint8_t idx) {
+        c.index[3 * 768 + size_t(x)] = idx;
+        c.art[3 * 768 + size_t(x)] = uint8_t(idx >> 3);
+    };
+    put(4, 61);  // plane 2 set: cmap[60], not cmap[56]; over the background the level does not matter
+    put(8, 61);  // cmap[60], L 3: the moving picture
+    put(9, 58);  // cmap[56], L 2
+    put(10, 49);  // cmap[48], L 0: the art
+    put(11, 5);   // art group 0: no art
+    std::vector<vt::Rgb> cmap(64);
+    for (int i = 0; i < 64; ++i) cmap[size_t(i)] = {uint8_t(4 * i), uint8_t(100 + i), uint8_t(i >> 2)};  // L = b & 3
+    const vt::Frame moving = solid({200, 100, 0, 255}), bg = solid({10, 20, 30, 255});
+    auto art = [&](int i) { return vt::Rgba8{cmap[size_t(i)].r, cmap[size_t(i)].g, cmap[size_t(i)].b, 255}; };
+    auto mixed = [](vt::Rgba8 a, vt::Rgba8 d, int w) {
+        auto m = [w](int ac, int dc) { return uint8_t((ac * (255 - w) + dc * w + 127) / 255); };
+        return vt::Rgba8{m(a.r, d.r), m(a.g, d.g), m(a.b, d.b), 255};
+    };
+    const vt::Rgba8 mv{200, 100, 0, 255};
+    vt::Frame out;
+    vt::renderDve(c, moving, bg, cmap, out, vt::HardwareGuesses{});
+    for (int y : {6, 7}) {
+        REQUIRE(out.at(4, y) == art(60));
+        REQUIRE(out.at(8, y) == mv);
+        REQUIRE(out.at(9, y) == mixed(art(56), mv, 170));
+        REQUIRE(out.at(10, y) == art(48));
+        REQUIRE(out.at(11, y) == mv);
+    }
+    // a route table's level wins over the palette's for the indexes it covers
+    std::vector<vt::DveRoute> routes(57);
+    routes[56].level = 1;
+    const vt::DveMix mix{&routes, &bg, {0, 0, 0, 255}, nullptr};
+    vt::renderDve(c, moving, bg, cmap, out, vt::HardwareGuesses{}, &mix);
+    REQUIRE(out.at(9, 6) == mixed(art(56), mv, 85));
+    REQUIRE(out.at(8, 6) == mv);  // index 60 is past the table: the palette's L 3
 }
 
 TEST_CASE("DVE shadows, colour bars, unknown codes and art", "[dve]") {
@@ -514,7 +567,7 @@ TEST_CASE("every DVE loads as an effect and renders its role", "[dve][effect]") 
                                               paletteFor(f.anim, k));
             const uint32_t desc = f.crouton.tag(0x80000007).value_or(0);
             const bool aMoves = desc == 3 || desc == 32;
-            const vt::DveMix mix{&routes, aMoves ? &b : &a, aMoves ? &a : &b, ctx.background, nullptr};
+            const vt::DveMix mix{&routes, aMoves ? &b : &a, ctx.background, nullptr};
             vt::renderDve(vt::decodeDve(f.anim.planes[size_t(k)]), *moving, *background, paletteFor(f.anim, k), want,
                           ctx.guesses, routes.empty() ? nullptr : &mix);
             e->render(tbarForFrame(k, n), a, b, got, ctx);

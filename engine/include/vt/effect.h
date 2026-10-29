@@ -54,8 +54,8 @@ struct RenderCtx {
     // The DV path's picture of A and B: the bus's input delayed by HardwareGuesses::digitalDelay
     // while the store is live and the bus shows an input; null otherwise (use a / b: a frozen DV
     // still, BKG, live DV). Digital moves move these; their key-0 background stays a / b
-    // (analog). In the "!" DVEs' tag 0x1B routes S = 3 is the moving bus's picture (this one) and
-    // S = 1 the other bus, analog (vt::DveMix).
+    // (analog). In the "!" DVEs' tag 0x1B routes S = 3 is the moving bus's picture as moved (the
+    // DVE picture drawn from this one) and S = 1 the other bus, analog (vt::DveMix).
     const Frame* digitalA = nullptr;
     const Frame* digitalB = nullptr;
 };

@@ -1296,10 +1296,10 @@ TEST_CASE("Flip Out Bottom2 ! opens on A (descriptor 32 moves A, Ruling 10)", "[
 }
 
 // Ruling 10: in the A-moving "!" DVEs a route to S = 3 shows A's DV picture (RenderCtx::digitalA,
-// delayed while live) and a route to S = 1 the analog B. Every L = 0 routed pixel is exactly
-// that bus.
-TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the analog other bus", "[dve][effect]") {
-    const vt::Frame a = ramp(1), b = ramp(2), d = ramp(3);
+// delayed while live) as the move moves it, which is the DVE picture itself, and a route to S = 1
+// the analog B. Every L = 0 routed pixel is exactly that.
+TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's moved DV picture, S = 1 the analog other bus", "[dve][effect]") {
+    const vt::Frame a = ramp(1), b = ramp(2), d = ramp(3), black = solid(kBlack);
     int s1 = 0, s3 = 0;
     for (const char* src : {"4.2/Effects/4000FX/Trajectory/Photo Fly Out !", "4.2/Effects/4000FX/Digital/Warp To Globe !",
                             "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !",
@@ -1310,6 +1310,7 @@ TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the ana
         const uint32_t desc = c->tag(0x80000007).value_or(0);
         REQUIRE((desc == 3 || desc == 32));
         const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+        const vt::DveInfo info = vt::dveInfo(an);
         auto e = load(src);
         REQUIRE(e);
         const std::vector<vt::Rgb>* palette = &an.bm.cmap;
@@ -1323,6 +1324,22 @@ TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the ana
             ctx.digitalA = &d;
             vt::Frame got;
             e->render(0, a, b, got, ctx);
+            // the DVE picture: A's DV picture moved over the background, before routes and art
+            const vt::Frame* moving = &d;
+            const vt::Frame* background = &b;
+            switch (info.role) {
+                case vt::DveRole::MovingA: break;
+                case vt::DveRole::MovingB: moving = &b; background = &a; break;
+                case vt::DveRole::DistortA: background = &a; break;
+                case vt::DveRole::Flip:
+                    moving = k < info.switchFrame ? &d : &b;
+                    background = &black;
+                    break;
+            }
+            vt::DveControl noArt = dc;
+            noArt.art.clear();
+            vt::Frame pic;
+            vt::renderDve(noArt, *moving, *background, {}, pic, ctx.guesses);
             for (int y = 0; y < vt::kRasterH; ++y)
                 for (int x = 0; x < vt::kRasterW; ++x) {
                     const uint8_t idx = dc.index[size_t(y / 2) * 768 + size_t(x)];
@@ -1332,7 +1349,7 @@ TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the ana
                         if (!same(got.at(x, y), b.at(x, y))) FAIL("frame " << k << " S = 1 pixel (" << x << "," << y << ") is not B");
                     } else if (routes[idx].source == 3) {
                         ++s3;
-                        if (!same(got.at(x, y), d.at(x, y))) FAIL("frame " << k << " S = 3 pixel (" << x << "," << y << ") is not A's DV picture");
+                        if (!same(got.at(x, y), pic.at(x, y))) FAIL("frame " << k << " S = 3 pixel (" << x << "," << y << ") is not the moved DV picture");
                     }
                 }
         }
@@ -1340,6 +1357,69 @@ TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the ana
     INFO("S = 1 pixels " << s1 << ", S = 3 pixels " << s3);
     REQUIRE(s1 > 0);
     REQUIRE(s3 > 0);
+}
+
+// Fly Over Crumpled Edge !'s foil edge takes its colour from the whole display index: plane 2 is
+// part of it (index 60 is dark, 19 27 31; the old cmap[group * 8] drew cmap[56], 217 235 255).
+TEST_CASE("Fly Over Crumpled Edge ! draws its edge in the display index's palette colour", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !";
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 58;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[58]);
+    const auto& cmap = an.bm.cmap;
+    int edge = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const size_t at = size_t(y / 2) * 768 + size_t(x);
+            if (dc.art[at] == 0 || dc.key[size_t(y / 2) * 192 + size_t(x / 4)] >= 64) continue;
+            const vt::Rgb p = cmap[dc.index[at] & 0xFC];
+            ++edge;
+            if (!same(got.at(x, y), {p.r, p.g, p.b, 255})) FAIL("edge pixel (" << x << "," << y << ") is not its palette colour");
+        }
+    REQUIRE(edge >= 10000);
+    REQUIRE(same(got.at(384, 110), {cmap[60].r, cmap[60].g, cmap[60].b, 255}));
+}
+
+// Infinite Video Space ! has no tag 0x1B: its palette's own level bits apply. Frame 0's art is
+// black at L = 3 over the whole picture, so the transition opens on A, not black; its grey tiles
+// (L = 0, over the background) keep their palette colour.
+TEST_CASE("Infinite Video Space ! opens on A and keeps its tiles", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Space/Infinite Video Space !";
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 0;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const int x = vt::kVisibleArea.x + vt::kVisibleArea.w / 2, y = vt::kVisibleArea.y + vt::kVisibleArea.h / 2;
+    REQUIRE(same(got.at(x, y), a.at(x, y)));
+
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+    ctx.animFrame = 22;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[22]);
+    int tiles = 0;
+    for (int yy = 0; yy < vt::kRasterH; ++yy)
+        for (int xx = 0; xx < vt::kRasterW; ++xx) {
+            const size_t at = size_t(yy / 2) * 768 + size_t(xx);
+            const uint8_t ci = dc.index[at] & 0xFC;
+            if (dc.art[at] == 0 || ci < 16 || (an.bm.cmap[ci].b & 3) != 0) continue;
+            const vt::Rgb p = an.bm.cmap[ci];
+            ++tiles;
+            if (!same(got.at(xx, yy), {p.r, p.g, p.b, 255})) FAIL("tile pixel (" << xx << "," << yy << ") is not its palette colour");
+        }
+    REQUIRE(tiles >= 1000);
 }
 
 TEST_CASE("the seven \"!\" DVEs render without unknown codes", "[dve][effect]") {
