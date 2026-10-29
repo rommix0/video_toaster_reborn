@@ -144,7 +144,9 @@ public:
     // delayed frame) into DV2 if any bus shows DV2, else DV1.
     bool setFrozen(bool frozen, std::string* whyNot = nullptr);
     // Grab input 0..3 into DV1: freezes if live, then digitalDelay ticks later the input's frame
-    // goes into DV1 and Main selects DV1 (FREEZE.md 3). Same refusal as setFrozen.
+    // goes into DV1 and Main selects DV1 (FREEZE.md 3). Same refusal as setFrozen. The original
+    // waits out the 4 fields before it reads another button; here a take or a transition that
+    // starts in the wait leaves the buses and the freeze to it: the frame still goes into DV1.
     bool grab(int input, std::string* whyNot = nullptr);
     bool grabPending() const { return grabPending_; }
     // A framestore loaded (FREEZE.md 4): refused with "a transition is running: finish it first"
@@ -156,6 +158,7 @@ public:
     // SAVE's source: the DV on Preview, else on Main, else DV1. nullopt (and "SAVE: no still in
     // DV1/DV2") if neither still was ever written.
     std::optional<Source> saveSource(std::string* whyNot = nullptr) const;
+    bool hasStill() const { return written_[0] || written_[1]; }  // saveSource has a still
 
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
     // Auto, (while engaged) the ChromaFX / overlay frame counter and a pending grab's wait.
@@ -246,6 +249,7 @@ private:
     mutable bool grabPending_ = false;
     int grabInput_ = 0;
     int grabWait_ = 0;  // ticks until the grab is due
+    bool grabSelects_ = false;  // the due grab puts DV1 on Main and freezes; a take or transition clears it
     // The DV history: per input, a ring of delay + 1 frames and the ticks they were recorded at
     // (-1 = empty), allocated when the input is first recorded. Recording here is the exception
     // to "render reads only" (with the due grab above): the lag needs the past frames.

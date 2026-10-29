@@ -71,6 +71,7 @@ void Switcher::beginTransitionIfIdle() {
     if (transitionActive()) return;
     soundPending_ = effect_->sound() != nullptr;
     ++take_;
+    grabSelects_ = false;  // a pending grab must not switch Main or freeze mid-transition
     // FREEZE.md 5 (flag 0x200): a digital move with the store frozen and no DV on a bus sends the
     // store live (the stills are kept), then routes the moving bus's input through DV. With a DV
     // on a bus the freeze stays, and the move moves that still.
@@ -157,6 +158,7 @@ void Switcher::take() {
     tbar_ = 0;
     disengage();
     soundPending_ = false;
+    grabSelects_ = false;  // a pending grab must not undo the cut
     if (!overlay) std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);  // Ruling 27
 }
 
@@ -165,7 +167,7 @@ void Switcher::tick() {
     if (engaged_) ++engagedTicks_;
     // The grab's wait is over: DV1 goes on Main and the store freezes (FREEZE.md 3: grab steps
     // 7-8, then message 0xb to the MAIN DV1 node). The next render writes the frame.
-    if (grabPending_ && grabWait_ > 0 && --grabWait_ == 0) {
+    if (grabPending_ && grabWait_ > 0 && --grabWait_ == 0 && grabSelects_) {
         sel_[busIndex(Bus::Main)] = Source::DV1;
         frozen_ = true;
     }
@@ -385,6 +387,7 @@ bool Switcher::grab(int input, std::string* whyNot) {
     grabInput_ = std::clamp(input, 0, 3);
     grabWait_ = digitalDelay(guesses_);
     grabPending_ = true;
+    grabSelects_ = true;
     if (grabWait_ == 0) sel_[busIndex(Bus::Main)] = Source::DV1;  // no wait for tick to end
     return true;
 }

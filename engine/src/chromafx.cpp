@@ -9,6 +9,7 @@
 #include <iterator>
 #include <stdexcept>
 
+#include "log_detail.h"
 #include "vt/dv_colour.h"
 #include "vt/iff.h"
 
@@ -348,7 +349,7 @@ LutRecord parseLut(std::span<const uint8_t> b) {
 
 std::vector<LutRecord> readLutBank(const std::filesystem::path& p) {
     std::ifstream f(p, std::ios::binary);
-    if (!f) throw std::runtime_error("cannot open " + p.string());
+    if (!f) throw std::runtime_error("cannot open " + detail::utf8(p));
     const std::vector<uint8_t> d{std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
     std::vector<LutRecord> out;
     for (size_t o = 32; o + kLutRecordSize <= d.size(); o += kLutRecordSize) {

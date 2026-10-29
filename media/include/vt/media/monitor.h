@@ -21,6 +21,7 @@ struct SwitcherSnapshot {
     vt::Source main = vt::Source::In1, preview = vt::Source::In2, overlay = vt::Source::Bkg;
     int tbar = 0;
     bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;
+    bool hasStill = false;  // a still was written into DV1 or DV2 (SAVE has something to save)
     vt::Speed speed = vt::Speed::Medium;
     std::string effectName;
     vt::EffectColour effectColour, background;

@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "log_detail.h"
 #include "vt/crouton.h"
 #include "vt/dv_colour.h"
 #include "vt/ilbm.h"
@@ -28,12 +29,6 @@ constexpr int kMaxW = 768, kMaxH = 480;
 struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
-
-// For messages: path::string() throws on MSVC for names outside the ANSI code page ("Bärs ✓").
-std::string utf8(const std::filesystem::path& p) {
-    const auto s = p.u8string();
-    return {s.begin(), s.end()};
-}
 
 // The picture of a plane set as `lanes` 8-bit samples per pixel: PLTP entry n is the byte pair
 // (lane, bit) of plane n, lane value = sum of plane bit << bit. Every lane in
@@ -227,14 +222,14 @@ void writeFile(const std::filesystem::path& p, const Bytes& a, const Bytes& b = 
     f.write(reinterpret_cast<const char*>(a.data()), std::streamsize(a.size()));
     f.write(reinterpret_cast<const char*>(b.data()), std::streamsize(b.size()));
     f.close();
-    if (!f) throw std::runtime_error("cannot write " + utf8(p));
+    if (!f) throw std::runtime_error("cannot write " + detail::utf8(p));
 }
 
 }  // namespace
 
 Rect framestoreRect(int w, int h) { return {(kRasterW - w) / 2, kFramestoreY0, w, h}; }
 
-bool isFramestore(const std::filesystem::path& path) {
+bool isFramestore(const std::filesystem::path& path, std::optional<Frame>* picture) {
     try {
         const auto c = loadCrouton(path);
         if (!c) return false;
@@ -242,10 +237,13 @@ bool isFramestore(const std::filesystem::path& path) {
         for (const char* ext : {".i", ".I"}) {
             auto sib = path;
             sib += ext;
-            if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)
+            if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)  // a broken one has none
                 return icon->type == CroutonType::Fram;
         }
-        return loadFramestore(path).has_value();  // Theater (LightWaveDemo): no CrUD anywhere
+        auto still = loadFramestore(path);  // Theater (LightWaveDemo): no CrUD anywhere
+        const bool ok = still.has_value();
+        if (picture) *picture = std::move(still);
+        return ok;
     } catch (const std::exception&) {
         return false;
     }
@@ -258,7 +256,7 @@ std::optional<Frame> loadFramestore(const std::filesystem::path& path, std::stri
     };
     try {
         auto c = loadCrouton(path);
-        if (!c) return fail("cannot read " + utf8(path));
+        if (!c) return fail("cannot read " + detail::utf8(path));
         // The first FORM ILBM is the picture; later ones are the 80x50 icons.
         const auto form = std::ranges::find(c->forms, kIlbmForm, &Form::type);
         if (form == c->forms.end()) return fail("no picture (FORM ILBM)");

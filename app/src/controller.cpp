@@ -414,9 +414,9 @@ void AppController::loadCrouton(int index, bool run) {
         // A framestore is a still for DV1/DV2 (FREEZE.md 4), not an effect: no Auto, nothing cached.
         // vt::isFramestore decides (FRAM in the file's CrUD or its icon's, or a bare DV picture).
         // Only a cache miss asks: an effect file is read twice then, but it can be large.
-        if (vt::isFramestore(c.effect)) {
+        if (std::optional<vt::Frame> still; vt::isFramestore(c.effect, &still)) {
             std::string why;
-            auto still = vt::loadFramestore(c.effect, &why);
+            if (!still) still = vt::loadFramestore(c.effect, &why);
             if (!still) return message(tr("not a framestore: %1").arg(QString::fromStdString(why)));
             loop_->postChecked([f = std::make_shared<const vt::Frame>(std::move(*still))](vt::Switcher& sw, std::string& why) {
                 return sw.loadStill(*f, &why);
@@ -451,7 +451,12 @@ void AppController::grab(int input) {
     loop_->postChecked([input](vt::Switcher& sw, std::string& why) { return sw.grab(input, &why); });
 }
 
+// The refusals saveFramestore(path) posts, checked first from the last snapshot so no dialog opens
+// for a save that cannot happen (the posted save checks again).
 void AppController::saveFramestore() {
+    const vt::media::SwitcherSnapshot s = loop_->switcherState();
+    if (s.transition && !s.overlayEngaged) return message(tr("Refused: finish the effect first"));
+    if (!s.hasStill) return message(tr("Refused: SAVE: no still in DV1/DV2"));
     QDir().mkpath(settings_.framestorePath);
     const QString file = QFileDialog::getSaveFileName(window_.get(), tr("Save framestore"), settings_.framestorePath);
     if (!file.isEmpty()) saveFramestore(file);

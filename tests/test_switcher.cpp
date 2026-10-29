@@ -1579,6 +1579,39 @@ TEST_CASE("load target follows the loader rule", "[switcher][dv]") {
     CHECK_FALSE(t.sw.frozen());
 }
 
+// The original waits out the grab before it reads another button; here a take or a transition
+// that starts in the wait keeps its buses (and a digital move's live store), and the grabbed frame
+// still goes into DV1.
+TEST_CASE("a take or a transition in a grab's wait keeps its buses", "[switcher][dv]") {
+    Rig t;
+    run(t, t.in1, 0, 6);
+    REQUIRE(t.sw.grab(2));
+    run(t, t.in3, 6, 7);  // one tick into the wait
+    t.sw.take();
+    run(t, t.in3, 7, 11);  // due at tick 10's render
+    CHECK_FALSE(t.sw.grabPending());
+    CHECK(t.sw.selected(Bus::Main) == Source::In2);
+    CHECK(t.sw.selected(Bus::Preview) == Source::In1);
+    CHECK(t.sw.still(Source::DV1).px == numbered(10).px);
+
+    Rig m;
+    run(m, m.in1, 0, 6);
+    REQUIRE(m.sw.grab(2));
+    run(m, m.in3, 6, 7);
+    m.sw.setTBar(100);  // the default effect starts
+    run(m, m.in3, 7, 11);
+    CHECK_FALSE(m.sw.grabPending());
+    CHECK(m.sw.selected(Bus::Main) == Source::In1);
+    CHECK(m.sw.tbar() == 100);
+    CHECK(m.sw.still(Source::DV1).px == numbered(10).px);
+
+    Rig g;  // with neither, the grab selects DV1 as before
+    run(g, g.in1, 0, 6);
+    REQUIRE(g.sw.grab(2));
+    run(g, g.in3, 6, 11);
+    CHECK(g.sw.selected(Bus::Main) == Source::DV1);
+}
+
 TEST_CASE("loading a framestore cancels a pending grab (Ruling 5)", "[switcher][dv]") {
     Rig r;
     run(r, r.in1, 0, 6);

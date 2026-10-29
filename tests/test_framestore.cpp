@@ -100,6 +100,24 @@ TEST_CASE("framestores without a CrUD of their own load (Ruling 9)") {
     CHECK(!vt::isFramestore(framestore("4.2/Framestore/nothing")));
 }
 
+TEST_CASE("an unreadable icon counts as none; the decided picture is handed back") {
+    TempDir t;
+    std::filesystem::create_directories(t.dir);
+    const auto pic = t.dir / "Pic";
+    std::filesystem::copy_file(framestore("4.2/Framestore/LightWaveDemo/Theater"), pic);
+    std::ofstream(t.dir / "Pic.i", std::ios::binary) << "FORM\xff\xff\xff\xff" "CrUD not an icon";  // cut short
+    REQUIRE(vt::loadCrouton(t.dir / "Pic.i"));
+    CHECK(vt::loadCrouton(t.dir / "Pic.i")->type == vt::CroutonType::None);
+    std::optional<vt::Frame> still;
+    CHECK(vt::isFramestore(pic, &still));
+    REQUIRE(still);
+    CHECK(still->px == vt::loadFramestore(pic)->px);
+    // decided from a CrUD: nothing decoded
+    std::optional<vt::Frame> none;
+    CHECK(vt::isFramestore(framestore("4.2/Framestore/ColorBars"), &none));
+    CHECK(!none);
+}
+
 TEST_CASE("framestore refuses bad files") {
     const auto bars = framestore("4.2/Framestore/ColorBars");
     const auto cut = std::filesystem::temp_directory_path() / "vt_framestore_cut";

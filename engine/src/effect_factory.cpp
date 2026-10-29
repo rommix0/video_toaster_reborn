@@ -41,8 +41,7 @@ constexpr uint32_t kTagDescriptor = 0x80000007;    // routing descriptor (ALGO.m
 bool inOverlaysDrawer(const std::filesystem::path& p) {
     std::error_code ec;
     const auto abs = std::filesystem::absolute(p, ec);
-    const auto u8 = (ec ? p : abs).parent_path().filename().u8string();
-    std::string s(u8.begin(), u8.end());
+    std::string s = detail::utf8((ec ? p : abs).parent_path().filename());
     for (auto& ch : s) ch = char(std::tolower(static_cast<unsigned char>(ch)));
     return s == "overlays";
 }
@@ -80,9 +79,8 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             if (isFramestore(path)) return fail(why, kFramestoreRefusal);  // FRAM icon, or a bare DV picture
             if (auto icon = algoSibling(path)) c = std::move(icon);
         }
-        if (!c) return fail(why, "not a crouton file: " + path.string());
-        const auto u8 = path.filename().u8string();
-        const std::string name(u8.begin(), u8.end());
+        if (!c) return fail(why, "not a crouton file: " + detail::utf8(path));
+        const std::string name = detail::utf8(path.filename());
 
         // Name, timing, sound, colour, drawer; the sound is read only for effects that get built.
         // A ChromaFX crouton is never an overlay (none is in an Overlays drawer).

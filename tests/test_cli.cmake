@@ -58,7 +58,8 @@ endif()
 
 # 4. A framestore (FRAM crouton) is not an effect: its picture goes to still.png, a PNG of the
 #    visible area (640x432; the IHDR width and height are at bytes 16..23), and --underscan gives
-#    the whole raster.
+#    the whole raster. The whole file is pinned by its SHA-256: both were checked by decoding them
+#    with Pillow (chunk CRCs and zlib stream valid, the 75 % bars at 191).
 set(out4 "${WORK_DIR}/still")
 execute_process(
     COMMAND "${VT_RENDER}" "${VT_DATA_ROOT}/4.2/Framestore/ColorBars" --out "${out4}"
@@ -73,6 +74,10 @@ file(READ "${out4}/still.png" png LIMIT 24 HEX)
 if(NOT png STREQUAL "89504e470d0a1a0a0000000d4948445200000280000001b0")  # signature, IHDR 640 x 432
     message(FATAL_ERROR "still.png is not a 640x432 PNG: ${png}")
 endif()
+file(SHA256 "${out4}/still.png" sha4)
+if(NOT sha4 STREQUAL "5e0055900e572526963a5fd128163ee4e65e76ef81c849fb45e15ca029526eaf")
+    message(FATAL_ERROR "still.png changed (sha256 ${sha4})")
+endif()
 
 set(out5 "${WORK_DIR}/still_underscan")
 execute_process(
@@ -84,4 +89,8 @@ endif()
 file(READ "${out5}/still.png" png5 LIMIT 24 HEX)
 if(NOT png5 STREQUAL "89504e470d0a1a0a0000000d4948445200000300000001e2")  # 768 x 482
     message(FATAL_ERROR "underscan still.png is not 768x482: ${png5}")
+endif()
+file(SHA256 "${out5}/still.png" sha5)
+if(NOT sha5 STREQUAL "a8570f842cae5fcb0bece6022b678bc739a025b865e9e80b72335a8aecdbf919")
+    message(FATAL_ERROR "underscan still.png changed (sha256 ${sha5})")
 endif()

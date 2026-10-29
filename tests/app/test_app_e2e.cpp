@@ -18,6 +18,7 @@
 #include <QRegularExpression>
 #include <QStatusBar>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QtTest>
 #include <memory>
 #include <thread>
@@ -350,6 +351,22 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
     QVERIFY(c.screen());
     QStatusBar* bar = c.window().statusBar();
     const QString test1 = dir.filePath(QStringLiteral("Saved/Test1"));
+    // SAVE's button refuses before its dialog: a dialog that opens anyway is closed and noted
+    auto saveRefusedWithoutDialog = [&](const QString& why) {
+        auto dialog = std::make_shared<bool>(false);
+        QTimer::singleShot(500, &c, [dialog] {
+            if (QWidget* w = QApplication::activeModalWidget()) {
+                *dialog = true;
+                w->close();
+            }
+        });
+        bar->clearMessage();
+        c.saveFramestore();
+        QVERIFY(!*dialog);
+        QVERIFY2(bar->currentMessage().contains(why), qPrintable(bar->currentMessage()));
+    };
+    c.runOffline(1);
+    saveRefusedWithoutDialog(QStringLiteral("SAVE: no still in DV1/DV2"));
 
     QVERIFY(c.saveFramestore(test1));
     c.runOffline(1);
@@ -363,6 +380,7 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
     c.runOffline(1);
     c.setTBar(100);
     c.runOffline(1);
+    saveRefusedWithoutDialog(QStringLiteral("finish the effect first"));
     bar->clearMessage();
     QVERIFY(c.saveFramestore(test1));
     c.runOffline(1);

@@ -15,6 +15,7 @@
 #include "golden.h"
 #include "vt/anim.h"
 #include "vt/background.h"
+#include "vt/chromafx.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/effect.h"
@@ -1589,5 +1590,22 @@ TEST_CASE("digital moves move the DV picture over the analog background", "[dve]
     for (const char* name : {"Push On L-R", "Crop To Center"}) {
         INFO(name);
         check(*loadAlgo(name), 300);
+    }
+}
+
+// Error text names files in UTF-8: path::string() throws on MSVC for names outside the ANSI code
+// page, which turned these messages into "No mapping for the Unicode character" (or worse).
+TEST_CASE("load errors name a file outside the ANSI code page", "[effect]") {
+    const std::string name = "B\xC3\xA4rs \xE2\x9C\x93";  // "Bärs ✓"
+    const auto u8 = std::u8string(name.begin(), name.end());
+    const auto missing = std::filesystem::temp_directory_path() / std::filesystem::path(u8);
+    std::string why;
+    CHECK(!vt::loadEffect(missing, &why));
+    CHECK(why.find(name) != std::string::npos);
+    try {
+        (void)vt::readLutBank(missing);
+        FAIL("readLutBank opened a missing file");
+    } catch (const std::runtime_error& e) {
+        CHECK(std::string(e.what()).find(name) != std::string::npos);
     }
 }
