@@ -49,13 +49,13 @@ bool sameScreen(const QImage& got, const IndexedImage& want, QString* why) {
 }
 
 // Ruling 6: renderDefaultScreen(layout, CGInterface 14), from the layout after `tweak`, with the
-// selected look of the buttons a default snapshot makes active: Main 1, Preview 2, Superimpose BKG,
+// selected look of the buttons a default snapshot makes active: Main 1, Preview 2 (Superimpose is empty),
 // the M speed button and LIVE.
 IndexedImage expectedScreen(const std::function<void(PanelLayout&)>& tweak = {}) {
     PanelLayout l = layout();
     if (tweak) tweak(l);
     IndexedImage want = vt::assets::renderDefaultScreen(l, font());
-    for (const char* id : {"main_1", "prev_2", "sup_bkg", "speed_m", "fs_live"})
+    for (const char* id : {"main_1", "prev_2", "speed_m", "fs_live"})
         paste(want, node(id).rect, vt::assets::selectedLook(node(id), 0));
     return want;
 }
@@ -165,8 +165,8 @@ void TestToasterScreen::keyboardMap() {
     QTest::keyClick(&w, Qt::Key_F);
     QTest::keyClick(&w, Qt::Key_L);
     QCOMPARE(fake.calls, (QStringList{"auto Forward", "speed 0", "speed 1", "speed 2", "select Main Bkg",
-                                      "select Preview In1", "select Preview Bkg", "select Overlay In1",
-                                      "select Overlay Bkg", "frozen 1", "frozen 0"}));
+                                      "select Preview In1", "select Preview Bkg", "select Superimpose In1",
+                                      "select Superimpose Bkg", "frozen 1", "frozen 0"}));
 }
 
 void TestToasterScreen::tbarImageFollowsTheSnapshot() {

@@ -156,7 +156,9 @@ void ProgramLoop::publish() {
     SwitcherSnapshot& w = work_;
     w.main = sw_.selected(vt::Bus::Main);
     w.preview = sw_.selected(vt::Bus::Preview);
-    w.overlay = sw_.selected(vt::Bus::Overlay);
+    w.superimpose = sw_.selected(vt::Bus::Superimpose);
+    w.keyMode = sw_.keyMode();
+    w.keyLevel = sw_.keyLevel();
     w.tbar = sw_.tbar();
     w.autoRunning = sw_.autoRunning();
     w.transition = sw_.transitionActive();

@@ -28,7 +28,7 @@ QList<QRgb> colourTable(const vt::assets::Palette& p) {
 // Bus rows: node id prefix, and the button suffixes in Source order (In1..In4, DV1, DV2, BKG).
 constexpr const char* kSourceSuffix[] = {"1", "2", "3", "4", "dv1", "dv2", "bkg"};
 struct BusRow { const char* prefix; vt::Bus bus; };
-constexpr BusRow kBusRows[] = {{"main_", vt::Bus::Main}, {"prev_", vt::Bus::Preview}, {"sup_", vt::Bus::Overlay}};
+constexpr BusRow kBusRows[] = {{"main_", vt::Bus::Main}, {"prev_", vt::Bus::Preview}, {"sup_", vt::Bus::Superimpose}};
 
 // Drawn and pressable, but nothing behind them in v1.
 struct Stub { const char* id; const char* name; };
@@ -266,7 +266,7 @@ int ToasterScreen::lookOf(int node) const {
         if (c.node == node) {
             if (c.kind == Control::Bus) {
                 const vt::Source on = c.bus == vt::Bus::Main ? state_.main
-                                      : c.bus == vt::Bus::Preview ? state_.preview : state_.overlay;
+                                      : c.bus == vt::Bus::Preview ? state_.preview : state_.superimpose;
                 return c.source == on;
             }
             if (c.kind == Control::Speed) return c.speed == state_.speed;  // Variable: none of S/M/F
@@ -525,7 +525,7 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
     } else if (k >= Qt::Key_1 && k <= Qt::Key_7) {
         if (handled()) actions_.select(vt::Bus::Preview, vt::Source(k - Qt::Key_1));
     } else if (const auto* o = std::find(std::begin(kOverlay), std::end(kOverlay), k); o != std::end(kOverlay)) {
-        if (handled()) actions_.select(vt::Bus::Overlay, vt::Source(o - std::begin(kOverlay)));
+        if (handled()) actions_.select(vt::Bus::Superimpose, vt::Source(o - std::begin(kOverlay)));
     } else {
         return false;
     }

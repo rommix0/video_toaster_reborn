@@ -34,12 +34,31 @@ Switcher::Switcher() : effect_(makeDissolve()), effectColour_(effect_->effectCol
     for (Frame& f : stills_) std::fill(f.px.begin(), f.px.end(), kBlack);
 }
 
-void Switcher::select(Bus b, Source s) {
+bool Switcher::select(Bus b, Source s, std::string* whyNot) {
+    auto refuse = [&](const char* why) {
+        if (whyNot) *whyNot = why;
+        return false;
+    };
     Source& cur = sel_[busIndex(b)];
+    if (b == Bus::Superimpose) {
+        if (s == cur) return true;  // the lit source again: nothing
+        // DV2 alone is the plain still unless the store is live and the bus has an input to make live.
+        if (s == Source::DV2 && (frozen_ || !isInput(cur))) return refuse("Superimpose: DV2 alone cannot be keyed");
+    } else if (s == Source::None) {
+        return refuse("no source");
+    }
     if (!frozen_ && isDv(s) && isInput(cur)) dvInput_ = static_cast<int>(cur);  // FREEZE.md 3
     cur = s;
+    if (b == Bus::Superimpose && s != Source::None) keyOn_ = true;  // keeps the polarity
+    return true;
 }
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
+
+void Switcher::setKeyMode(KeyMode m) {
+    keyOn_ = m != KeyMode::Off;
+    if (keyOn_) keyBlack_ = m == KeyMode::Black;
+    else sel_[busIndex(Bus::Superimpose)] = Source::None;  // OFF empties the bus
+}
 
 bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     auto refuse = [&](const char* why) {
@@ -159,7 +178,16 @@ void Switcher::take() {
     disengage();
     soundPending_ = false;
     grabSelects_ = false;  // a pending grab must not undo the cut
-    if (!overlay) std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);  // Ruling 27
+    if (overlay) return;  // Ruling 27: an overlay only ends; it cuts nothing
+    // KEY.md 4 / design 2 B: swap; if Preview was Main, the key source goes to Preview; Superimpose
+    // is emptied (the keyer mode stays).
+    Source& main = sel_[busIndex(Bus::Main)];
+    Source& prev = sel_[busIndex(Bus::Preview)];
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    const bool same = main == prev;
+    std::swap(main, prev);
+    if (same && sup != Source::None) prev = sup;
+    sup = Source::None;
 }
 
 void Switcher::tick() {
@@ -210,6 +238,8 @@ const Frame& Switcher::sourceFrame(Source s, const SourceFrames& in, bool& bkgBu
             }
             f = &bkgScratch_;
             break;
+        case Source::None:  // an empty Superimpose bus; never asked for in practice
+            break;
     }
     if (f) return *f;
     if (!blackBuilt) {
@@ -246,13 +276,20 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
 
     const Frame& a = pick(sel_[busIndex(Bus::Main)]);
     // Output goes to a separate frame: DVE effects must not alias their inputs, and `program`
-    // may be one of the input frames. (The Overlay bus has no keying in version 1.) The scratch
+    // may be one of the input frames. (A key during a transition comes with the effects' routing.) The scratch
     // frames are members and `program`'s buffer is swapped in and out, so a steady stream of
     // renders allocates nothing.
     Frame& out = outScratch_;
     out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
     if (!transitionActive()) {
         out.px = a.px;
+        // The key: a Superimpose source that is not Main, over Main (design 2 A).
+        const Source sup = sel_[busIndex(Bus::Superimpose)];
+        if (keyOn_ && sup != Source::None && sup != sel_[busIndex(Bus::Main)] && keyLevel_ < kKeyLevelMax) {
+            const Frame& s = pick(sup);
+            if (keyLevel_ == 0) out.px = s.px;  // L 0: the Superimpose source alone
+            else lumaKey(s, a, s, keyClip(keyBlack_, keyLevel_), keyBlack_, guesses_.keySoftness, out);
+        }
     } else {
         const bool overlay = overlayEngaged();
         const EffectColour colour = effectColour();
@@ -410,8 +447,8 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
     // Step 2: the target DV.
     auto shows = [&](Bus b, Source s) { return sel_[busIndex(b)] == s; };
     Source target = Source::DV2;
-    if (shows(Bus::Main, Source::DV1) || shows(Bus::Overlay, Source::DV1)) target = Source::DV2;
-    else if (shows(Bus::Main, Source::DV2) || shows(Bus::Overlay, Source::DV2)) target = Source::DV1;
+    if (shows(Bus::Main, Source::DV1) || shows(Bus::Superimpose, Source::DV1)) target = Source::DV2;
+    else if (shows(Bus::Main, Source::DV2) || shows(Bus::Superimpose, Source::DV2)) target = Source::DV1;
     else if (shows(Bus::Preview, Source::DV2)) target = Source::DV1;
     // Steps 4 and 6: the still frozen in the target, shown on Preview. A pending grab is
     // cancelled (Ruling 5): it would overwrite DV1 and force it onto Main.

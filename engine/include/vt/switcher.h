@@ -1,5 +1,5 @@
 #pragma once
-// The Switcher's operator model: three buses (Main = Program, Preview, Overlay), the sources
+// The Switcher's operator model: three buses (Main = Program, Preview, Superimpose), the sources
 // they select, the effect, the T-bar, Auto and Take. It drives the effects of vt/effect.h and
 // produces the Program picture; the Qt app sits on top of it.
 //
@@ -11,6 +11,7 @@
 //
 // Threading: single-threaded. Every call must be serialised by the caller, including render():
 // it is const but works in member scratch frames, so two renders must not overlap either.
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -20,14 +21,16 @@
 
 #include "vt/background.h"
 #include "vt/effect.h"
+#include "vt/key.h"
 #include "vt/raster.h"
 #include "vt/sound.h"
 #include "vt/timing.h"
 
 namespace vt {
 
-enum class Bus { Main, Preview, Overlay };
-enum class Source { In1, In2, In3, In4, DV1, DV2, Bkg };
+enum class Bus { Main, Preview, Superimpose };
+// None is only for the Superimpose bus, which can be empty (Main and Preview always have a source).
+enum class Source { In1, In2, In3, In4, DV1, DV2, Bkg, None };
 // Auto's direction: Forward runs the T-bar to 511 (Space), Reverse back to 0 (Shift+Space,
 // manual PDF 185).
 enum class Direction { Forward, Reverse };
@@ -43,13 +46,27 @@ public:
     Switcher();
 
     // --- buses ---
-    // Overlay is present and selectable, but version 1 has no keying (spec 3): render ignores it.
+    // Superimpose is the luma keyer's source bus (KEY.md, design 2 A) and can be empty (None).
     // Selections are live at all times, also during a transition: render reads the current
     // selections, and the swap at T-bar 511 (or Take) exchanges whatever is selected then.
     // DV1 or DV2 selected while the DV store is live makes the bus's previous selection, when it
     // was an input, the DV input (FREEZE.md 3: the bus shows that input through DV, delayed).
-    void select(Bus, Source);
+    // Refused (false, the reason in *whyNot, the bus kept): None on Main or Preview ("no source");
+    // DV2 on Superimpose while the store is frozen or the bus shows no input to make live
+    // ("Superimpose: DV2 alone cannot be keyed"). A Superimpose source other than the one it has
+    // turns the keyer on (its polarity kept); the same one again does nothing; None empties the
+    // bus and leaves the keyer as it is.
+    bool select(Bus, Source, std::string* whyNot = nullptr);
     Source selected(Bus) const;
+
+    // --- keyer (design 2 A) ---
+    // Off keeps the last polarity (power-up: off, White) and empties Superimpose; Black and White
+    // turn the keyer on with that polarity. The level is the clip level 0..kKeyLevelMax, clamped
+    // (power-up 128).
+    void setKeyMode(KeyMode);
+    KeyMode keyMode() const { return !keyOn_ ? KeyMode::Off : keyBlack_ ? KeyMode::Black : KeyMode::White; }
+    void setKeyLevel(int l) { keyLevel_ = std::clamp(l, 0, kKeyLevelMax); }
+    int keyLevel() const { return keyLevel_; }
 
     // --- effect ---
     // Makes `e` the current effect (a null effect is refused). Any transition in progress is
@@ -122,9 +139,12 @@ public:
     bool transitionActive() const { return auto_ || tbar_ > 0 || engaged_; }
     bool chromaEngaged() const { return engaged_ && effect_->isChromaFx(); }
     bool overlayEngaged() const { return engaged_ && effect_->isOverlay(); }
-    // Cut: swaps the Main and Preview selections. Ends any transition (T-bar 0, Auto stopped,
+    // Cut: swaps the Main and Preview selections; if Preview was Main and Superimpose has a source,
+    // that source goes to Preview, and Superimpose is emptied (design 2 B, KEY.md 4; the keyer mode
+    // stays). Ends any transition (T-bar 0, Auto stopped,
     // ChromaFX disengaged) and drops a sound pendingSound() has not handed over. On an engaged
-    // overlay it only ends the overlay, without a cut (overlays never switch sources).
+    // overlay it only ends the overlay, without a cut (overlays never switch sources, nor touch
+    // Superimpose).
     void take();
 
     // --- background (BKG source) ---
@@ -151,7 +171,7 @@ public:
     bool grabPending() const { return grabPending_; }
     // A framestore loaded (FREEZE.md 4): refused with "a transition is running: finish it first"
     // while auto or the T-bar > 0 with nothing engaged; disengages an engaged ChromaFX; buses
-    // showing live DV go back to In(dvInput); target = DV2 if Main or Overlay shows DV1, DV1 if
+    // showing live DV go back to In(dvInput); target = DV2 if Main or Superimpose shows DV1, DV1 if
     // either shows DV2, else DV1 if Preview shows DV2, else DV2; the still is written there, the
     // store frozen, the target selected on Preview.
     bool loadStill(const Frame& still, std::string* whyNot = nullptr);
@@ -165,7 +185,9 @@ public:
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
-    //  * no transition (T-bar 0, Auto not running, nothing engaged): Program = A;
+    //  * no transition (T-bar 0, Auto not running, nothing engaged): Program = A, or, with the keyer on
+    //    and a Superimpose source other than Main: the key (L 0: Superimpose alone; 257: A alone;
+    //    else lumaKey by the clip value, keyClip, with the Superimpose picture as fill and signal);
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
     //    (Program shows the recoloured Preview), frameNumber = ticks since engagement;
@@ -218,7 +240,9 @@ private:
     void writeStill(int dv, const Frame* f) const;  // dv 0 = DV1, 1 = DV2; null = black
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
-    std::array<Source, 3> sel_{Source::In1, Source::In2, Source::Bkg};
+    std::array<Source, 3> sel_{Source::In1, Source::In2, Source::None};  // Main, Preview, Superimpose
+    bool keyOn_ = false, keyBlack_ = false;
+    int keyLevel_ = 128;
     std::shared_ptr<const Effect> effect_;
     int tbar_ = 0;
     bool auto_ = false;

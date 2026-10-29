@@ -40,9 +40,9 @@ inline const vt::assets::PanelNode& node(const char* id) {
 
 inline QPoint centre(const vt::Rect& r) { return {r.x + r.w / 2, r.y + r.h / 2}; }
 
-inline const char* busName(vt::Bus b) { return b == vt::Bus::Main ? "Main" : b == vt::Bus::Preview ? "Preview" : "Overlay"; }
+inline const char* busName(vt::Bus b) { return b == vt::Bus::Main ? "Main" : b == vt::Bus::Preview ? "Preview" : "Superimpose"; }
 inline const char* sourceName(vt::Source s) {
-    static const char* const n[] = {"In1", "In2", "In3", "In4", "DV1", "DV2", "Bkg"};
+    static const char* const n[] = {"In1", "In2", "In3", "In4", "DV1", "DV2", "Bkg", "None"};
     return n[int(s)];
 }
 

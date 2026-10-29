@@ -18,7 +18,9 @@ namespace vt::media {
 // the next refusal or until a postChecked succeeds; empty = none. `refusalCount` counts every
 // refused postChecked since the loop was made, so a repeat of the same refusal is visible too.
 struct SwitcherSnapshot {
-    vt::Source main = vt::Source::In1, preview = vt::Source::In2, overlay = vt::Source::Bkg;
+    vt::Source main = vt::Source::In1, preview = vt::Source::In2, superimpose = vt::Source::None;
+    vt::KeyMode keyMode = vt::KeyMode::Off;  // the keyer (Off: Superimpose is empty)
+    int keyLevel = 128;                      // the clip level, 0..257
     int tbar = 0;
     bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;
     bool hasStill = false;  // a still was written into DV1 or DV2 (SAVE has something to save)

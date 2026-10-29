@@ -15,6 +15,7 @@
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/effect.h"
+#include "vt/key.h"
 #include "vt/switcher.h"
 
 namespace {
@@ -121,19 +122,17 @@ TEST_CASE("select and take swap Main and Preview", "[switcher]") {
     Rig r;
     r.sw.select(Bus::Main, Source::In3);
     r.sw.select(Bus::Preview, Source::DV1);
-    r.sw.select(Bus::Overlay, Source::In4);
+    r.sw.select(Bus::Superimpose, Source::In4);
     REQUIRE(r.sw.selected(Bus::Main) == Source::In3);
     REQUIRE(r.sw.selected(Bus::Preview) == Source::DV1);
-    REQUIRE(r.sw.selected(Bus::Overlay) == Source::In4);
+    REQUIRE(r.sw.selected(Bus::Superimpose) == Source::In4);
     r.sw.take();
     REQUIRE(r.sw.selected(Bus::Main) == Source::DV1);
     REQUIRE(r.sw.selected(Bus::Preview) == Source::In3);
-    REQUIRE(r.sw.selected(Bus::Overlay) == Source::In4);
+    REQUIRE(r.sw.selected(Bus::Superimpose) == Source::None);  // Take empties it (design 2 B step 3)
 
-    // Program is the Main source, plainly; the Overlay bus is ignored in version 1
+    // Program is the Main source, plainly (the keyer is on, but its bus is empty)
     r.sw.select(Bus::Main, Source::In1);
-    REQUIRE(r.render().px == r.in1.px);
-    r.sw.select(Bus::Overlay, Source::In2);
     REQUIRE(r.render().px == r.in1.px);
     // a frozen DV1 or DV2 is black until written; a null input is black too
     REQUIRE(r.sw.setFrozen(true));  // writes DV1 (no bus shows DV2)
@@ -142,6 +141,148 @@ TEST_CASE("select and take swap Main and Preview", "[switcher]") {
     r.src.inputs[0] = nullptr;
     r.sw.select(Bus::Main, Source::In1);
     REQUIRE(r.render().px == solid({0, 0, 0, 255}).px);
+}
+
+TEST_CASE("power-up: keyer off, White, level 128, Superimpose empty", "[switcher][key]") {
+    Rig r;
+    CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    CHECK(r.sw.keyLevel() == 128);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    r.sw.select(Bus::Superimpose, Source::In3);
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);  // Off kept White as the polarity
+}
+
+TEST_CASE("picking a Superimpose source turns the keyer on; OFF empties the bus", "[switcher][key]") {
+    Rig r;
+    CHECK(r.sw.select(Bus::Superimpose, Source::In3));
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+    CHECK(r.sw.select(Bus::Superimpose, Source::In3));  // the lit source again: nothing
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+    r.sw.setKeyMode(vt::KeyMode::Off);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    r.sw.select(Bus::Superimpose, Source::In3);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);  // the polarity was kept
+    // None empties the bus and leaves the keyer alone
+    CHECK(r.sw.select(Bus::Superimpose, Source::None));
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+}
+
+TEST_CASE("DV2 alone on Superimpose is refused", "[switcher][key]") {
+    const char* const msg = "Superimpose: DV2 alone cannot be keyed";
+    std::string why;
+    {
+        Rig r;  // frozen: the plain DV2 still
+        r.sw.select(Bus::Superimpose, Source::In3);
+        REQUIRE(r.sw.setFrozen(true));
+        CHECK_FALSE(r.sw.select(Bus::Superimpose, Source::DV2, &why));
+        CHECK(why == msg);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+        CHECK(r.sw.select(Bus::Superimpose, Source::DV1));  // DV1 on a frozen store is fine
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::DV1);
+    }
+    {
+        Rig r;  // live, an input on the bus to make live
+        r.sw.select(Bus::Superimpose, Source::In4);
+        CHECK(r.sw.select(Bus::Superimpose, Source::DV2));
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::DV2);
+        CHECK(r.sw.dvInput() == 3);
+    }
+    {
+        Rig r;  // live, nothing on the bus
+        why.clear();
+        CHECK_FALSE(r.sw.select(Bus::Superimpose, Source::DV2, &why));
+        CHECK(why == msg);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    }
+    {
+        Rig r;  // Main and Preview always need a source
+        why.clear();
+        CHECK_FALSE(r.sw.select(Bus::Main, Source::None, &why));
+        CHECK(why == "no source");
+        CHECK_FALSE(r.sw.select(Bus::Preview, Source::None));
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+    }
+}
+
+TEST_CASE("the key picture: L 0, 1..256, 257", "[switcher][key]") {
+    Rig r;
+    r.sw.select(Bus::Superimpose, Source::In3);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    r.sw.setKeyLevel(128);
+    vt::Frame expect;
+    vt::lumaKey(r.in3, r.in1, r.in3, vt::keyClip(true, 128), true, 0, expect);
+    CHECK(r.render().px == expect.px);
+    CHECK(r.render().px != r.in1.px);
+    CHECK(r.render().px != r.in3.px);
+    r.sw.setKeyLevel(0);
+    CHECK(r.render().px == r.in3.px);
+    r.sw.setKeyLevel(257);
+    CHECK(r.render().px == r.in1.px);
+    r.sw.setKeyLevel(1);
+    vt::lumaKey(r.in3, r.in1, r.in3, vt::keyClip(true, 1), true, 0, expect);
+    CHECK(r.render().px == expect.px);
+    r.sw.setKeyLevel(128);
+    r.sw.setKeyMode(vt::KeyMode::White);
+    vt::lumaKey(r.in3, r.in1, r.in3, vt::keyClip(false, 128), false, 0, expect);
+    CHECK(r.render().px == expect.px);
+    r.sw.setKeyLevel(999);
+    CHECK(r.sw.keyLevel() == vt::kKeyLevelMax);
+    r.sw.setKeyLevel(-5);
+    CHECK(r.sw.keyLevel() == 0);
+}
+
+TEST_CASE("a key needs a Superimpose source that is not Main", "[switcher][key]") {
+    Rig r;
+    r.sw.select(Bus::Superimpose, Source::In1);  // the same as Main
+    REQUIRE(r.sw.keyMode() == vt::KeyMode::White);
+    CHECK(r.render().px == r.in1.px);
+    r.sw.select(Bus::Superimpose, Source::None);
+    for (auto m : {vt::KeyMode::Black, vt::KeyMode::White}) {  // lit, but nothing to key
+        r.sw.setKeyMode(m);
+        CHECK(r.render().px == r.in1.px);
+    }
+}
+
+TEST_CASE("keying BKG Snow and a missing input", "[switcher][key]") {
+    Rig r;
+    r.sw.setCustomBackground(0x8000);  // bit 15: Snow
+    r.sw.select(Bus::Superimpose, Source::Bkg);
+    const vt::Frame first = r.render();
+    r.sw.tick();
+    CHECK(r.render().px != first.px);  // the noise moves, so does the key
+
+    Rig m;
+    m.src.inputs[1] = nullptr;
+    m.sw.select(Bus::Superimpose, Source::In2);
+    vt::Frame expect;
+    vt::lumaKey(solid({0, 0, 0, 255}), m.in1, solid({0, 0, 0, 255}), vt::keyClip(false, 128), false, 0, expect);
+    CHECK(m.render().px == expect.px);
+}
+
+TEST_CASE("Take: swap, the key source to Preview when Preview was Main, Superimpose emptied", "[switcher][key]") {
+    Rig r;
+    r.sw.select(Bus::Preview, Source::In1);
+    r.sw.select(Bus::Superimpose, Source::In3);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    r.sw.take();
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+
+    Rig p;  // Preview was not Main: the plain swap
+    p.sw.select(Bus::Superimpose, Source::In3);
+    p.sw.take();
+    CHECK(p.sw.selected(Bus::Main) == Source::In2);
+    CHECK(p.sw.selected(Bus::Preview) == Source::In1);
+    CHECK(p.sw.selected(Bus::Superimpose) == Source::None);
 }
 
 TEST_CASE("take ends a transition in progress", "[switcher]") {
@@ -1555,10 +1696,10 @@ TEST_CASE("load target follows the loader rule", "[switcher][dv]") {
         Source target;
     };
     // FREEZE.md 4 step 2
-    for (const Case& c : {Case{"Main DV1", true, Bus::Main, Source::DV1, Source::DV2},
-                          Case{"Overlay DV2", true, Bus::Overlay, Source::DV2, Source::DV1},
+    for (const Case& c : {Case{"Main DV1, Superimpose None", true, Bus::Main, Source::DV1, Source::DV2},
+                          Case{"Superimpose DV1", true, Bus::Superimpose, Source::DV1, Source::DV2},
                           Case{"Preview DV2", true, Bus::Preview, Source::DV2, Source::DV1},
-                          Case{"nothing", false, Bus::Overlay, Source::Bkg, Source::DV2},
+                          Case{"nothing", false, Bus::Superimpose, Source::Bkg, Source::DV2},
                           Case{"Main live DV1", false, Bus::Main, Source::DV1, Source::DV2}}) {
         INFO(c.name);
         Rig r;
@@ -1570,6 +1711,13 @@ TEST_CASE("load target follows the loader rule", "[switcher][dv]") {
         CHECK(r.sw.still(c.target).px == still.px);
         if (!c.frozen && c.dv == Source::DV1) CHECK(r.sw.selected(c.bus) == Source::In1);  // stripped
     }
+    // Superimpose DV2 only exists made live first (a frozen store refuses it), then frozen
+    Rig q;
+    q.sw.select(Bus::Superimpose, Source::In4);
+    REQUIRE(q.sw.select(Bus::Superimpose, Source::DV2));
+    REQUIRE(q.sw.setFrozen(true));
+    REQUIRE(q.sw.loadStill(still));
+    CHECK(q.sw.selected(Bus::Preview) == Source::DV1);
     // refused while a transition runs
     Rig t;
     t.sw.setTBar(100);
@@ -1618,7 +1766,7 @@ TEST_CASE("loading a framestore cancels a pending grab (Ruling 5)", "[switcher][
     REQUIRE(r.sw.grab(2));
     run(r, r.in3, 6, 7);  // one tick into the wait
     REQUIRE(r.sw.grabPending());
-    r.sw.select(Bus::Overlay, Source::DV2);  // frozen: the loader's target is DV1, the grab's DV
+    r.sw.select(Bus::Preview, Source::DV2);  // frozen: the loader's target is DV1, the grab's DV
     REQUIRE(r.sw.loadStill(numbered(77)));
     CHECK_FALSE(r.sw.grabPending());
     run(r, r.in3, 7, 12);

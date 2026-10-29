@@ -544,7 +544,9 @@ TEST_CASE("switcherState follows the Switcher from the tick a command ran") {
     CHECK(s.tick == -1);
     CHECK(s.main == vt::Source::In1);
     CHECK(s.preview == vt::Source::In2);
-    CHECK(s.overlay == vt::Source::Bkg);
+    CHECK(s.superimpose == vt::Source::None);
+    CHECK(s.keyMode == vt::KeyMode::Off);
+    CHECK(s.keyLevel == 128);
     CHECK(s.tbar == 0);
     CHECK_FALSE(s.transition);
     CHECK(s.lastRefusal.empty());
@@ -554,7 +556,9 @@ TEST_CASE("switcherState follows the Switcher from the tick a command ran") {
     CHECK(loop.switcherState().tick == 4);
     loop.post([](vt::Switcher& sw) {
         sw.select(vt::Bus::Main, vt::Source::In3);
-        sw.select(vt::Bus::Overlay, vt::Source::DV1);
+        sw.select(vt::Bus::Superimpose, vt::Source::DV1);
+        sw.setKeyMode(vt::KeyMode::Black);
+        sw.setKeyLevel(200);
         sw.setBackground(vt::BkgColour::Blue);
     });
     s = loop.switcherState();
@@ -563,7 +567,9 @@ TEST_CASE("switcherState follows the Switcher from the tick a command ran") {
     s = loop.switcherState();
     CHECK(s.tick == 5);
     CHECK(s.main == vt::Source::In3);
-    CHECK(s.overlay == vt::Source::DV1);
+    CHECK(s.superimpose == vt::Source::DV1);
+    CHECK(s.keyMode == vt::KeyMode::Black);
+    CHECK(s.keyLevel == 200);
     CHECK(s.background == vt::EffectColour::of(vt::BkgColour::Blue));
 
     int dur = 0;

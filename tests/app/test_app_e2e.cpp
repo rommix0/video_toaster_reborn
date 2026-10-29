@@ -665,7 +665,7 @@ void TestAppE2e::switcherKeysFromTheOtherWindows() {
     QTest::keyClick(edit, Qt::Key_Q);
     c.runOffline(1);
     QCOMPARE(mainSource(), vt::Source::In3);
-    QCOMPARE(c.loop().switcherState().overlay, vt::Source::Bkg);
+    QCOMPARE(c.loop().switcherState().superimpose, vt::Source::None);
     QCOMPARE(edit->text(), QStringLiteral("q"));
 }
 
