@@ -365,6 +365,17 @@ TEST_CASE("renderDve mixes a routed pixel by its level", "[dve]") {
         auto w = [&](int sc, int dc) { return uint8_t((sc * (255 - 170) + dc * 170 + 127) / 255); };
         REQUIRE(out.at(300, 200) == vt::Rgba8{w(s.r, d.r), w(s.g, d.g), w(s.b, d.b), 255});
     }
+    // over key 0 the DVE draws nothing: the mix is taken against black (a shadow on the bus)
+    vt::DveControl k0 = c;
+    k0.key[130 * 192 + 75] = 0;  // pixels 300..303 of control line 130
+    k0.index[130 * 768 + 300] = 4;
+    const std::vector<vt::DveRoute> shade = {{1, 0}, {9, 2}, {3, 0}, {3, 2}, {1, 2}};
+    const vt::DveMix shadeMix{&shade, &a, {255, 255, 255, 255}, nullptr};
+    vt::Frame out;
+    vt::renderDve(k0, moving, a, {}, out, vt::HardwareGuesses{}, &shadeMix);
+    auto dark = [](int sc) { return uint8_t((sc * (255 - 170) + 127) / 255); };
+    REQUIRE(out.at(300, 260) == vt::Rgba8{dark(10), dark(20), dark(30), 255});
+    REQUIRE(out.at(301, 260) == a.at(301, 260));  // index 0 there: S = 1 at L 0, the bus alone
 }
 
 TEST_CASE("decodeDve fills the display index only for \"!\" DVEs", "[dve]") {

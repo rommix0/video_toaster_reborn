@@ -113,8 +113,11 @@ struct DveMix {
 //               art and draws its tiles with L = 0 over the background).
 //   routed pixel (mix given, and DveControl::index non-empty): i = index at the pixel; when
 //               routes[i].source is 1 or 9 the pixel is s = s1 / the generator (or colour) at (x, y)
-//               mixed with d, the pixel as drawn above (before the art layer), by
-//               w = dveLevelMix[L]: (s * (255 - w) + d * w + 127) / 255 per channel, alpha 255.
+//               mixed with d, the pixel as drawn above (before the art layer; black where v == 0,
+//               where the DVE draws nothing), by w = dveLevelMix[L]:
+//               (s * (255 - w) + d * w + 127) / 255 per channel, alpha 255. So an S = 1 index at
+//               L 1-2 over key 0 is a shadow on that bus: Flip Out Bottom2 !'s L = 2 trapezoid under
+//               the card is where 2000FX Flip Out Bottom has key shadow codes 1-7.
 //               S = 3 is d itself (DveMix). For S = 9, s is the palette colour cmap[i] instead of
 //               the generator when its high nibbles are not all 0 (a GUESS from the data: Warp To
 //               Globe !'s S = 9 indexes hold a shaded Earth that the warped picture dissolves into;

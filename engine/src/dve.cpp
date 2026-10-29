@@ -190,7 +190,7 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
                 else if (bus) s = bus->at(x, y);
                 else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule
                 const int w = g.dveLevelMix[rt.level & 3];
-                const Rgba8 d = dst[x];
+                const Rgba8 d = key[x / 4] == 0 ? Rgba8{0, 0, 0, 255} : dst[x];  // key 0: the DVE draws nothing
                 auto m = [w](int sc, int dc) { return uint8_t((sc * (255 - w) + dc * w + 127) / 255); };
                 dst[x] = {m(s.r, d.r), m(s.g, d.g), m(s.b, d.b), 255};
                 routedPx[x] = true;

@@ -1359,6 +1359,36 @@ TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's moved DV picture, S = 1 t
     REQUIRE(s3 > 0);
 }
 
+// Flip Out Bottom2 !'s card casts a shadow: its L = 2, S = 1 trapezoid under the card lies over
+// key 0 (where 2000FX Flip Out Bottom has key shadow codes), so B is mixed toward black there.
+TEST_CASE("Flip Out Bottom2 ! shades B under the card", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !";
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+    const auto routes = vt::dveRoutes(c->blobs.at(kTagSourceWords), an.bm.cmap);
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 18;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[18]);
+    const int w = ctx.guesses.dveLevelMix[2];
+    auto dark = [w](int sc) { return uint8_t((sc * (255 - w) + 127) / 255); };
+    int shadow = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const uint8_t i = dc.index[size_t(y / 2) * 768 + size_t(x)];
+            if (dc.key[size_t(y / 2) * 192 + size_t(x / 4)] != 0 || i >= routes.size() || routes[i].source != 1 || routes[i].level != 2) continue;
+            ++shadow;
+            const vt::Rgba8 p = b.at(x, y);
+            if (!same(got.at(x, y), {dark(p.r), dark(p.g), dark(p.b), 255})) FAIL("shadow pixel (" << x << "," << y << ") is not shaded B");
+        }
+    REQUIRE(shadow >= 10000);
+}
+
 // Fly Over Crumpled Edge !'s foil edge takes its colour from the whole display index: plane 2 is
 // part of it (index 60 is dark, 19 27 31; the old cmap[group * 8] drew cmap[56], 217 235 255).
 TEST_CASE("Fly Over Crumpled Edge ! draws its edge in the display index's palette colour", "[dve][effect]") {
