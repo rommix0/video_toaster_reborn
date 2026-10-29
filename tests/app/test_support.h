@@ -87,6 +87,10 @@ public:
     void setFrozen(bool f) override { calls << QStringLiteral("frozen %1").arg(f); }
     void grab(int input) override { calls << QStringLiteral("grab %1").arg(input); }
     void saveFramestore() override { calls << QStringLiteral("save"); }
+    void setKeyMode(vt::KeyMode m) override {
+        calls << QStringLiteral("key %1").arg(m == vt::KeyMode::Off ? "Off" : m == vt::KeyMode::Black ? "Black" : "White");
+    }
+    void setKeyLevel(int l) override { calls << QStringLiteral("key level %1").arg(l); }
     void notImplemented(const QString& what) override { calls << QStringLiteral("notImplemented ") + what; }
 };
 

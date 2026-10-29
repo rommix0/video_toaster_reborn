@@ -50,12 +50,12 @@ bool sameScreen(const QImage& got, const IndexedImage& want, QString* why) {
 
 // Ruling 6: renderDefaultScreen(layout, CGInterface 14), from the layout after `tweak`, with the
 // selected look of the buttons a default snapshot makes active: Main 1, Preview 2 (Superimpose is empty),
-// the M speed button and LIVE.
+// the M speed button, LIVE and key OFF.
 IndexedImage expectedScreen(const std::function<void(PanelLayout&)>& tweak = {}) {
     PanelLayout l = layout();
     if (tweak) tweak(l);
     IndexedImage want = vt::assets::renderDefaultScreen(l, font());
-    for (const char* id : {"main_1", "prev_2", "speed_m", "fs_live"})
+    for (const char* id : {"main_1", "prev_2", "speed_m", "fs_live", "key_off"})
         paste(want, node(id).rect, vt::assets::selectedLook(node(id), 0));
     return want;
 }
@@ -111,6 +111,9 @@ private slots:
     void tbarDragDuringAutoFollowsTheSnapshot();
     void framestoreButtons();
     void stabilizeIsNotImplemented();
+    void keyButtonsAndKeys();
+    void keyButtonLooksFollowTheSnapshot();
+    void levelBoxDragAndText();
     void displayFollowsTheSnapshotNotTheClick();
     void bkgPopupInTheToasterLook();
     void bkgNameFollowsTheSnapshot();
@@ -164,9 +167,13 @@ void TestToasterScreen::keyboardMap() {
     QTest::keyClick(&w, Qt::Key_U);
     QTest::keyClick(&w, Qt::Key_F);
     QTest::keyClick(&w, Qt::Key_L);
+    QTest::keyClick(&w, Qt::Key_O);
+    QTest::keyClick(&w, Qt::Key_BracketLeft);
+    QTest::keyClick(&w, Qt::Key_BracketRight);
     QCOMPARE(fake.calls, (QStringList{"auto Forward", "speed 0", "speed 1", "speed 2", "select Main Bkg",
                                       "select Preview In1", "select Preview Bkg", "select Superimpose In1",
-                                      "select Superimpose Bkg", "frozen 1", "frozen 0"}));
+                                      "select Superimpose Bkg", "frozen 1", "frozen 0", "key Off", "key Black",
+                                      "key White"}));
 }
 
 void TestToasterScreen::tbarImageFollowsTheSnapshot() {
@@ -267,6 +274,58 @@ void TestToasterScreen::stabilizeIsNotImplemented() {
     QVERIFY(QTest::qWaitForWindowExposed(&w));
     QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_stabilize").hitRect));
     QCOMPARE(fake.calls, QStringList{"notImplemented STABILIZE"});
+}
+
+void TestToasterScreen::keyButtonsAndKeys() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    for (const char* id : {"key_off", "key_black", "key_white"})
+        QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node(id).hitRect));
+    QCOMPARE(fake.calls, (QStringList{"key Off", "key Black", "key White"}));
+    fake.calls.clear();
+    for (Qt::Key k : {Qt::Key_O, Qt::Key_BracketLeft, Qt::Key_BracketRight}) QTest::keyClick(&w, k);
+    QCOMPARE(fake.calls, (QStringList{"key Off", "key Black", "key White"}));
+}
+
+void TestToasterScreen::keyButtonLooksFollowTheSnapshot() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    SwitcherSnapshot s;
+    s.keyMode = vt::KeyMode::Black;
+    w.setState(s);
+    const QImage scr = w.renderIndexedForTest();
+    auto shows = [&](const char* id, bool selected) {
+        return region(scr, node(id).rect).px == (selected ? vt::assets::selectedLook(node(id), 0).px : node(id).image.px);
+    };
+    QVERIFY(shows("key_black", true) && shows("key_off", false) && shows("key_white", false));
+}
+
+// C8: L moves by half the horizontal drag from L at the press; the text is three digits.
+void TestToasterScreen::levelBoxDragAndText() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    const QPoint at = centre(node("key_level_popup").hitRect);
+    QTest::mousePress(&w, Qt::LeftButton, {}, at);
+    QTest::mouseMove(&w, at + QPoint(20, 0));
+    QTest::mouseMove(&w, at + QPoint(20, 5));  // same level: not sent again
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, at + QPoint(20, 5));
+    QCOMPARE(fake.calls, QStringList{"key level 138"});
+
+    SwitcherSnapshot s;
+    s.keyLevel = 5;
+    w.setState(s);
+    const IndexedImage want = expectedScreen([](PanelLayout& l) {
+        for (auto& t : l.texts)
+            if (t.id == "key_level_text") t.text = "005";
+    });
+    QString why;
+    QVERIFY2(sameScreen(w.renderIndexedForTest(), want, &why), qPrintable(why));
 }
 
 void TestToasterScreen::displayFollowsTheSnapshotNotTheClick() {

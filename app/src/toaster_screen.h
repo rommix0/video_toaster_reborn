@@ -105,20 +105,22 @@ protected:
 private:
     // A clickable node and what it does.
     struct Control {
-        enum Kind { Bus, Take, Auto, Speed, Bkg, Freeze, Live, Grab, Save, Stub } kind;
+        enum Kind { Bus, Take, Auto, Speed, Bkg, Freeze, Live, Grab, Save, Key, KeyLevel, Stub } kind;
         int node;
         vt::Bus bus = vt::Bus::Main;
         vt::Source source = vt::Source::In1;
         vt::Speed speed = vt::Speed::Medium;
         int input = 0;  // Grab: 0..3
         QString name;  // for Stub: what notImplemented() reports
+        vt::KeyMode keyMode = vt::KeyMode::Off;  // Key
     };
 
     int nodeIndex(const char* id) const;
     int lookOf(int node) const;            // T-bar: image index; others: 1 = selected look, 0 = normal
     const vt::assets::IndexedImage& imageOf(int node) const;
     std::string bkgText() const;
-    QRect bkgTextRect(const std::string&) const;
+    std::string levelText() const;         // the clip level as three digits
+    QRect textRect(int text, const std::string&) const;
     void refresh();                        // brings looks and texts up to date, redraws what changed
     void redraw(const QRegion&);           // recomposes the indexed screen there and rescales it
     void compose(const QRect&);
@@ -141,8 +143,11 @@ private:
     std::vector<int> look_;                          // per node, as last drawn (-1 = not drawn)
     std::vector<vt::assets::IndexedImage> selected_; // per node, its selected look (empty if none)
     std::vector<Control> controls_;
-    int tbarNode_ = -1, bkgNode_ = -1, bkgText_ = -1;
+    int tbarNode_ = -1, bkgNode_ = -1, bkgText_ = -1, levelNode_ = -1, levelText_ = -1;
     vt::media::SwitcherSnapshot state_;
+    int dragLevel_ = -1;                             // level box drag: the last level sent, -1 = none
+    int levelAtPress_ = 0;
+    double pressX_ = 0;                              // the press, in Toaster pixels
     int dragTbar_ = -1;                              // last setTBar of a drag (only to skip repeats)
     int pressed_ = -1;                               // node drawn pressed while the mouse holds it
     int preferredZoom_ = 1;                          // setZoom: sizeHint()

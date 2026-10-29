@@ -377,7 +377,7 @@ bool AppController::forwardKey(QObject* receiver, QKeyEvent* e) {
 // ---- actions ----
 
 void AppController::select(vt::Bus b, vt::Source s) {
-    loop_->post([b, s](vt::Switcher& sw) { sw.select(b, s); });
+    loop_->postChecked([b, s](vt::Switcher& sw, std::string& why) { return sw.select(b, s, &why); });
 }
 
 void AppController::take() {
@@ -394,6 +394,14 @@ void AppController::setSpeed(vt::Speed s) {
 
 void AppController::setTBar(int position) {
     loop_->post([position](vt::Switcher& sw) { sw.setTBar(position); });
+}
+
+void AppController::setKeyMode(vt::KeyMode m) {
+    loop_->post([m](vt::Switcher& sw) { sw.setKeyMode(m); });
+}
+
+void AppController::setKeyLevel(int level) {
+    loop_->post([level](vt::Switcher& sw) { sw.setKeyLevel(level); });
 }
 
 void AppController::setBackground(vt::BkgColour c) {

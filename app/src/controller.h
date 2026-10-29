@@ -22,7 +22,7 @@
 class SwitcherActions {
 public:
     virtual ~SwitcherActions() = default;
-    virtual void select(vt::Bus, vt::Source) = 0;
+    virtual void select(vt::Bus, vt::Source) = 0;        // a refusal (DV2 alone on Superimpose) shows in the status bar
     virtual void take() = 0;
     virtual void autoTransition(vt::Direction) = 0;
     virtual void setSpeed(vt::Speed) = 0;
@@ -32,6 +32,8 @@ public:
     virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons, keys f / l
     virtual void grab(int input) = 0;                    // grab buttons 1-4: 0..3
     virtual void saveFramestore() = 0;                   // SAVE
+    virtual void setKeyMode(vt::KeyMode) = 0;            // OFF / Black key / White key, keys o [ ]
+    virtual void setKeyLevel(int level) = 0;             // the level box drag: 0..257
     virtual void notImplemented(const QString& what) = 0;  // a control that does nothing in v1
 };
 
@@ -148,6 +150,8 @@ public:
     void setFrozen(bool frozen) override;
     void grab(int input) override;
     void saveFramestore() override;               // asks for a file
+    void setKeyMode(vt::KeyMode) override;
+    void setKeyLevel(int level) override;
     bool saveFramestore(const QString& path);     // posts the save to `path`; false: no path
     void notImplemented(const QString& what) override;
 

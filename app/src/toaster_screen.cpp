@@ -7,6 +7,7 @@
 #include <QWheelEvent>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 
@@ -34,7 +35,6 @@ constexpr BusRow kBusRows[] = {{"main_", vt::Bus::Main}, {"prev_", vt::Bus::Prev
 struct Stub { const char* id; const char* name; };
 constexpr Stub kStubs[] = {
     {"fs_stabilize", "STABILIZE"},
-    {"key_off", "Key OFF"}, {"key_black", "Black key"}, {"key_white", "White key"}, {"key_level_popup", "Key level"},
 };
 
 constexpr int kEdge = 3;       // outline + 2-px bevel
@@ -144,6 +144,10 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     control("fs_live", {Control::Live, -1});
     for (int i = 0; i < 4; ++i) control(("fs_" + std::to_string(i + 1)).c_str(), {Control::Grab, -1, {}, {}, {}, i});
     control("fs_save", {Control::Save, -1});
+    control("key_off", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::Off});
+    control("key_black", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::Black});
+    control("key_white", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::White});
+    control("key_level_popup", {Control::KeyLevel, -1});
     for (const auto& s : kStubs) control(s.id, {Control::Stub, -1, {}, {}, {}, 0, QString::fromLatin1(s.name)});
 
     tbarNode_ = nodeIndex("tbar");
@@ -151,6 +155,8 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     bkgNode_ = nodeIndex("bkg_popup");
     for (size_t i = 0; i < layout_.texts.size(); ++i)
         if (layout_.texts[i].id == "bkg_popup_text") bkgText_ = int(i);
+        else if (layout_.texts[i].id == "key_level_text") levelText_ = int(i);
+    levelNode_ = nodeIndex("key_level_popup");
 
     // Everything compose() and imageOf() index must be there.
     auto check = [](bool ok, const std::string& what) {
@@ -180,6 +186,7 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     scaled_ = QImage(layout_.screenW, layout_.screenH, QImage::Format_RGB32);
     for (int i : drawn_) look_[size_t(i)] = lookOf(i);
     if (bkgText_ >= 0) layout_.texts[size_t(bkgText_)].text = bkgText();
+    if (levelText_ >= 0) layout_.texts[size_t(levelText_)].text = levelText();
     redraw(QRect(0, 0, layout_.screenW, layout_.screenH));
 }
 
@@ -272,6 +279,7 @@ int ToasterScreen::lookOf(int node) const {
             if (c.kind == Control::Speed) return c.speed == state_.speed;  // Variable: none of S/M/F
             if (c.kind == Control::Freeze) return state_.frozen;   // grab and SAVE are momentary
             if (c.kind == Control::Live) return !state_.frozen;
+            if (c.kind == Control::Key) return c.keyMode == state_.keyMode;
             return 0;
         }
     return 0;
@@ -291,10 +299,17 @@ std::string ToasterScreen::bkgText() const {
     return !b.custom && i < layout_.bkgNames.size() ? layout_.bkgNames[i] : std::string();
 }
 
-QRect ToasterScreen::bkgTextRect(const std::string& text) const {
-    const auto& t = layout_.texts[size_t(bkgText_)];
+// C8: three zero-padded digits.
+std::string ToasterScreen::levelText() const {
+    char buf[16];
+    std::snprintf(buf, sizeof buf, "%03d", std::clamp(state_.keyLevel, 0, vt::kKeyLevelMax));
+    return buf;
+}
+
+QRect ToasterScreen::textRect(int text, const std::string& text_) const {
+    const auto& t = layout_.texts[size_t(text)];
     const int top = t.baseline ? t.y - font_.baseline : t.y;
-    return {t.x, top, vt::assets::textWidth(font_, text), font_.ySize};
+    return {t.x, top, vt::assets::textWidth(font_, text_), font_.ySize};
 }
 
 void ToasterScreen::refresh() {
@@ -309,9 +324,18 @@ void ToasterScreen::refresh() {
     if (bkgText_ >= 0) {
         auto& text = layout_.texts[size_t(bkgText_)].text;
         if (const std::string want = bkgText(); want != text) {
-            dirty += bkgTextRect(text);
-            dirty += bkgTextRect(want);
+            dirty += textRect(bkgText_, text);
+            dirty += textRect(bkgText_, want);
             if (bkgNode_ >= 0) dirty += toQRect(layout_.nodes[size_t(bkgNode_)].rect);
+            text = want;
+        }
+    }
+    if (levelText_ >= 0) {
+        auto& text = layout_.texts[size_t(levelText_)].text;
+        if (const std::string want = levelText(); want != text) {
+            dirty += textRect(levelText_, text);
+            dirty += textRect(levelText_, want);
+            if (levelNode_ >= 0) dirty += toQRect(layout_.nodes[size_t(levelNode_)].rect);
             text = want;
         }
     }
@@ -437,6 +461,8 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
         case Control::Live: actions_.setFrozen(false); break;
         case Control::Grab: pressed_ = c.node; refresh(); actions_.grab(c.input); break;
         case Control::Save: pressed_ = c.node; refresh(); actions_.saveFramestore(); break;
+        case Control::Key: actions_.setKeyMode(c.keyMode); break;
+        case Control::KeyLevel: dragLevel_ = levelAtPress_ = state_.keyLevel; pressX_ = pos.x(); break;
         case Control::Stub: pressed_ = c.node; refresh(); actions_.notImplemented(c.name); break;
         }
         return;
@@ -444,6 +470,11 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
 }
 
 void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
+    if (dragLevel_ >= 0) {  // C8: L moves by half the drag, right raises it
+        const int level = std::clamp(levelAtPress_ + int((toScreen(e->position()).x() - pressX_) / 2), 0, vt::kKeyLevelMax);
+        if (level != dragLevel_) actions_.setKeyLevel(dragLevel_ = level);
+        return;
+    }
     if (dragTbar_ < 0) return QWidget::mouseMoveEvent(e);
     const int pos = tbarFor(toScreen(e->position()).y());
     if (pos == dragTbar_) return;
@@ -453,7 +484,7 @@ void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
 
 void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return QWidget::mouseReleaseEvent(e);
-    dragTbar_ = -1;
+    dragTbar_ = dragLevel_ = -1;
     pressed_ = -1;
     refresh();
 }
@@ -502,7 +533,7 @@ void ToasterScreen::openBkgPopup() {
 }
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto, , . / = S M F,
-// F1-F7 = Main, 1-7 = Preview, q-u = Superimpose, f = FREEZE, l = LIVE.
+// F1-F7 = Main, 1-7 = Preview, q-u = Superimpose, f = FREEZE, l = LIVE, o [ ] = key Off / Black / White.
 bool ToasterScreen::switcherKey(QKeyEvent* e) {
     static constexpr Qt::Key kOverlay[] = {Qt::Key_Q, Qt::Key_W, Qt::Key_E, Qt::Key_R, Qt::Key_T, Qt::Key_Y, Qt::Key_U};
     const int k = e->key();
@@ -520,6 +551,9 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
             actions_.setSpeed(k == Qt::Key_Comma ? vt::Speed::Slow : k == Qt::Key_Period ? vt::Speed::Medium : vt::Speed::Fast);
     } else if (k == Qt::Key_F || k == Qt::Key_L) {
         if (handled()) actions_.setFrozen(k == Qt::Key_F);
+    } else if (k == Qt::Key_O || k == Qt::Key_BracketLeft || k == Qt::Key_BracketRight) {
+        if (handled())
+            actions_.setKeyMode(k == Qt::Key_O ? vt::KeyMode::Off : k == Qt::Key_BracketLeft ? vt::KeyMode::Black : vt::KeyMode::White);
     } else if (k >= Qt::Key_F1 && k <= Qt::Key_F7) {
         if (handled()) actions_.select(vt::Bus::Main, vt::Source(k - Qt::Key_F1));
     } else if (k >= Qt::Key_1 && k <= Qt::Key_7) {

@@ -170,6 +170,7 @@ private slots:
     void framestoreCroutonLoadsIntoDv2();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
+    void keyedDv2IsRefusedAndAKeyedInputShows();
     void invalidDataRootThenChosenInSettings();
     void recordingIsFinishedWhenTheWindowCloses();
     void stoppingARecordingDoesNotBlock();
@@ -421,6 +422,25 @@ void TestAppE2e::freezeDuringATransitionIsRefused() {
     c.runOffline(1);
     QVERIFY2(c.window().statusBar()->currentMessage().contains(QStringLiteral("finish the effect first")),
              qPrintable(c.window().statusBar()->currentMessage()));
+}
+
+// DV2 alone cannot be keyed while frozen: the refusal shows in the status bar. In3 on Superimpose
+// puts the key on (White).
+void TestAppE2e::keyedDv2IsRefusedAndAKeyedInputShows() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("fs_freeze").hitRect));
+    c.runOffline(1);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("sup_dv2").hitRect));
+    c.runOffline(1);
+    QCOMPARE(c.window().statusBar()->currentMessage(), QStringLiteral("Refused: Superimpose: DV2 alone cannot be keyed"));
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("sup_3").hitRect));
+    c.runOffline(1);
+    const vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.superimpose, vt::Source::In3);
+    QCOMPARE(s.keyMode, vt::KeyMode::White);
 }
 
 // The controller keeps the kEffectCache (12) most recently clicked croutons loaded. A DVE move
