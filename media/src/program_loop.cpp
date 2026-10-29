@@ -162,6 +162,7 @@ void ProgramLoop::publish() {
     w.transition = sw_.transitionActive();
     w.chroma = sw_.chromaEngaged();
     w.overlayEngaged = sw_.overlayEngaged();
+    w.frozen = sw_.frozen();
     w.speed = sw_.speed();
     if (nameStale_) {
         nameStale_ = false;

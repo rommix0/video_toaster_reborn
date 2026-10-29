@@ -105,11 +105,12 @@ protected:
 private:
     // A clickable node and what it does.
     struct Control {
-        enum Kind { Bus, Take, Auto, Speed, Bkg, Stub } kind;
+        enum Kind { Bus, Take, Auto, Speed, Bkg, Freeze, Live, Grab, Save, Stub } kind;
         int node;
         vt::Bus bus = vt::Bus::Main;
         vt::Source source = vt::Source::In1;
         vt::Speed speed = vt::Speed::Medium;
+        int input = 0;  // Grab: 0..3
         QString name;  // for Stub: what notImplemented() reports
     };
 

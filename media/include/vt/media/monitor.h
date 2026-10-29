@@ -13,13 +13,14 @@ namespace vt::media {
 
 // The Switcher as it stood after tick `tick` (the one just finished; -1 before the first tick).
 // `transition` is Switcher::transitionActive(), `chroma` chromaEngaged(), `overlayEngaged`
-// overlayEngaged(). `lastRefusal` is the reason of the most recent refused postChecked, kept until
+// overlayEngaged(), `frozen` frozen() (it also goes live by itself when a digital move starts, so it is
+// published every tick). `lastRefusal` is the reason of the most recent refused postChecked, kept until
 // the next refusal or until a postChecked succeeds; empty = none. `refusalCount` counts every
 // refused postChecked since the loop was made, so a repeat of the same refusal is visible too.
 struct SwitcherSnapshot {
     vt::Source main = vt::Source::In1, preview = vt::Source::In2, overlay = vt::Source::Bkg;
     int tbar = 0;
-    bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false;
+    bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;
     vt::Speed speed = vt::Speed::Medium;
     std::string effectName;
     vt::EffectColour effectColour, background;

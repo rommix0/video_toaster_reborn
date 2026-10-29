@@ -49,13 +49,13 @@ bool sameScreen(const QImage& got, const IndexedImage& want, QString* why) {
 }
 
 // Ruling 6: renderDefaultScreen(layout, CGInterface 14), from the layout after `tweak`, with the
-// selected look of the buttons a default snapshot makes active: Main 1, Preview 2, Superimpose BKG
-// and the M speed button.
+// selected look of the buttons a default snapshot makes active: Main 1, Preview 2, Superimpose BKG,
+// the M speed button and LIVE.
 IndexedImage expectedScreen(const std::function<void(PanelLayout&)>& tweak = {}) {
     PanelLayout l = layout();
     if (tweak) tweak(l);
     IndexedImage want = vt::assets::renderDefaultScreen(l, font());
-    for (const char* id : {"main_1", "prev_2", "sup_bkg", "speed_m"})
+    for (const char* id : {"main_1", "prev_2", "sup_bkg", "speed_m", "fs_live"})
         paste(want, node(id).rect, vt::assets::selectedLook(node(id), 0));
     return want;
 }
@@ -109,7 +109,8 @@ private slots:
     void tbarImageFollowsTheSnapshot();
     void tbarDragFollowsTheSnapshotNotTheHand();
     void tbarDragDuringAutoFollowsTheSnapshot();
-    void freezeIsNotImplemented();
+    void framestoreButtons();
+    void stabilizeIsNotImplemented();
     void displayFollowsTheSnapshotNotTheClick();
     void bkgPopupInTheToasterLook();
     void bkgNameFollowsTheSnapshot();
@@ -161,9 +162,11 @@ void TestToasterScreen::keyboardMap() {
     QTest::keyClick(&w, Qt::Key_7);
     QTest::keyClick(&w, Qt::Key_Q);
     QTest::keyClick(&w, Qt::Key_U);
+    QTest::keyClick(&w, Qt::Key_F);
+    QTest::keyClick(&w, Qt::Key_L);
     QCOMPARE(fake.calls, (QStringList{"auto Forward", "speed 0", "speed 1", "speed 2", "select Main Bkg",
                                       "select Preview In1", "select Preview Bkg", "select Overlay In1",
-                                      "select Overlay Bkg"}));
+                                      "select Overlay Bkg", "frozen 1", "frozen 0"}));
 }
 
 void TestToasterScreen::tbarImageFollowsTheSnapshot() {
@@ -224,19 +227,46 @@ void TestToasterScreen::tbarDragDuringAutoFollowsTheSnapshot() {
     QCOMPARE(fake.calls.size(), 2);
 }
 
-void TestToasterScreen::freezeIsNotImplemented() {
+void TestToasterScreen::framestoreButtons() {
     FakeActions fake;
     ToasterScreen w(layout(), font(), fake);
     w.resize(w.sizeHint());
     w.show();
     QVERIFY(QTest::qWaitForWindowExposed(&w));
+    for (const char* id : {"fs_freeze", "fs_live", "fs_3", "fs_save"}) QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node(id).hitRect));
+    QCOMPARE(fake.calls, (QStringList{"frozen 1", "frozen 0", "grab 2", "save"}));
+
+    // Grab and SAVE are momentary: drawn pressed while held. FREEZE / LIVE show the engine's state.
+    const auto& grab = node("fs_1");
+    QTest::mousePress(&w, Qt::LeftButton, {}, centre(grab.hitRect));
+    QVERIFY(region(w.renderIndexedForTest(), grab.rect).px == vt::assets::selectedLook(grab, 0).px);
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, centre(grab.hitRect));
+    QVERIFY(region(w.renderIndexedForTest(), grab.rect).px == grab.image.px);
+
     const auto& freeze = node("fs_freeze");
-    QTest::mousePress(&w, Qt::LeftButton, {}, centre(freeze.hitRect));
-    QCOMPARE(fake.calls, QStringList{"notImplemented FREEZE"});
-    // Drawn pressed while held, released afterwards.
-    QVERIFY(region(w.renderIndexedForTest(), freeze.rect).px == vt::assets::selectedLook(freeze, 0).px);
-    QTest::mouseRelease(&w, Qt::LeftButton, {}, centre(freeze.hitRect));
-    QVERIFY(region(w.renderIndexedForTest(), freeze.rect).px == freeze.image.px);
+    const auto& live = node("fs_live");
+    auto shows = [&](const vt::assets::PanelNode& n, bool selected) {
+        return region(w.renderIndexedForTest(), n.rect).px == (selected ? vt::assets::selectedLook(n, 0).px : n.image.px);
+    };
+    SwitcherSnapshot s;
+    w.setState(s);
+    QVERIFY(shows(live, true) && shows(freeze, false));
+    s.frozen = true;
+    w.setState(s);
+    QVERIFY(shows(freeze, true) && shows(live, false));
+    s.frozen = false;
+    w.setState(s);
+    QVERIFY(shows(live, true) && shows(freeze, false));
+}
+
+void TestToasterScreen::stabilizeIsNotImplemented() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_stabilize").hitRect));
+    QCOMPARE(fake.calls, QStringList{"notImplemented STABILIZE"});
 }
 
 void TestToasterScreen::displayFollowsTheSnapshotNotTheClick() {

@@ -33,8 +33,7 @@ constexpr BusRow kBusRows[] = {{"main_", vt::Bus::Main}, {"prev_", vt::Bus::Prev
 // Drawn and pressable, but nothing behind them in v1.
 struct Stub { const char* id; const char* name; };
 constexpr Stub kStubs[] = {
-    {"fs_freeze", "FREEZE"}, {"fs_live", "LIVE"}, {"fs_1", "Framestore 1"}, {"fs_2", "Framestore 2"},
-    {"fs_3", "Framestore 3"}, {"fs_4", "Framestore 4"}, {"fs_stabilize", "STABILIZE"}, {"fs_save", "SAVE"},
+    {"fs_stabilize", "STABILIZE"},
     {"key_off", "Key OFF"}, {"key_black", "Black key"}, {"key_white", "White key"}, {"key_level_popup", "Key level"},
 };
 
@@ -141,7 +140,11 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     control("speed_m", {Control::Speed, -1, {}, {}, vt::Speed::Medium});
     control("speed_f", {Control::Speed, -1, {}, {}, vt::Speed::Fast});
     control("bkg_popup", {Control::Bkg, -1});
-    for (const auto& s : kStubs) control(s.id, {Control::Stub, -1, {}, {}, {}, QString::fromLatin1(s.name)});
+    control("fs_freeze", {Control::Freeze, -1});
+    control("fs_live", {Control::Live, -1});
+    for (int i = 0; i < 4; ++i) control(("fs_" + std::to_string(i + 1)).c_str(), {Control::Grab, -1, {}, {}, {}, i});
+    control("fs_save", {Control::Save, -1});
+    for (const auto& s : kStubs) control(s.id, {Control::Stub, -1, {}, {}, {}, 0, QString::fromLatin1(s.name)});
 
     tbarNode_ = nodeIndex("tbar");
     if (!visible(tbarNode_)) tbarNode_ = -1;
@@ -267,6 +270,8 @@ int ToasterScreen::lookOf(int node) const {
                 return c.source == on;
             }
             if (c.kind == Control::Speed) return c.speed == state_.speed;  // Variable: none of S/M/F
+            if (c.kind == Control::Freeze) return state_.frozen;   // grab and SAVE are momentary
+            if (c.kind == Control::Live) return !state_.frozen;
             return 0;
         }
     return 0;
@@ -428,6 +433,10 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
         case Control::Auto: pressed_ = c.node; refresh(); actions_.autoTransition(vt::Direction::Forward); break;
         case Control::Speed: actions_.setSpeed(c.speed); break;
         case Control::Bkg: openBkgPopup(); break;
+        case Control::Freeze: actions_.setFrozen(true); break;
+        case Control::Live: actions_.setFrozen(false); break;
+        case Control::Grab: pressed_ = c.node; refresh(); actions_.grab(c.input); break;
+        case Control::Save: pressed_ = c.node; refresh(); actions_.saveFramestore(); break;
         case Control::Stub: pressed_ = c.node; refresh(); actions_.notImplemented(c.name); break;
         }
         return;
@@ -493,7 +502,7 @@ void ToasterScreen::openBkgPopup() {
 }
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto, , . / = S M F,
-// F1-F7 = Main, 1-7 = Preview, q-u = Superimpose.
+// F1-F7 = Main, 1-7 = Preview, q-u = Superimpose, f = FREEZE, l = LIVE.
 bool ToasterScreen::switcherKey(QKeyEvent* e) {
     static constexpr Qt::Key kOverlay[] = {Qt::Key_Q, Qt::Key_W, Qt::Key_E, Qt::Key_R, Qt::Key_T, Qt::Key_Y, Qt::Key_U};
     const int k = e->key();
@@ -509,6 +518,8 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
     } else if (k == Qt::Key_Comma || k == Qt::Key_Period || k == Qt::Key_Slash) {
         if (handled())
             actions_.setSpeed(k == Qt::Key_Comma ? vt::Speed::Slow : k == Qt::Key_Period ? vt::Speed::Medium : vt::Speed::Fast);
+    } else if (k == Qt::Key_F || k == Qt::Key_L) {
+        if (handled()) actions_.setFrozen(k == Qt::Key_F);
     } else if (k >= Qt::Key_F1 && k <= Qt::Key_F7) {
         if (handled()) actions_.select(vt::Bus::Main, vt::Source(k - Qt::Key_F1));
     } else if (k >= Qt::Key_1 && k <= Qt::Key_7) {

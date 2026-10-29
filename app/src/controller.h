@@ -29,6 +29,9 @@ public:
     virtual void setTBar(int position) = 0;              // 0..511
     virtual void setBackground(vt::BkgColour) = 0;
     virtual void loadCrouton(int index, bool run) = 0;   // run = also start Auto (double click)
+    virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons, keys f / l
+    virtual void grab(int input) = 0;                    // grab buttons 1-4: 0..3
+    virtual void saveFramestore() = 0;                   // SAVE
     virtual void notImplemented(const QString& what) = 0;  // a control that does nothing in v1
 };
 
@@ -59,7 +62,8 @@ namespace vt::media { class Recorder; }
 //
 // - Every action is a ProgramLoop::post; loading a crouton (vt::loadEffect; the kEffectCache most
 //   recently clicked stay loaded, keyed by path) is a postChecked, so a refusal shows in the status bar (each time SwitcherSnapshot::refusalCount
-//   changes) while the panel keeps showing the engine's state.
+//   changes) while the panel keeps showing the engine's state. FREEZE, LIVE and the grab buttons are
+//   postChecked too: the engine refuses them during a transition or an engaged ChromaFX.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
 //   the log queue (the vt::setLogSink callback only queues: it runs under a global lock on worker
 //   threads) into the status bar and the log view (Help -> Log), and updates the status labels.
@@ -137,6 +141,9 @@ public:
     void setTBar(int position) override;
     void setBackground(vt::BkgColour) override;
     void loadCrouton(int index, bool run) override;
+    void setFrozen(bool frozen) override;
+    void grab(int input) override;
+    void saveFramestore() override;
     void notImplemented(const QString& what) override;
 
     // The main window's DevicePixelRatioChange, and the key presses of the whole application (see

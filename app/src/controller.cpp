@@ -429,6 +429,17 @@ void AppController::loadCrouton(int index, bool run) {
     });
 }
 
+void AppController::setFrozen(bool frozen) {
+    loop_->postChecked([frozen](vt::Switcher& sw, std::string& why) { return sw.setFrozen(frozen, &why); });
+}
+
+void AppController::grab(int input) {
+    loop_->postChecked([input](vt::Switcher& sw, std::string& why) { return sw.grab(input, &why); });
+}
+
+// Task 7 writes the still to a file.
+void AppController::saveFramestore() { message(tr("SAVE: not wired up yet")); }
+
 void AppController::notImplemented(const QString& what) { message(tr("%1: not in version 1").arg(what)); }
 
 // ---- the 30 Hz poll ----

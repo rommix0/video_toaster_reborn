@@ -160,6 +160,8 @@ private slots:
     void croutonThenAutoRunsTheEffect();
     void refusalShowsInTheStatusBar();
     void effectCacheIsBounded();
+    void freezeButtonFreezesTheStore();
+    void grabPutsTheInputInDv1OnMain();
     void invalidDataRootThenChosenInSettings();
     void recordingIsFinishedWhenTheWindowCloses();
     void stoppingARecordingDoesNotBlock();
@@ -268,6 +270,43 @@ void TestAppE2e::refusalShowsInTheStatusBar() {
     QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), dve));
     c.runOffline(1);
     QVERIFY2(bar->currentMessage().contains(QStringLiteral("ChromaFX")), qPrintable(bar->currentMessage()));
+}
+
+// FREEZE freezes the store and lights FREEZE: the panel shows the engine's state, as published.
+void TestAppE2e::freezeButtonFreezesTheStore() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QVERIFY(!c.loop().switcherState().frozen);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("fs_freeze").hitRect));
+    c.runOffline(1);
+    const vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QVERIFY(s.frozen);
+    apptest::FakeActions fake;
+    ToasterScreen engine(apptest::layout(), apptest::font(), fake);
+    engine.setState(s);
+    QCOMPARE(c.screen()->renderIndexedForTest(), engine.renderIndexedForTest());
+    vt::media::SwitcherSnapshot live;
+    engine.setState(live);
+    QVERIFY(c.screen()->renderIndexedForTest() != engine.renderIndexedForTest());  // FREEZE is lit, LIVE is not
+
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("fs_live").hitRect));
+    c.runOffline(1);
+    QVERIFY(!c.loop().switcherState().frozen);
+}
+
+// Grab 1 stills In1 into DV1 and selects DV1 on Main once the grab's wait is over.
+void TestAppE2e::grabPutsTheInputInDv1OnMain() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("fs_1").hitRect));
+    c.runOffline(6);
+    const vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.main, vt::Source::DV1);
+    QVERIFY(s.frozen);
 }
 
 // The controller keeps the kEffectCache (12) most recently clicked croutons loaded. A DVE move
