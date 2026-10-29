@@ -75,8 +75,8 @@ public:
 
     // --- effect ---
     // Makes `e` the current effect (a null effect is refused). Any transition in progress is
-    // abandoned without swapping (T-bar 0, Auto stopped) and an engaged ChromaFX or overlay is
-    // disengaged. A DV-memory effect (usesDvMemory(): DVE moves and ChromaFX) is refused,
+    // abandoned without swapping (T-bar 0, Auto stopped), its buses left as a return to 0 leaves
+    // them (see setTBar), and an engaged ChromaFX or overlay is disengaged. A DV-memory effect (usesDvMemory(): DVE moves and ChromaFX) is refused,
     // returning false with a reason in *whyNot and the current effect kept, while ChromaFX is
     // engaged (a DVE move, that is) or while a DVE move is mid-transition or engaged as an
     // overlay (the Glitch overlays; they share the DV memory, spec 5.8). Cut, dissolve and the
@@ -112,8 +112,9 @@ public:
 
     // --- T-bar, Auto, Take ---
     // A digital move starting from idle (FREEZE.md 5): with the store frozen and no bus showing
-    // DV1/DV2 the store goes live (stills kept); then, live, the moving bus's input (A: Main,
-    // B: Preview) becomes the DV input.
+    // DV1/DV2 the store goes live (stills kept); then, live, the moving bus's input becomes the
+    // DV input: A: Main, B: Preview; a flying key moves its own picture instead (fly on: Preview's
+    // input; fly off and two-phase: Superimpose's).
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
     // Ordinary effects: reaching 511 swaps Main and Preview at once and the T-bar reads 0 again
     // (the next render shows the new Main plainly); returning to 0 mid-way swaps nothing.
@@ -161,10 +162,10 @@ public:
     bool overlayEngaged() const { return engaged_ && effect_->isOverlay(); }
     // Cut: swaps the Main and Preview selections; if Preview was Main and Superimpose has a source,
     // that source goes to Preview, and Superimpose is emptied (design 2 B, KEY.md 4; the keyer mode
-    // stays). Ends any transition (T-bar 0, Auto stopped,
-    // ChromaFX disengaged) and drops a sound pendingSound() has not handed over. On an engaged
-    // overlay it only ends the overlay, without a cut (overlays never switch sources, nor touch
-    // Superimpose). Under Art Card Key the cut keeps the card: with the keyer on Superimpose gets
+    // stays). Ends any transition (T-bar 0, Auto stopped, ChromaFX disengaged) and drops a sound
+    // pendingSound() has not handed over. On an engaged overlay it only ends the overlay, without
+    // a cut (overlays never switch sources), and empties Superimpose as the return to 0 does
+    // (C7: an overlay drops the key). Under Art Card Key the cut keeps the card: with the keyer on Superimpose gets
     // the card's source back, and the T-bar stays at 2L.
     void take();
 

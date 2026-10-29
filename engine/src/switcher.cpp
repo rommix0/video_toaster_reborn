@@ -130,7 +130,9 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
         if (effect_->usesDvMemory() && transitionActive())
             return refuse("a DVE move is running: finish it before choosing another DV-memory effect");
     }
-    // Abandon whatever was in progress, without a swap.
+    // Abandon whatever was in progress, without a swap: the buses as at a return to 0 (C7), decided
+    // by the old effect. Not under Art Card Key: the card holds the T-bar with no take.
+    if (transitionActive() && !effect_->isArtCardKey()) arriveAt0();
     auto_ = false;
     tbar_ = 0;
     disengage();
@@ -279,7 +281,10 @@ void Switcher::take() {
     disengage();
     soundPending_ = false;
     grabSelects_ = false;  // a pending grab must not undo the cut
-    if (overlay) return;  // Ruling 27: an overlay only ends; it cuts nothing
+    if (overlay) {  // Ruling 27: an overlay only ends; it cuts nothing
+        sel_[busIndex(Bus::Superimpose)] = Source::None;  // C7: the key dropped at take start
+        return;
+    }
     // KEY.md 4 / design 2 B: swap; if Preview was Main, the key source goes to Preview; Superimpose
     // is emptied (the keyer mode stays).
     Source& main = sel_[busIndex(Bus::Main)];

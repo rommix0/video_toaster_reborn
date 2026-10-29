@@ -2192,10 +2192,50 @@ TEST_CASE("no key while ChromaFX or an overlay is engaged", "[switcher][key]") {
     INFO(src);
     Rig r, q;  // q: no Superimpose source
     for (Rig* x : {&r, &q}) REQUIRE(x->sw.setEffect(load(src)));
-    r.sw.select(Bus::Superimpose, Source::In3);
     for (Rig* x : {&r, &q}) x->sw.setTBar(511);
     REQUIRE((r.sw.chromaEngaged() || r.sw.overlayEngaged()));
+    r.sw.select(Bus::Superimpose, Source::In3);  // after the take start, so the keyer stays on
+    REQUIRE(r.sw.keyMode() != vt::KeyMode::Off);
     CHECK(r.render().px == q.render().px);
+}
+
+TEST_CASE("Take on an engaged overlay empties Superimpose", "[switcher][key]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(load("4.2/Effects/4000FX/Overlays/Snowfall Loop")));
+    r.sw.setTBar(511);
+    REQUIRE(r.sw.overlayEngaged());
+    r.sw.select(Bus::Superimpose, Source::In3);
+    REQUIRE(r.sw.keyMode() != vt::KeyMode::Off);
+    r.sw.take();
+    CHECK(!r.sw.overlayEngaged());
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);  // C7, as the return to 0
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+}
+
+TEST_CASE("loading an effect mid-take ends it as a return to 0", "[switcher][key]") {
+    {
+        Rig r;  // a dissolve drops the key: Superimpose emptied, the keyer off
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        REQUIRE(r.sw.setEffect(loadDesc(kBlinds3, 3)));
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+    }
+    {
+        Rig r;  // fly off: the key source to Preview
+        REQUIRE(r.sw.setEffect(loadDesc(kBlinds3, 3)));
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        REQUIRE(r.sw.setEffect(dissolve()));
+        CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.keyMode() == vt::KeyMode::White);
+        CHECK(r.sw.tbar() == 0);
+    }
 }
 
 namespace {
@@ -2307,4 +2347,14 @@ TEST_CASE("Art Card Key: FREEZE is refused while the T-bar is above 0; leaving t
     CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
     CHECK(r.sw.tbar() == 0);
     CHECK(r.sw.setFrozen(true, &why));
+}
+
+TEST_CASE("Art Card Key loaded again keeps the Superimpose source", "[switcher][key][card]") {
+    Rig r;
+    r.sw.select(Bus::Superimpose, Source::In3);
+    REQUIRE(r.sw.setEffect(artCard()));  // remembers In3
+    r.sw.select(Bus::Superimpose, Source::In4);
+    REQUIRE(r.sw.setEffect(artCard()));  // the card holds the T-bar with no take: no return to 0
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In4);
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);
 }
