@@ -86,6 +86,9 @@ public:
     const HardwareGuesses& guesses() const { return guesses_; }
 
     // --- T-bar, Auto, Take ---
+    // A digital move starting from idle (FREEZE.md 5): with the store frozen and no bus showing
+    // DV1/DV2 the store goes live (stills kept); then, live, the moving bus's input (A: Main,
+    // B: Preview) becomes the DV input.
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
     // Ordinary effects: reaching 511 swaps Main and Preview at once and the T-bar reads 0 again
     // (the next render shows the new Main plainly); returning to 0 mid-way swaps nothing.
@@ -183,7 +186,9 @@ public:
     // steady-state renders allocation-free), so program.px.data() alternates between two
     // buffers: do not keep a pointer into program.px across renders.
     // Before composing, render writes a due grab into DV1 and records the DV input's frame in
-    // the DV history (what live DV1/DV2 show, delayed).
+    // the DV history (what live DV1/DV2 show, delayed); while the effect is a digital move
+    // (Effect::digitalMove()), also the inputs on Main and Preview. A digital move's
+    // RenderCtx::digitalA / digitalB are those buses' inputs, delayed, while the store is live.
     void render(const SourceFrames&, Frame& program) const;
     // The picture a bus would show for source `s` (an input, DV1/DV2, or BKG: its colour or this
     // tick's Snow), with no effect applied: what the Preview monitor shows. A missing input is

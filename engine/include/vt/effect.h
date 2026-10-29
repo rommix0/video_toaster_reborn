@@ -51,7 +51,17 @@ struct RenderCtx {
     int autoSteps = 0;
     // The effect colour in force (Switcher::effectColour()): an ALGO move's border colour.
     EffectColour colour;
+    // The DV path's picture of A and B: the bus's input delayed by HardwareGuesses::digitalDelay
+    // while the store is live and the bus shows an input; null otherwise (use a / b: a frozen DV
+    // still, BKG, live DV). Digital moves move these; their key-0 background and tag 0x1B routes
+    // keep a / b (analog).
+    const Frame* digitalA = nullptr;
+    const Frame* digitalB = nullptr;
 };
+
+// Which bus a digital move moves first (FREEZE.md 5): None for everything but the DVE moves
+// (role MovingB -> B, else A) and ALGO kinds 0/3 (descriptor 2 -> B, else A). ChromaFX: None.
+enum class DigitalMove { None, A, B };
 
 class Effect {
 public:
@@ -75,6 +85,9 @@ public:
     virtual std::optional<EffectColour> effectColour() const { return std::nullopt; }
     // True for effects that use the DV memory (DVE moves, ChromaFX): at most one can run at a time.
     virtual bool usesDvMemory() const { return false; }
+    // The Switcher routes this bus's input through the DV store at take start (FREEZE.md 5) and
+    // passes the delayed pictures as RenderCtx::digitalA / digitalB.
+    virtual DigitalMove digitalMove() const { return DigitalMove::None; }
     // True for ChromaFX effects. The Switcher keeps one engaged after its T-bar run instead of
     // swapping Main and Preview (Ruling 21).
     virtual bool isChromaFx() const { return false; }

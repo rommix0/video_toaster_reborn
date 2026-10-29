@@ -40,6 +40,10 @@ public:
 
     int frameCount() const override { return 1; }
     bool usesDvMemory() const override { return isDigital(kind_); }
+    DigitalMove digitalMove() const override {
+        if (!isDigital(kind_)) return DigitalMove::None;
+        return desc_ == 2 ? DigitalMove::B : DigitalMove::A;
+    }
 
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         tbar = clampTBar(tbar);
@@ -72,13 +76,20 @@ public:
             // ALGO.md 15.5: the colour is latched at take init, so the top/bottom border always
             // agrees with the VM's left/right one.
             control.borderFill = uint8_t(algoBorderFill(colour_));
-            const Frame* moving = &a;
+            // The moving picture comes through the DV path (delayed while live); the background
+            // stays analog, desc 5's too.
+            const Frame& da = ctx.digitalA ? *ctx.digitalA : a;
+            const Frame& db = ctx.digitalB ? *ctx.digitalB : b;
+            const Frame* moving = &da;
             const Frame* background = &b;
             switch (desc_) {
-                case 2: moving = &b; background = &a; break;
+                case 2: moving = &db; background = &a; break;
                 case 3: break;
-                case 5: moving = background = second ? &b : &a; break;
-                default: moving = second ? &b : &a; background = &matte(); break;  // 6: BKG matte
+                case 5:
+                    moving = second ? &db : &da;
+                    background = second ? &b : &a;
+                    break;
+                default: moving = second ? &db : &da; background = &matte(); break;  // 6: BKG matte
             }
             renderDve(control, *moving, *background, {}, out, ctx.guesses);
             // ALGO.md 15.4 (GUESS): the level fades the key-0 background toward the composite.

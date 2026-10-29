@@ -71,6 +71,14 @@ void Switcher::beginTransitionIfIdle() {
     if (transitionActive()) return;
     soundPending_ = effect_->sound() != nullptr;
     ++take_;
+    // FREEZE.md 5 (flag 0x200): a digital move with the store frozen and no DV on a bus sends the
+    // store live (the stills are kept), then routes the moving bus's input through DV. With a DV
+    // on a bus the freeze stays, and the move moves that still.
+    const DigitalMove m = effect_->digitalMove();
+    if (m == DigitalMove::None) return;
+    if (frozen_ && std::none_of(sel_.begin(), sel_.end(), isDv)) frozen_ = false;
+    const Source moving = sel_[busIndex(m == DigitalMove::A ? Bus::Main : Bus::Preview)];
+    if (!frozen_ && isInput(moving)) dvInput_ = static_cast<int>(moving);
 }
 
 void Switcher::engage() {
@@ -221,6 +229,16 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         grabPending_ = false;
     }
     record(dvInput_, in);
+    // A digital move's buses go through DV too (RenderCtx::digitalA / digitalB), so their inputs
+    // need a history from before the take starts.
+    const bool digital = effect_->digitalMove() != DigitalMove::None;
+    if (digital) {
+        const Source m = sel_[busIndex(Bus::Main)], p = sel_[busIndex(Bus::Preview)];
+        if (isInput(m) && int(m) != dvInput_) record(int(m), in);
+        if (isInput(p) && p != m && int(p) != dvInput_) record(int(p), in);
+    }
+    // The DV path's picture of a bus: its input, delayed, while the store is live.
+    auto digitalOf = [&](Source s) { return digital && !frozen_ && isInput(s) ? delayed(int(s)) : nullptr; };
     bool bkgBuilt = false, blackBuilt = false;
     auto pick = [&](Source s) -> const Frame& { return sourceFrame(s, in, bkgBuilt, blackBuilt); };
 
@@ -251,9 +269,16 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         // A Snow generator's noise, for the matte areas of animated wipes too (RenderCtx::generator).
         const Frame* snow = colour.isSnow() ? &colourFrame() : nullptr;
         const Frame* bp = nullptr;
+        const Frame* digitalB = nullptr;
         switch (overlay ? overlayB(*effect_) : OverlayB::Preview) {
-            case OverlayB::Preview: bp = &pick(sel_[busIndex(Bus::Preview)]); break;
-            case OverlayB::Main: bp = &a; break;
+            case OverlayB::Preview:
+                bp = &pick(sel_[busIndex(Bus::Preview)]);
+                digitalB = digitalOf(sel_[busIndex(Bus::Preview)]);
+                break;
+            case OverlayB::Main:
+                bp = &a;
+                digitalB = digitalOf(sel_[busIndex(Bus::Main)]);
+                break;
             case OverlayB::Colour: bp = snow ? snow : &colourFrame(); break;
         }
         const Frame& b = *bp;
@@ -270,6 +295,8 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         ctx.guesses = guesses_;
         ctx.take = take_;
         ctx.colour = colour;
+        ctx.digitalA = digitalOf(sel_[busIndex(Bus::Main)]);
+        ctx.digitalB = digitalB;
         // A forward Auto from 0 renders elapsed ticks 0 .. total-1 as Auto steps 1 .. total.
         if (auto_ && autoFrom0_ && autoDir_ == Direction::Forward) {
             ctx.autoStep = static_cast<int>(std::min<int64_t>(autoDur_, autoAcc_ / kTBarEnd + 1));

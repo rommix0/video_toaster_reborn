@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 #include "catch_amalgamated.hpp"
@@ -1274,5 +1275,59 @@ TEST_CASE("the seven \"!\" DVEs render without unknown codes", "[dve][effect]") 
                 for (int x = r.x; x < r.x + r.w; ++x)
                     if (same(out.at(x, y), {128, 128, 128, 255})) FAIL("frame " << k << " grey at (" << x << "," << y << ")");
         }
+    }
+}
+
+// --- digital moves (FREEZE.md 5) ---
+
+TEST_CASE("digitalMove by role", "[dve][algo][effect]") {
+    for (auto [src, role, want] : {std::tuple{"4.2/Effects/2000FX/Blinds/Split Corners In", vt::DveRole::MovingB, vt::DigitalMove::B},
+                                   std::tuple{"4.2/Effects/2000FX/Digital/Block Out", vt::DveRole::MovingA, vt::DigitalMove::A}}) {
+        INFO(src);
+        const AnimFile f = openAnim(src);
+        REQUIRE(vt::dveInfo(f.anim).role == role);
+        const auto e = load(src);
+        REQUIRE(e);
+        CHECK(e->digitalMove() == want);
+    }
+    for (auto [name, desc, want] : {std::tuple{"Push On L-R", 2u, vt::DigitalMove::B},
+                                    std::tuple{"Crop To Center", 3u, vt::DigitalMove::A}}) {
+        INFO(name);
+        const auto c = vt::loadCrouton(algoNamed(name));
+        REQUIRE(c);
+        REQUIRE(c->tag(0x80000063).value_or(0) == 0);  // kind 0: digital
+        REQUIRE(c->tag(0x80000007).value_or(0) == desc);
+        CHECK(loadAlgo(name)->digitalMove() == want);
+    }
+    CHECK(vt::makeDissolve()->digitalMove() == vt::DigitalMove::None);
+    CHECK(vt::makeCut()->digitalMove() == vt::DigitalMove::None);
+    CHECK(load("4.2/Effects/ChromaFx/Fade To Neg")->digitalMove() == vt::DigitalMove::None);
+}
+
+// The moving clip comes from RenderCtx::digitalA / digitalB when given; the background stays a / b:
+// rendering (a, b) with the moving bus's digital picture d equals rendering with d on that bus.
+TEST_CASE("digital moves move the DV picture over the analog background", "[dve][algo][effect]") {
+    const vt::Frame a = pattern(1), b = pattern(2), d = pattern(3);
+    auto check = [&](const vt::Effect& e, int tbar) {
+        const bool movesB = e.digitalMove() == vt::DigitalMove::B;
+        vt::RenderCtx c = ctxWith();
+        (movesB ? c.digitalB : c.digitalA) = &d;
+        c.take = 1;
+        const vt::Frame got = renderAt(e, tbar, a, b, c);
+        vt::RenderCtx plain = ctxWith();
+        plain.take = 2;
+        CHECK(got.px == renderAt(e, tbar, movesB ? a : d, movesB ? d : b, plain).px);
+        plain.take = 3;
+        CHECK(got.px != renderAt(e, tbar, a, b, plain).px);
+    };
+    for (const char* src : {"4.2/Effects/2000FX/Blinds/Split Corners In", "4.2/Effects/2000FX/Digital/Block Out"}) {
+        INFO(src);
+        const auto e = load(src);
+        REQUIRE(e);
+        check(*e, 200);
+    }
+    for (const char* name : {"Push On L-R", "Crop To Center"}) {
+        INFO(name);
+        check(*loadAlgo(name), 300);
     }
 }

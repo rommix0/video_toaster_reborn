@@ -38,17 +38,23 @@ public:
 
     int frameCount() const override { return int(frames_.size()); }
     bool usesDvMemory() const override { return true; }
+    DigitalMove digitalMove() const override {
+        return info_.role == DveRole::MovingB ? DigitalMove::B : DigitalMove::A;
+    }
 
     void render(int tbar, const Frame& a, const Frame& b, Frame& out, const RenderCtx& ctx) const override {
         const int k = animFrameFor(tbar, frameCount(), ctx);
-        const Frame* moving = &a;
+        // The moving clip comes through the DV path (delayed while live); the background is analog.
+        const Frame& da = ctx.digitalA ? *ctx.digitalA : a;
+        const Frame& db = ctx.digitalB ? *ctx.digitalB : b;
+        const Frame* moving = &da;
         const Frame* background = &b;
         switch (info_.role) {
             case DveRole::MovingA: break;
-            case DveRole::MovingB: moving = &b; background = &a; break;
+            case DveRole::MovingB: moving = &db; background = &a; break;
             case DveRole::DistortA: background = &a; break;
             case DveRole::Flip:
-                moving = k < info_.switchFrame ? &a : &b;
+                moving = k < info_.switchFrame ? &da : &db;
                 background = &black_;
                 break;
         }

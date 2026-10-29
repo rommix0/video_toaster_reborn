@@ -9,9 +9,11 @@
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
+#include "vt/anim.h"
 #include "vt/background.h"
 #include "vt/chromafx.h"
 #include "vt/crouton.h"
+#include "vt/dve.h"
 #include "vt/effect.h"
 #include "vt/switcher.h"
 
@@ -1606,4 +1608,126 @@ TEST_CASE("saveSource order", "[switcher][dv]") {
     CHECK(r.sw.saveSource() == Source::DV2);
     r.sw.select(Bus::Main, Source::In1);
     CHECK(r.sw.saveSource() == Source::DV1);
+}
+
+// --- digital moves through the DV store (design B, FREEZE.md 5) ---
+
+namespace {
+
+const char* const kBlockOut = "4.2/Effects/2000FX/Digital/Block Out";  // a plain DVE ANIM
+
+// A T-bar position of Block Out and two visible pixels of its control frame there: one the moving
+// clip draws (key >= 64, no art) and one the background shows (key 0). The first position from 1
+// whose frame has both (Ruling 2).
+struct MoveProbe {
+    int tbar, mx, my, bx, by;
+};
+MoveProbe blockOutProbe() {
+    auto c = vt::loadCrouton(dataRoot() / kBlockOut);
+    REQUIRE(c);
+    const auto f = std::find_if(c->forms.begin(), c->forms.end(),
+                                [](const vt::Form& f) { return f.type == std::array<char, 4>{'A', 'N', 'I', 'M'}; });
+    REQUIRE(f != c->forms.end());
+    const vt::Anim an = vt::readAnim(c->bytes, *f);
+    REQUIRE(vt::dveInfo(an).role == vt::DveRole::MovingA);  // A moves
+    const vt::Rect r = vt::kVisibleArea;
+    for (int t = 1; t < 511; ++t) {
+        const vt::DveControl dc = vt::decodeDve(an.planes[size_t(vt::animFrameForTBar(t, int(an.planes.size())))]);
+        MoveProbe p{t, -1, -1, -1, -1};
+        for (int y = r.y; y < r.y + r.h; ++y)
+            for (int x = r.x; x < r.x + r.w; ++x) {
+                const uint8_t v = dc.key[size_t(y / 2) * vt::kDveCells + size_t(x / 4)];
+                if (!dc.art.empty() && dc.art[size_t(y / 2) * vt::kDveWidth + size_t(x)] != 0) continue;
+                if (v >= 64 && p.mx < 0) p.mx = x, p.my = y;
+                if (v == 0 && p.bx < 0) p.bx = x, p.by = y;
+            }
+        if (p.mx >= 0 && p.bx >= 0) return p;
+    }
+    FAIL("Block Out has no frame with both a moving and a background pixel");
+    return {};
+}
+
+const vt::Rgba8 kNine{9, 9, 9, 255};
+bool same(vt::Rgba8 a, vt::Rgba8 b) { return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a; }
+
+}  // namespace
+
+TEST_CASE("a digital move's moving picture lags 4 ticks", "[switcher][dv]") {
+    const MoveProbe p = blockOutProbe();
+    Rig r;
+    // The DV input starts as input 3, so input 1's history comes from recording Main.
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Main, Source::DV1);
+    r.sw.select(Bus::Main, Source::In1);
+    REQUIRE(r.sw.dvInput() == 2);
+    r.in2 = solid(kNine);
+    REQUIRE(r.sw.setEffect(load(kBlockOut)));
+    run(r, r.in1, 0, 10);
+    r.in1 = numbered(10);
+    r.sw.setTBar(p.tbar);
+    CHECK(r.sw.dvInput() == 0);  // the moving bus's input now goes through DV
+    const vt::Frame out = r.render();
+    INFO("T-bar " << p.tbar);
+    CHECK(int(out.at(p.mx, p.my).r) == 10 - 4);
+    CHECK(same(out.at(p.bx, p.by), kNine));  // the key-0 background is analog, current
+}
+
+TEST_CASE("a frozen DV on the moving bus moves the still without lag", "[switcher][dv]") {
+    const MoveProbe p = blockOutProbe();
+    Rig r;
+    run(r, r.in1, 0, 6);
+    REQUIRE(r.sw.setFrozen(true));  // DV1 = input 1 at tick 2
+    r.sw.select(Bus::Main, Source::DV1);
+    r.in2 = solid(kNine);
+    REQUIRE(r.sw.setEffect(load(kBlockOut)));
+    run(r, r.in1, 6, 10);
+    r.sw.setTBar(p.tbar);
+    CHECK(r.sw.frozen());  // a DV on a bus keeps the freeze
+    const vt::Frame out = r.render();  // the take's first frame
+    CHECK(same(out.at(p.mx, p.my), numbered(2).at(0, 0)));
+    CHECK(same(out.at(p.bx, p.by), kNine));
+}
+
+TEST_CASE("a digital move taken with a frozen store and no DV on a bus goes live and keeps the stills", "[switcher][dv]") {
+    Rig r;
+    run(r, r.in1, 0, 6);
+    REQUIRE(r.sw.setFrozen(true));          // DV1 = input 1 at tick 2
+    REQUIRE(r.sw.loadStill(numbered(77)));  // DV2, on Preview
+    r.sw.select(Bus::Preview, Source::In2);
+    // a cut and a dissolve leave the store frozen
+    r.sw.take();
+    CHECK(r.sw.frozen());
+    r.sw.take();
+    for (auto e : {std::shared_ptr<const vt::Effect>(vt::makeCut()), dissolve()}) {
+        REQUIRE(r.sw.setEffect(e));
+        r.sw.setTBar(100);
+        CHECK(r.sw.frozen());
+        r.sw.setTBar(0);
+    }
+    REQUIRE(r.sw.setEffect(load(kBlockOut)));
+    r.sw.select(Bus::Main, Source::In4);
+    r.sw.setTBar(100);
+    CHECK_FALSE(r.sw.frozen());
+    CHECK(r.sw.dvInput() == 3);  // Main's input goes through DV
+    CHECK(r.sw.still(Source::DV1).px == numbered(2).px);
+    CHECK(r.sw.still(Source::DV2).px == numbered(77).px);
+}
+
+TEST_CASE("ChromaFX has no lag", "[switcher][dv][chromafx]") {
+    // Preview's input changes every tick in r and holds this tick's frame in q: the same picture.
+    Rig r, q;
+    for (Rig* x : {&r, &q}) {
+        REQUIRE(x->sw.setEffect(fadeToNeg()));
+        x->sw.setTBar(511);
+        REQUIRE(x->sw.chromaEngaged());
+    }
+    q.in2 = numbered(10);
+    for (int n = 0; n <= 10; ++n) {
+        r.in2 = numbered(n);
+        const vt::Frame got = r.render(), want = q.render();
+        INFO("tick " << n);
+        if (n == 10) CHECK(got.px == want.px);
+        r.sw.tick();
+        q.sw.tick();
+    }
 }
