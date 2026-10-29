@@ -124,6 +124,18 @@ struct DveMix {
 //               Photo Fly Out !'s are white like its tag-White generator, Hand Pull !'s black, so
 //               it shows the generator). The art rule does not apply to a routed pixel. A route
 //               whose bus frame is null is not routed (S = 9 with palette colour still is).
+// Spill (routed frames only, i.e. mix given and DveControl::index non-empty): a run of moving
+//               cells reading lines above the clean area (< 13), entered from a moving cell reading
+//               a line below it (> 228), counts as v = 0 for the routed S = 1 / 9 level mix (d is
+//               black there) when the moving cells end right after the run (control lines 14 on;
+//               the margin above holds stale cells); it is still drawn where nothing mixes over it
+//               (an S = 3 index can cover part of it). These rows continue a
+//               card past its last source line with lines counted from the top; the palette trims
+//               them (S = 1 at L 0), except under a shadow index, where they showed as a band of
+//               the picture (Flip Out Bottom2 !, frames 6-18). A card's own top rows, which can
+//               follow such a jump too (spill above the card reads the bottom lines), run on into
+//               the clean lines and are kept. Unrouted DVEs keep every jump: Cube Out's faces meet
+//               that way.
 // Every output pixel gets alpha 255 except the moving/background/shadow cases, which keep the
 // source pixel's alpha. Returns the number of output pixels drawn as unknown-code grey.
 int renderDve(const DveControl&, const Frame& moving, const Frame& background, const std::vector<Rgb>& cmap,

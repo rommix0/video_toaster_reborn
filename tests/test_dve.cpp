@@ -378,6 +378,40 @@ TEST_CASE("renderDve mixes a routed pixel by its level", "[dve]") {
     REQUIRE(out.at(301, 260) == a.at(301, 260));  // index 0 there: S = 1 at L 0, the bus alone
 }
 
+TEST_CASE("renderDve drops spill cells in routed frames only", "[dve]") {
+    // control lines 100..102 read source lines 238, 3, 4 on cells 10..12; cell 11 of line 100 is
+    // not moving, so cell 11 below it is not spill; cell 12 stays moving on line 103 (line 103)
+    vt::DveControl c;
+    for (int k = 0; k < vt::kDveLines; ++k) c.line[size_t(k)] = uint8_t(k);
+    c.line[100] = 238;
+    c.line[101] = 3;
+    c.line[102] = 4;
+    for (int k = 100; k <= 102; ++k)
+        for (int cell : {10, 11, 12}) c.key[size_t(k) * 192 + size_t(cell)] = 200;
+    c.key[100 * 192 + 11] = 0;
+    c.key[103 * 192 + 12] = 200;  // cell 12's run goes on into line 103: a card's top, kept
+    c.index.assign(size_t(vt::kDveLines) * vt::kDveWidth, 1);  // every pixel S = 1 at L 2
+    const std::vector<vt::DveRoute> routes = {{0, 0}, {1, 2}};
+    const vt::Frame moving = solid({200, 100, 0, 255}), b = solid({10, 20, 30, 255});
+    const vt::DveMix mix{&routes, &b, {0, 0, 0, 255}, nullptr};
+    vt::Frame plain, routed;
+    vt::renderDve(c, moving, b, {}, plain, vt::HardwareGuesses{});
+    vt::renderDve(c, moving, b, {}, routed, vt::HardwareGuesses{}, &mix);
+    auto mixL2 = [](vt::Rgba8 s, vt::Rgba8 d) {
+        auto m = [](int sc, int dc) { return uint8_t((sc * (255 - 170) + dc * 170 + 127) / 255); };
+        return vt::Rgba8{m(s.r, d.r), m(s.g, d.g), m(s.b, d.b), 255};
+    };
+    const vt::Rgba8 black{0, 0, 0, 255}, mv{200, 100, 0, 255}, bc{10, 20, 30, 255};
+    for (int y : {202, 203, 204, 205}) {
+        INFO("y " << y);
+        REQUIRE(plain.at(40, y) == mv);                   // unrouted: the jump is kept
+        REQUIRE(routed.at(40, y) == mixL2(bc, black));    // spill: as key 0, a shadow on B
+        REQUIRE(routed.at(44, y) == mixL2(bc, mv));       // the cell above was not moving: picture
+        REQUIRE(routed.at(48, y) == mixL2(bc, mv));       // the run did not end the moving cells
+    }
+    REQUIRE(routed.at(40, 200) == mixL2(bc, mv));         // line 238 itself is the card
+}
+
 TEST_CASE("decodeDve fills the display index only for \"!\" DVEs", "[dve]") {
     REQUIRE(vt::decodeDve(blankPlanes(3)).index.empty());
     vt::Planes p = blankPlanes(6);

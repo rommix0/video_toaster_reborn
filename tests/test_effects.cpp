@@ -1389,6 +1389,43 @@ TEST_CASE("Flip Out Bottom2 ! shades B under the card", "[dve][effect]") {
     REQUIRE(shadow >= 10000);
 }
 
+// The card's control rows run on past its last source line (238/239) with lines counted from the
+// top of the source (2, 3, ...). The palette trims them, except under the shadow, where they showed
+// as a band of the picture (frames 6-18). They are drawn as key 0: shaded B like the rest.
+TEST_CASE("Flip Out Bottom2 ! has no picture band at the top of its shadow", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !";
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+    const auto routes = vt::dveRoutes(c->blobs.at(kTagSourceWords), an.bm.cmap);
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 10;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[10]);
+    const int w = ctx.guesses.dveLevelMix[2];
+    auto dark = [w](int sc) { return uint8_t((sc * (255 - w) + 127) / 255); };
+    int band = 0;
+    for (int k = 1; k < vt::kDveLines; ++k) {
+        if (dc.line[size_t(k)] >= 13 || dc.line[size_t(k - 1)] <= 228) continue;  // first spill row only
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const size_t cell = size_t(x / 4);
+            if (dc.key[size_t(k) * 192 + cell] < 64 || dc.key[size_t(k - 1) * 192 + cell] < 64) continue;
+            const uint8_t i = dc.index[size_t(k) * 768 + size_t(x)];
+            if (i >= routes.size() || routes[i].source != 1 || routes[i].level != 2) continue;
+            for (int y : {2 * k, 2 * k + 1}) {
+                ++band;
+                const vt::Rgba8 p = b.at(x, y);
+                if (!same(got.at(x, y), {dark(p.r), dark(p.g), dark(p.b), 255})) FAIL("band pixel (" << x << "," << y << ") is not shaded B");
+            }
+        }
+    }
+    REQUIRE(band >= 500);
+}
+
 // Fly Over Crumpled Edge !'s foil edge takes its colour from the whole display index: plane 2 is
 // part of it (index 60 is dark, 19 27 31; the old cmap[group * 8] drew cmap[56], 217 235 255).
 TEST_CASE("Fly Over Crumpled Edge ! draws its edge in the display index's palette colour", "[dve][effect]") {

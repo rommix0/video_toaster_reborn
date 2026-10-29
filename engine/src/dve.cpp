@@ -141,6 +141,28 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
     int shadowAlpha[8];
     for (int s = 0; s < 8; ++s) shadowAlpha[s] = std::clamp(int(s * (255.0 * opacity) / 7.0), 0, 255);
     const int cellPixel = g.dveCellPixel < 0 ? -1 : std::min(g.dveCellPixel, 3);
+    // Routed ("!") frames: the level mix treats spill cells as key 0 (vt/dve.h). A run of moving
+    // cells reading lines above the clean area (< kSpillTop), entered from a moving cell reading a
+    // line below it (> kSpillBottom), is spill when the moving cells end right after it; a card's
+    // own top rows run on into the clean lines instead.
+    std::array<bool, kDveLines * kDveCells> spill{};
+    if (routed) {
+        constexpr int kSpillTop = kTop, kSpillBottom = kDveLines - kBottom - 1;
+        std::array<int, kDveCells> run;  // first row of the open run per cell, -1 = none
+        run.fill(-1);
+        auto moving = [&](int k, int cell) { return k < kDveLines && c.key[size_t(k) * kDveCells + size_t(cell)] >= 64; };
+        for (int k = kSpillTop + 1; k <= kDveLines; ++k) {  // the clean area: the margins hold stale cells
+            const bool low = k < kDveLines && c.line[size_t(k)] < kSpillTop;
+            const bool fromBottom = c.line[size_t(k - 1)] > kSpillBottom;
+            for (int cell = 0; cell < kDveCells; ++cell) {
+                int& r = run[size_t(cell)];
+                if (r >= 0 && moving(k, cell) && low) continue;
+                if (r >= 0 && !moving(k, cell))
+                    for (int j = r; j < k; ++j) spill[size_t(j) * kDveCells + size_t(cell)] = true;
+                r = low && fromBottom && moving(k, cell) && moving(k - 1, cell) ? k : -1;
+            }
+        }
+    }
     int unknown = 0;
     for (int y = 0; y < kRasterH; ++y) {
         const int k = y / 2, parity = y & 1;
@@ -190,7 +212,8 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
                 else if (bus) s = bus->at(x, y);
                 else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule
                 const int w = g.dveLevelMix[rt.level & 3];
-                const Rgba8 d = key[x / 4] == 0 ? Rgba8{0, 0, 0, 255} : dst[x];  // key 0: the DVE draws nothing
+                const bool none = key[x / 4] == 0 || spill[size_t(k) * kDveCells + size_t(x / 4)];
+                const Rgba8 d = none ? Rgba8{0, 0, 0, 255} : dst[x];  // key 0 (or spill): the DVE draws nothing
                 auto m = [w](int sc, int dc) { return uint8_t((sc * (255 - w) + dc * w + 127) / 255); };
                 dst[x] = {m(s.r, d.r), m(s.g, d.g), m(s.b, d.b), 255};
                 routedPx[x] = true;
