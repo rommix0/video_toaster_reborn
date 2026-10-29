@@ -40,6 +40,9 @@ struct IndexImage {
 // mid-way) or a run would write past outSize. Source bytes after outSize is reached are ignored.
 std::vector<uint8_t> unpackByteRun1(std::span<const uint8_t> src, size_t outSize);
 
+// ByteRun1 for one row: literal runs of at most 128 bytes, repeat runs of 3 to 128.
+std::vector<uint8_t> packByteRun1(std::span<const uint8_t> row);
+
 // BODY -> bit planes (de-interleaves rows, drops the mask plane). Throws on a short BODY.
 Planes bodyToPlanes(const Bitmap& bm, std::span<const uint8_t> body);
 

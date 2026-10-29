@@ -18,7 +18,7 @@ add_executable(vt_tests
     test_switcher.cpp
     test_timing.cpp
 )
-target_link_libraries(vt_tests PRIVATE vt_engine catch2_amalgamated)
+target_link_libraries(vt_tests PRIVATE vt_engine vt_assets catch2_amalgamated)
 target_include_directories(vt_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(vt_tests PRIVATE
     VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."

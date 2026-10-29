@@ -20,4 +20,9 @@ Rect framestoreRect(int w = kFramestoreW, int h = kFramestoreH);
 // malformed file: nullopt and *whyNot. Sizes: w <= 768 and h <= 480, both even.
 std::optional<Frame> loadFramestore(const std::filesystem::path&, std::string* whyNot = nullptr);
 
+// Writes `path` (picture + icons + CrUD, FREEZE.md §4 P3) and `path` + ".I" (icons + CrUD), creating
+// the folder. The picture is `still` inside framestoreRect(), 24-plane RGB (P2) with the Switcher's
+// own BMHD (switcher.main 0x11ca4c). False and *whyNot on failure; no half-written file is left behind.
+bool saveFramestore(const std::filesystem::path&, const Frame& still, std::string* whyNot = nullptr);
+
 }  // namespace vt

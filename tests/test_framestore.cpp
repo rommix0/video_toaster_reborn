@@ -7,13 +7,32 @@
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
+#include "vt/assets/icons.h"
 #include "vt/crouton.h"
 #include "vt/effect.h"
 #include "vt/framestore.h"
+#include "vt/iff.h"
 
 namespace {
 
 std::filesystem::path framestore(const char* rel) { return dataRoot() / rel; }
+
+// A still with a distinct ramp per gun inside the framestore rect and black outside.
+vt::Frame ramp(int step) {
+    vt::Frame f;
+    std::fill(f.px.begin(), f.px.end(), vt::Rgba8{0, 0, 0, 255});
+    const vt::Rect r = vt::framestoreRect();
+    for (int y = 0; y < r.h; ++y)
+        for (int x = 0; x < r.w; ++x)
+            f.at(r.x + x, r.y + y) = {uint8_t(x * step), uint8_t(y * step), uint8_t((x + y) * step), 255};
+    return f;
+}
+
+struct TempDir {
+    std::filesystem::path dir = std::filesystem::temp_directory_path() / "vt_framestore_save";
+    TempDir() { std::filesystem::remove_all(dir); }
+    ~TempDir() { std::error_code ec; std::filesystem::remove_all(dir, ec); }
+};
 
 }  // namespace
 
@@ -81,4 +100,84 @@ TEST_CASE("loadEffect refuses a framestore") {
     std::string why;
     CHECK(!vt::loadEffect(framestore("4.2/Framestore/ColorBars"), &why));
     CHECK(why == "a framestore (load it into DV1/DV2), not an effect");
+}
+
+TEST_CASE("framestore save then load is exact") {
+    TempDir t;
+    const vt::Frame still = ramp(3);
+    std::string why;
+    const auto file = t.dir / "Ramp";
+    REQUIRE(vt::saveFramestore(file, still, &why));
+    INFO(why);
+
+    const auto back = vt::loadFramestore(file, &why);
+    INFO(why);
+    REQUIRE(back);
+    CHECK(back->px == still.px);
+    const auto c = vt::loadCrouton(file);
+    REQUIRE(c);
+    CHECK(c->type == vt::CroutonType::Fram);
+
+    REQUIRE(std::filesystem::exists(t.dir / "Ramp.I"));
+    CHECK(!std::filesystem::exists(t.dir / "Ramp.tmp"));
+    CHECK(!std::filesystem::exists(t.dir / "Ramp.I.tmp"));
+    const auto icons = vt::assets::scanCroutons(t.dir);
+    REQUIRE(icons.size() == 1);
+    CHECK(icons[0].image.w == 80);
+    CHECK(icons[0].image.h == 50);
+}
+
+TEST_CASE("saved file has the original's layout") {
+    TempDir t;
+    REQUIRE(vt::saveFramestore(t.dir / "Ramp", ramp(3)));
+    const auto bytes = readFile(t.dir / "Ramp");
+    const auto forms = vt::iffForms(bytes);
+    const std::array<std::string, 7> want{"ILBM", "ILBM", " PUS", "ILBM", " PUS", "CrUD", " PUS"};
+    REQUIRE(forms.size() == want.size());
+    for (size_t i = 0; i < want.size(); ++i) CHECK(std::string(forms[i].type.data(), 4) == want[i]);
+
+    const auto chunks = vt::formChunks(bytes, forms[0]);
+    REQUIRE(chunks.size() == 3);
+    CHECK(std::string(chunks[0].id.data(), 4) == "BMHD");
+    const std::vector<uint8_t> bmhd{0x02, 0xF0, 0x01, 0xE0, 0, 0, 0, 0, 0x18, 0, 0x01, 0, 0, 0, 0x0A, 0x0B, 0x02, 0xF0, 0x01, 0xE0};
+    CHECK(std::vector<uint8_t>(bytes.begin() + long(chunks[0].data), bytes.begin() + long(chunks[0].data + chunks[0].size)) == bmhd);
+    CHECK(std::string(chunks[1].id.data(), 4) == "PLTP");
+    CHECK(chunks[1].size == 48);
+    for (size_t n = 0; n < 24; ++n) {
+        CHECK(bytes[chunks[1].data + 2 * n] == 8 + n / 8);
+        CHECK(bytes[chunks[1].data + 2 * n + 1] == n % 8);
+    }
+
+    // The tail is ColorBars.I's layout: same size, and the CrUD forms are byte-identical.
+    const auto icons = readFile(t.dir / "Ramp.I");
+    const auto orig = readFile(framestore("4.2/Framestore/ColorBars.I"));
+    REQUIRE(icons.size() == orig.size());
+    CHECK(std::equal(icons.end() - 88, icons.end(), orig.end() - 88));
+    CHECK(std::equal(icons.begin(), icons.begin() + 8, orig.begin()));  // FORM, 3240
+    CHECK(std::equal(bytes.end() - long(icons.size()), bytes.end(), icons.begin()));
+}
+
+TEST_CASE("framestore save creates the folder and handles unicode names") {
+    TempDir t;
+    const auto file = t.dir / "new folder" / std::filesystem::path(u8"Bärs ✓");
+    const vt::Frame still = ramp(1);
+    std::string why;
+    REQUIRE(vt::saveFramestore(file, still, &why));
+    INFO(why);
+    const auto back = vt::loadFramestore(file, &why);
+    INFO(why);
+    REQUIRE(back);
+    CHECK(back->px == still.px);
+    CHECK(std::filesystem::exists(std::filesystem::path(file) += ".I"));
+}
+
+TEST_CASE("framestore save fails cleanly") {
+    TempDir t;
+    std::filesystem::create_directories(t.dir);
+    { std::ofstream(t.dir / "plain") << "x"; }
+    std::string why;
+    // the parent "folder" is a file
+    CHECK(!vt::saveFramestore(t.dir / "plain" / "Ramp", ramp(3), &why));
+    CHECK(!why.empty());
+    CHECK(std::distance(std::filesystem::directory_iterator(t.dir), {}) == 1);
 }

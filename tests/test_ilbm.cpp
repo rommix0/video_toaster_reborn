@@ -1,5 +1,6 @@
 #include <array>
 #include <cmath>
+#include <random>
 #include <stdexcept>
 
 #include "catch_amalgamated.hpp"
@@ -298,5 +299,21 @@ TEST_CASE("readSound: mono, stereo by CHAN, no 8SVX, bad data") {
         std::vector<uint8_t> n;
         putChunk(n, "VHDR", vhdr(2, 0, 8000, 0));
         REQUIRE_THROWS_AS(vt::readSound(makeForm("8SVX", n)), std::runtime_error);
+    }
+}
+
+TEST_CASE("packByteRun1 round trips") {
+    std::mt19937 rng(7);
+    for (size_t n : {0, 1, 2, 127, 128, 129, 300}) {
+        std::vector<uint8_t> noise(n), flat(n, 0x5a), mixed(n);
+        for (auto& b : noise) b = uint8_t(rng());
+        for (size_t i = 0; i < n; ++i) mixed[i] = uint8_t((i / 7) % 3 == 0 ? 9 : rng() % 4);  // runs, pairs and noise
+        for (const auto& row : {noise, flat, mixed}) {
+            INFO("n = " << n);
+            const auto packed = vt::packByteRun1(row);
+            CHECK(vt::unpackByteRun1(packed, row.size()) == row);
+            // a run of 128 is one repeat pair; 3 equal bytes are worth a repeat
+            if (n == 300 && row == flat) CHECK(packed.size() == 6);
+        }
     }
 }

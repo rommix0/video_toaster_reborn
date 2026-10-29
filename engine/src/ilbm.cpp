@@ -54,6 +54,30 @@ std::vector<uint8_t> unpackByteRun1(std::span<const uint8_t> src, size_t outSize
     return out;
 }
 
+std::vector<uint8_t> packByteRun1(std::span<const uint8_t> row) {
+    std::vector<uint8_t> out;
+    const size_t n = row.size();
+    // Length (at most 128) of the run of equal bytes starting at i.
+    auto run = [&](size_t i) {
+        size_t r = 1;
+        while (i + r < n && r < 128 && row[i + r] == row[i]) ++r;
+        return r;
+    };
+    for (size_t i = 0; i < n;) {
+        if (const size_t r = run(i); r >= 3) {
+            out.push_back(uint8_t(257 - r));
+            out.push_back(row[i]);
+            i += r;
+            continue;
+        }
+        const size_t start = i;
+        while (i < n && i - start < 128 && run(i) < 3) ++i;
+        out.push_back(uint8_t(i - start - 1));
+        out.insert(out.end(), row.begin() + start, row.begin() + i);
+    }
+    return out;
+}
+
 Planes bodyToPlanes(const Bitmap& bm, std::span<const uint8_t> body) {
     if (bm.w < 0 || bm.h < 0 || bm.planes < 0) throw std::runtime_error("ILBM: negative dimensions");
     const size_t rb = size_t(bm.rowbytes());
