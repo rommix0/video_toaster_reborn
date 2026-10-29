@@ -15,6 +15,7 @@
 #include "vt/anim.h"
 #include "vt/background.h"
 #include "vt/crouton.h"
+#include "vt/dve.h"
 #include "vt/effect.h"
 #include "vt/ilbm.h"
 #include "vt/log.h"
@@ -1168,5 +1169,113 @@ TEST_CASE("a matte-less Overlays-drawer effect shows A under its art at every T-
     for (int t : {0, 256, 511}) {
         const vt::Frame out = renderAt(*e, t, solid(kA), solid(kB));
         REQUIRE(std::none_of(out.px.begin(), out.px.end(), [](vt::Rgba8 p) { return same(p, kB); }));
+    }
+}
+
+namespace {
+
+// Distinct, never white: A and B differ everywhere.
+vt::Frame ramp(int s) {
+    vt::Frame f;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x)
+            f.at(x, y) = {uint8_t(x * 255 / 767 / s), uint8_t(y * 255 / 481 / s), uint8_t(60 * s), 255};
+    return f;
+}
+
+const char* const kBangDves[] = {
+    "4.2/Effects/4000FX/Digital/Hand Pull !",           "4.2/Effects/4000FX/Digital/Flip Chrome Edge !",
+    "4.2/Effects/4000FX/Digital/Warp To Globe !",       "4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !",
+    "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !", "4.2/Effects/4000FX/Space/Infinite Video Space !",
+    "4.2/Effects/4000FX/Trajectory/Photo Fly Out !",
+};
+
+}  // namespace
+
+TEST_CASE("Photo Fly Out ! flashes white, then fades A in", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Trajectory/Photo Fly Out !";
+    auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    auto af = firstForm(*c, kAnim);
+    REQUIRE(af);
+    const vt::Anim an = vt::readAnim(c->bytes, *af);
+    REQUIRE(an.planes.size() >= 11);
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::DveInfo info = vt::dveInfo(an);
+    REQUIRE((info.role == vt::DveRole::MovingA || info.role == vt::DveRole::MovingB));
+    const vt::Frame a = ramp(1), b = ramp(2);
+    const vt::Frame* moving = info.role == vt::DveRole::MovingA ? &a : &b;
+    const vt::Frame* background = info.role == vt::DveRole::MovingA ? &b : &a;
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.generator = nullptr;
+
+    // (384, 240) has plane 4 set in frames 0-6 and L = 0 in frames 0-3, then 1, 2, 3 (Ruling 1 was
+    // not needed). Every plane-4 pixel also carries the art layer (art group >= 2, an opaque
+    // colour), so d, the picture the mix is taken against, is rendered without the art layer: the
+    // mix replaces the art rule at a routed pixel (vt/dve.h), it does not blend with it.
+    const int kProbeX = 384, kProbeY = 240;
+    const int w[3] = {85, 170, 255};
+    for (int k = 0; k <= 10; ++k) {
+        INFO("frame " << k);
+        ctx.animFrame = k;
+        vt::Frame got;
+        e->render(0, a, b, got, ctx);
+        const vt::DveControl dc = vt::decodeDve(an.planes[size_t(k)]);
+        const uint8_t idx = dc.index[size_t(kProbeY / 2) * 768 + size_t(kProbeX)];
+        if (k <= 6) REQUIRE((idx & 16) != 0);
+        const vt::Rgba8 o = got.at(kProbeX, kProbeY);
+        if (k <= 3) {
+            REQUIRE(((idx >> 2) & 3) == 0);
+            REQUIRE(same(o, kWhite));
+        } else if (k <= 6) {
+            REQUIRE(((idx >> 2) & 3) == k - 3);
+            std::vector<vt::Rgb> pal = an.bm.cmap;
+            for (int j = 1; j <= k; ++j)
+                if (size_t(j) < an.cmaps.size() && an.cmaps[size_t(j)] && !an.cmaps[size_t(j)]->empty()) pal = *an.cmaps[size_t(j)];
+            vt::Frame d;
+            vt::DveControl noArt = dc;
+            noArt.art.clear();
+            vt::renderDve(noArt, *moving, *background, pal, d, ctx.guesses);
+            const vt::Rgba8 dp = d.at(kProbeX, kProbeY);
+            const int wk = w[k - 4];
+            REQUIRE(same(o, {uint8_t((255 * (255 - wk) + dp.r * wk + 127) / 255), uint8_t((255 * (255 - wk) + dp.g * wk + 127) / 255),
+                             uint8_t((255 * (255 - wk) + dp.b * wk + 127) / 255), 255}));
+        }
+    }
+
+    // frame 10: the border ring (plane 4 set, L = 0) is all white
+    ctx.animFrame = 10;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[10]);
+    int ring = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const uint8_t idx = dc.index[size_t(y / 2) * 768 + size_t(x)];
+            if ((idx & 16) && ((idx >> 2) & 3) == 0) {
+                ++ring;
+                if (!same(got.at(x, y), kWhite)) FAIL("ring pixel (" << x << "," << y << ") is not white");
+            }
+        }
+    REQUIRE(ring >= 1000);
+}
+
+TEST_CASE("the seven \"!\" DVEs render without unknown codes", "[dve][effect]") {
+    const vt::Frame a = solid({10, 20, 30, 255}), b = solid({40, 50, 60, 255});
+    const vt::Rect r = vt::kVisibleArea;
+    for (const char* src : kBangDves) {
+        INFO(src);
+        auto e = load(src);
+        REQUIRE(e);
+        for (int k = 0; k < e->frameCount(); ++k) {
+            vt::RenderCtx ctx = ctxWith(kWhite);
+            ctx.animFrame = k;
+            vt::Frame out;
+            e->render(0, a, b, out, ctx);
+            for (int y = r.y; y < r.y + r.h; ++y)
+                for (int x = r.x; x < r.x + r.w; ++x)
+                    if (same(out.at(x, y), {128, 128, 128, 255})) FAIL("frame " << k << " grey at (" << x << "," << y << ")");
+        }
     }
 }

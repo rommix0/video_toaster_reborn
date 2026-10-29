@@ -91,7 +91,7 @@ const char* gradientRefusal(const Bitmap&);
 std::unique_ptr<Effect> makeGradient(CroutonBasics, Bitmap, IndexImage, std::string* why);
 std::unique_ptr<Effect> makeAnimEffect(CroutonBasics, Anim, AnimPlan, std::string* why);
 // DVE content (isDve on the first frame); every frame must be 768x241 DVE control data.
-std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, std::string* why);
+std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, const std::vector<uint8_t>& tag1b, std::string* why);
 // CRFX crouton: its ` LUT` record, settings from the tags (vt/chromafx.h).
 std::unique_ptr<Effect> makeChromaEffect(CroutonBasics, const Crouton&, std::string* why);
 // ALGO crouton: its program (tag 0x1000001C) run by vt::AlgoVm, kind 0x80000063, routing

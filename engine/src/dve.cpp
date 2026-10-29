@@ -69,6 +69,20 @@ DveControl decodeDve(const Planes& p) {
         const int line = int(((second >> 12) & 15) << 4 | ((first >> 12) & 15));
         c.line[size_t(k)] = uint8_t(std::min(line, kDveLines - 1));
     }
+    // display index: every plane but the sprite, bit i from the i-th (more than 3 planes only; a
+    // bit past 7 cannot be held and is dropped)
+    if (p.count > 3) {
+        c.index.assign(size_t(kDveLines) * kDveWidth, 0);
+        int ibit = 0;
+        for (int pl = 0; pl < p.count && ibit < 8; ++pl) {
+            if (pl == sprite) continue;
+            const uint8_t* src = p.plane(pl);
+            for (int k = 0; k < kDveLines; ++k)
+                for (int x = 0; x < kDveWidth; ++x)
+                    if (src[k * 96 + x / 8] & (0x80 >> (x % 8))) c.index[size_t(k) * kDveWidth + size_t(x)] |= uint8_t(1 << ibit);
+            ++ibit;
+        }
+    }
     // art: planes 3.. without the signature; the i-th such plane gives bit i of the group
     int bit = 0;
     for (int pl = 3; pl < p.count; ++pl) {
@@ -99,8 +113,28 @@ DveInfo dveInfo(const Anim& a) {
     return {first >= last ? DveRole::MovingA : DveRole::MovingB, -1};
 }
 
+std::vector<DveRoute> dveRoutes(const std::vector<uint8_t>& tag1b, const std::vector<Rgb>& cmap) {
+    // 0xe80e4: word rows, word step, word first index, word count, 8 mask longs, then count longs
+    // for row 0 (paletteRoutes' layout)
+    if (tag1b.size() < 40) return {};
+    auto be16 = [&](size_t o) { return unsigned(tag1b[o] << 8 | tag1b[o + 1]); };
+    auto be32 = [&](size_t o) { return be16(o) << 16 | be16(o + 2); };
+    const size_t first = be16(4), count = be16(6);
+    if (tag1b.size() < 40 + count * 4) return {};
+    std::vector<DveRoute> r(first + count);
+    for (size_t k = 0; k < count; ++k) {
+        const size_t i = first + k;
+        const unsigned e = be32(40 + k * 4), mask = be32(8 + 4 * ((e >> 28) & 7));
+        const unsigned s = (e >> 12) & 15;
+        if ((mask & 0x604) == 0x604 && (s == 1 || s == 3 || s == 9)) r[i].source = uint8_t(s);
+        r[i].level = uint8_t(((e & mask) | (~mask & (i < cmap.size() ? unsigned(cmap[i].b) : 0u))) & 3);
+    }
+    return r;
+}
+
 int renderDve(const DveControl& c, const Frame& moving, const Frame& background, const std::vector<Rgb>& cmap,
-              Frame& out, const HardwareGuesses& g) {
+              Frame& out, const HardwareGuesses& g, const DveMix* mix) {
+    const bool routed = mix && mix->routes && !c.index.empty();
     // shadow alpha per strength s = min(v, 7), as toaster_dve.render: uint8(s * (255 * opacity) / 7)
     const double opacity = std::clamp(double(g.dveShadowOpacity), 0.0, 1.0);
     int shadowAlpha[8];
@@ -136,11 +170,29 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
                 ++unknown;
             }
         }
+        bool routedPx[kRasterW] = {};  // pixels the level mix drew: the art rule leaves them alone
+        if (routed) {
+            const uint8_t* index = &c.index[size_t(k) * kDveWidth];
+            const auto& routes = *mix->routes;
+            for (int x = 0; x < kRasterW; ++x) {
+                if (index[x] >= routes.size() || routes[index[x]].source == 0) continue;
+                const DveRoute rt = routes[index[x]];
+                const Frame* bus = rt.source == 1 ? mix->a : rt.source == 3 ? mix->b : mix->generator;
+                Rgba8 s = mix->colour;
+                if (bus) s = bus->at(x, y);
+                else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule
+                const int w = g.dveLevelMix[rt.level & 3];
+                const Rgba8 d = dst[x];
+                auto m = [w](int sc, int dc) { return uint8_t((sc * (255 - w) + dc * w + 127) / 255); };
+                dst[x] = {m(s.r, d.r), m(s.g, d.g), m(s.b, d.b), 255};
+                routedPx[x] = true;
+            }
+        }
         if (!c.art.empty()) {
             const uint8_t* art = &c.art[size_t(k) * kDveWidth];
             for (int x = 0; x < kRasterW; ++x) {
                 const size_t idx = size_t(art[x]) * 8;
-                if (art[x] != 0 && idx < cmap.size()) dst[x] = {cmap[idx].r, cmap[idx].g, cmap[idx].b, 255};
+                if (art[x] != 0 && idx < cmap.size() && !routedPx[x]) dst[x] = {cmap[idx].r, cmap[idx].g, cmap[idx].b, 255};
             }
         }
     }

@@ -99,7 +99,9 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             Anim an = readAnim(c->bytes, *af);
             if (!an.planes.empty() && isDve(an.planes[0])) {
                 // DVE files are ANIM content; the one 9-plane DVE has no index frames (Ruling 6)
-                return detail::makeDveEffect(basics(animTiming(*c, int(an.planes.size()))), an, why);
+                const auto tag = c->blobs.find(kTagSourceWords);
+                return detail::makeDveEffect(basics(animTiming(*c, int(an.planes.size()))), an,
+                                             tag != c->blobs.end() ? tag->second : std::vector<uint8_t>{}, why);
             }
             AnimPlan plan = planAnim(an, c->tag(kTagMode));
             if (plan.kind == AnimKind::Unsupported) return fail(why, plan.reason);

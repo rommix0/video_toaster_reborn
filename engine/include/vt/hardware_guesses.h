@@ -1,6 +1,9 @@
 #pragma once
 // Values the Toaster's hardware or Switcher code decides but that are not (yet) known from the
 // program. Each is a GUESS, kept here so it is visible, documented and easy to change in one place.
+#include <array>
+#include <cstdint>
+
 namespace vt {
 
 struct HardwareGuesses {
@@ -29,6 +32,12 @@ struct HardwareGuesses {
     // not show. LUT_LinearRamp (written as DV line 479) would be the identity if the entry were
     // DV luma / 2 - 18, i.e. 17.5 + 0.253 Y, within one entry of this.
     float chromaLumaOffset = 17.5f;
+
+    // "!" DVEs (tag 0x1000001B, vt/dve.h): the DVE picture's share 0..255 for a routed pixel of
+    // level L = 0..3; the rest is the routed source (A, B or the colour generator). Thirds, so L = 0
+    // shows the source alone and L = 3 the DVE picture alone (Photo Fly Out ! flashes white, then
+    // fades the photo in). HARDWARE GUESS: FREEZE.md section 2 does not give the mixer's weights.
+    std::array<uint8_t, 4> dveLevelMix{0, 85, 170, 255};
 };
 
 }  // namespace vt

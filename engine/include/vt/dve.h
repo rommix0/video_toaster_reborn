@@ -37,6 +37,10 @@ struct DveControl {
     std::array<uint8_t, kDveLines * kDveCells> key{};  // cell value per control line
     std::array<uint8_t, kDveLines> line{};              // source line per control line, 0..240
     std::vector<uint8_t> art;                           // 241 x 768 palette groups (line-major); empty if none
+    // 241 x 768 display-bitmap palette index (line-major): every plane except the line table's
+    // sprite plane, bit i from the i-th of them (FREEZE.md section 1 item 6). Filled only when the
+    // frame has more than 3 planes; empty otherwise.
+    std::vector<uint8_t> index;
     uint8_t borderFill = 23;  // fill code (16..23) drawn where a moving cell's line is kDveColourLine
 };
 
@@ -78,9 +82,34 @@ DveInfo dveInfo(const Anim&);  // uses Anim::planes (the 9-plane effect has no i
 //   24..63      unknown code: mid grey (128, 128, 128); counted in the return value.
 //   art group g > 0 (when present): cmap[g * 8] replaces the result; when g * 8 is past the end
 //               of cmap the art pixel is not drawn.
+//   routed pixel (mix given, and DveControl::index non-empty): i = index at the pixel; when
+//               routes[i].source != 0 the pixel is s = a / b / the generator (or colour) at (x, y)
+//               mixed with d, the pixel as drawn above (before the art layer), by
+//               w = dveLevelMix[L]: (s * (255 - w) + d * w + 127) / 255 per channel, alpha 255.
+//               The art rule does not apply to it. A route whose bus frame is null is not routed.
 // Every output pixel gets alpha 255 except the moving/background/shadow cases, which keep the
 // source pixel's alpha. Returns the number of output pixels drawn as unknown-code grey.
+//
+// Tag 0x1000001B for one frame of a "!" DVE (the layout of vt::paletteRoutes' comment, row 0 only;
+// P4 of the framestore plan): per palette index of the display bitmap, source 0 = none (the art
+// rule), 1 = A, 3 = B, 9 = the colour generator; level L 0..3. Entry i is merged with its CMAP
+// entry as the Switcher does, (cmapBits & ~mask) | (e & mask), mask = masks[(e >> 28) & 7]: the
+// source is bits 12-15 of e when the mask has all of 0x604, else none; L is the merged low two
+// bits, with cmap[i].b standing for the CMAP's bits. Empty when the tag is short.
+struct DveRoute {
+    uint8_t source = 0, level = 0;
+};
+std::vector<DveRoute> dveRoutes(const std::vector<uint8_t>& tag1b, const std::vector<Rgb>& cmap);
+
+struct DveMix {
+    const std::vector<DveRoute>* routes = nullptr;
+    const Frame* a = nullptr;          // S = 1 (the analog bus picture, never delayed)
+    const Frame* b = nullptr;          // S = 3
+    Rgba8 colour{0, 0, 0, 255};        // S = 9
+    const Frame* generator = nullptr;  // S = 9 with a Snow generator
+};
+
 int renderDve(const DveControl&, const Frame& moving, const Frame& background, const std::vector<Rgb>& cmap,
-              Frame& out, const HardwareGuesses&);
+              Frame& out, const HardwareGuesses&, const DveMix* mix = nullptr);
 
 }  // namespace vt

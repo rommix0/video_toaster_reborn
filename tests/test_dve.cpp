@@ -284,6 +284,84 @@ TEST_CASE("dve colour line draws the border fill", "[dve]") {
     REQUIRE(out.at(159, 10) == bg.at(159, 10));
 }
 
+namespace {
+// A tag 0x1000001B blob: rows 1, step 1, first index `first`, the 8 masks, then the entries.
+std::vector<uint8_t> tag1b(std::array<uint32_t, 2> masks, int first, std::vector<uint32_t> entries) {
+    std::vector<uint8_t> t;
+    auto put16 = [&](unsigned v) { t.insert(t.end(), {uint8_t(v >> 8), uint8_t(v)}); };
+    auto put32 = [&](uint32_t v) { put16(v >> 16); put16(v & 0xffff); };
+    put16(1); put16(1); put16(unsigned(first)); put16(unsigned(entries.size()));
+    for (int i = 0; i < 8; ++i) put32(i < 2 ? masks[size_t(i)] : 0);
+    for (uint32_t e : entries) put32(e);
+    return t;
+}
+}  // namespace
+
+TEST_CASE("dveRoutes reads source and level through the mask", "[dve]") {
+    const std::vector<uint32_t> entries = {0x00009003, 0x00001002, 0x10003001, 0x00000003};
+    std::vector<vt::Rgb> cmap(2);
+    cmap[0].b = 0x02;
+    cmap[1].b = 0x01;
+    auto r = vt::dveRoutes(tag1b({0x80000714, 0x80000717}, 0, entries), cmap);
+    REQUIRE(r.size() == 4);
+    REQUIRE(r[0].source == 9);
+    REQUIRE(r[0].level == 2);  // mask 0 has no L bits: the CMAP's
+    REQUIRE(r[1].source == 1);
+    REQUIRE(r[1].level == 1);
+    REQUIRE(r[2].source == 3);
+    REQUIRE(r[2].level == 1);  // mask 1 has them: the entry's
+    REQUIRE(r[3].source == 0);
+
+    // a mask without the source bits routes nothing
+    r = vt::dveRoutes(tag1b({0x00000113, 0x80000717}, 0, entries), cmap);
+    REQUIRE(r[0].source == 0);
+
+    // sized first + count
+    REQUIRE(vt::dveRoutes(tag1b({0x80000714, 0x80000717}, 3, {0x00001000}), cmap).size() == 4);
+
+    // a table shorter than its count
+    auto shortTag = tag1b({0x80000714, 0x80000717}, 0, entries);
+    shortTag.resize(shortTag.size() - 1);
+    REQUIRE(vt::dveRoutes(shortTag, cmap).empty());
+    REQUIRE(vt::dveRoutes({}, cmap).empty());
+}
+
+TEST_CASE("renderDve mixes a routed pixel by its level", "[dve]") {
+    REQUIRE(vt::HardwareGuesses{}.dveLevelMix == std::array<uint8_t, 4>{0, 85, 170, 255});
+    vt::DveControl c;
+    for (int k = 0; k < vt::kDveLines; ++k) {
+        c.line[size_t(k)] = uint8_t(k);
+        for (int cell = 0; cell < vt::kDveCells; ++cell) c.key[size_t(k) * 192 + size_t(cell)] = uint8_t(255 - (cell + 3));
+    }
+    c.index.assign(size_t(vt::kDveLines) * vt::kDveWidth, 0);
+    c.index[100 * 768 + 300] = 1;
+    const std::vector<vt::DveRoute> routes = {{1, 0}, {9, 2}};
+    const vt::Frame moving = solid({200, 100, 0, 255}), a = solid({10, 20, 30, 255});
+    const vt::DveMix mix{&routes, &a, nullptr, {255, 255, 255, 255}, nullptr};
+    vt::Frame plain, mixed;
+    vt::renderDve(c, moving, a, {}, plain, vt::HardwareGuesses{});
+    vt::renderDve(c, moving, a, {}, mixed, vt::HardwareGuesses{}, &mix);
+    REQUIRE(mixed.at(100, 50) == a.at(100, 50));
+    const vt::Rgba8 d = plain.at(300, 200), m = mixed.at(300, 200);
+    auto want = [](int dc) { return uint8_t((255 * (255 - 170) + dc * 170 + 127) / 255); };
+    REQUIRE(m == vt::Rgba8{want(d.r), want(d.g), want(d.b), 255});
+}
+
+TEST_CASE("decodeDve fills the display index only for \"!\" DVEs", "[dve]") {
+    REQUIRE(vt::decodeDve(blankPlanes(3)).index.empty());
+    vt::Planes p = blankPlanes(6);
+    const uint8_t sig[4] = {0x15, 0x2D, 0x06, 0x83};
+    std::copy(sig, sig + 4, p.plane(5));
+    p.plane(2)[50 * 96] = 0x80;       // pixel (0, 50), plane 2
+    p.plane(4)[50 * 96 + 1] = 0x80;   // pixel (8, 50), plane 4
+    p.plane(5)[50 * 96 + 2] = 0x80;   // pixel (16, 50), the sprite: not part of the index
+    const vt::DveControl c = vt::decodeDve(p);
+    REQUIRE(c.index.size() == size_t(241) * 768);
+    REQUIRE(c.index[50 * 768 + 0] == 4);
+    REQUIRE(c.index[50 * 768 + 8] == 16);
+    REQUIRE(c.index[50 * 768 + 16] == 0);
+}
+
 TEST_CASE("DVE shadows, colour bars, unknown codes and art", "[dve]") {
     vt::DveControl c;
     // control line 3 (raster lines 6-7): cell v = its index for 0..63, art on cells 70.. below
@@ -428,8 +506,13 @@ TEST_CASE("every DVE loads as an effect and renders its role", "[dve][effect]") 
             }
             vt::Frame want, got;
             vt::RenderCtx ctx;
+            // the "!" DVEs carry tag 0x1000001B routes: A, B and the generator mix in by level
+            const auto tag = f.crouton.blobs.find(0x1000001B);
+            const auto routes = vt::dveRoutes(tag != f.crouton.blobs.end() ? tag->second : std::vector<uint8_t>{},
+                                              paletteFor(f.anim, k));
+            const vt::DveMix mix{&routes, &a, &b, ctx.background, nullptr};
             vt::renderDve(vt::decodeDve(f.anim.planes[size_t(k)]), *moving, *background, paletteFor(f.anim, k), want,
-                          ctx.guesses);
+                          ctx.guesses, routes.empty() ? nullptr : &mix);
             e->render(tbarForFrame(k, n), a, b, got, ctx);
             REQUIRE(got.px == want.px);
         }
