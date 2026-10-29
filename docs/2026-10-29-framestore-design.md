@@ -31,8 +31,12 @@ The seven "!" DVEs carry art planes and tag 0x1B (FINDINGS "DVE control codes" �
 - Warp To Globe !
 
 For these, each pixel's palette index gives:
-- **S**, the routed source: 1 A, 3 B, 9 the effect colour (BKG generator), 0 none;
+- **S**, the routed source: 1, 3 or 9 the effect colour (BKG generator), 0 none;
 - **L**, the level, 0–3.
+
+Which bus S = 1 and S = 3 show (Ruling 10, a **GUESS**): S = 1 is the bus that is **not** moving, analog; S = 3 is the moving bus's picture as the move moves it (the DV path, delayed while live: the moving bus holds 0x30|input from the take, FREEZE.md §5). The routing descriptor (tag 0x80000007; ALGO.md §7, the bus permutations) says which bus moves:
+- descriptors 3 and 32 move **A**: S = 1 is B, S = 3 is A's moved picture (Photo Fly Out ! and Warp To Globe ! are 3; Flip Out Bottom2 ! and Fly Over Crumpled Edge ! are 32);
+- every other descriptor moves B: S = 1 is A, S = 3 is B (Hand Pull ! is 2; Flip Chrome Edge ! routes only S = 0; Infinite Video Space ! has no tag 0x1B).
 
 The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and L = 3 shows the DVE picture. Where S = 0 (unused), the current art rule stays.
 
@@ -148,6 +152,6 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
 
 ## 6. For the owner, by eye
 
-- Photo Fly Out ! and the other six "!" DVEs.
+- Photo Fly Out ! and the other six "!" DVEs. The four that move A (Photo Fly Out !, Warp To Globe !, Flip Out Bottom2 !, Fly Over Crumpled Edge !) start on A and end on B (`tools/algo_contact.py --set bang`: A = colour bars, B = slide).
 - The digital lag's stutter at the start of digital moves.
 - The shipped framestores: colours and placement.

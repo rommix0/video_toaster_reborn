@@ -1257,6 +1257,89 @@ TEST_CASE("Photo Fly Out ! flashes white, then fades A in", "[dve][effect]") {
             }
         }
     REQUIRE(ring >= 1000);
+
+    // Ruling 10: descriptor 3 moves A, so the uncovered area (plane 4 clear, L = 0, routed to
+    // S = 1) shows B, the bus that is not moving, from frame 10 to the end
+    REQUIRE(c->tag(0x80000007).value_or(0) == 3);
+    for (int k : {10, e->frameCount() - 1}) {
+        INFO("frame " << k);
+        ctx.animFrame = k;
+        e->render(0, a, b, got, ctx);
+        const vt::DveControl dk = vt::decodeDve(an.planes[size_t(k)]);
+        int open = 0;
+        for (int y = 0; y < vt::kRasterH; ++y)
+            for (int x = 0; x < vt::kRasterW; ++x) {
+                const uint8_t idx = dk.index[size_t(y / 2) * 768 + size_t(x)];
+                if ((idx & 16) || ((idx >> 2) & 3) != 0) continue;
+                ++open;
+                if (!same(got.at(x, y), b.at(x, y))) FAIL("open pixel (" << x << "," << y << ") is not B");
+            }
+        REQUIRE(open >= 1000);
+    }
+}
+
+TEST_CASE("Flip Out Bottom2 ! opens on A (descriptor 32 moves A, Ruling 10)", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !";
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    REQUIRE(c->tag(0x80000007).value_or(0) == 32);
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 0;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const int x = vt::kVisibleArea.x + vt::kVisibleArea.w / 2, y = vt::kVisibleArea.y + vt::kVisibleArea.h / 2;
+    REQUIRE(same(got.at(x, y), a.at(x, y)));
+    REQUIRE(!same(got.at(x, y), b.at(x, y)));
+}
+
+// Ruling 10: in the A-moving "!" DVEs a route to S = 3 shows A's DV picture (RenderCtx::digitalA,
+// delayed while live) and a route to S = 1 the analog B. Every L = 0 routed pixel is exactly
+// that bus.
+TEST_CASE("\"!\" DVE routes: S = 3 is the moving bus's DV picture, S = 1 the analog other bus", "[dve][effect]") {
+    const vt::Frame a = ramp(1), b = ramp(2), d = ramp(3);
+    int s1 = 0, s3 = 0;
+    for (const char* src : {"4.2/Effects/4000FX/Trajectory/Photo Fly Out !", "4.2/Effects/4000FX/Digital/Warp To Globe !",
+                            "4.2/Effects/4000FX/Trajectory/Flip Out Bottom2 !",
+                            "4.2/Effects/4000FX/Digital/Fly Over Crumpled Edge !"}) {
+        INFO(src);
+        auto c = vt::loadCrouton(golden::sourcePath(src));
+        REQUIRE(c);
+        const uint32_t desc = c->tag(0x80000007).value_or(0);
+        REQUIRE((desc == 3 || desc == 32));
+        const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+        auto e = load(src);
+        REQUIRE(e);
+        const std::vector<vt::Rgb>* palette = &an.bm.cmap;
+        for (int k = 0; k < e->frameCount(); ++k) {
+            if (k >= 1 && size_t(k) < an.cmaps.size() && an.cmaps[size_t(k)] && !an.cmaps[size_t(k)]->empty())
+                palette = &*an.cmaps[size_t(k)];
+            const auto routes = vt::dveRoutes(c->blobs.at(kTagSourceWords), *palette);
+            const vt::DveControl dc = vt::decodeDve(an.planes[size_t(k)]);
+            vt::RenderCtx ctx = ctxWith(kWhite);
+            ctx.animFrame = k;
+            ctx.digitalA = &d;
+            vt::Frame got;
+            e->render(0, a, b, got, ctx);
+            for (int y = 0; y < vt::kRasterH; ++y)
+                for (int x = 0; x < vt::kRasterW; ++x) {
+                    const uint8_t idx = dc.index[size_t(y / 2) * 768 + size_t(x)];
+                    if (idx >= routes.size() || routes[idx].level != 0) continue;
+                    if (routes[idx].source == 1) {
+                        ++s1;
+                        if (!same(got.at(x, y), b.at(x, y))) FAIL("frame " << k << " S = 1 pixel (" << x << "," << y << ") is not B");
+                    } else if (routes[idx].source == 3) {
+                        ++s3;
+                        if (!same(got.at(x, y), d.at(x, y))) FAIL("frame " << k << " S = 3 pixel (" << x << "," << y << ") is not A's DV picture");
+                    }
+                }
+        }
+    }
+    INFO("S = 1 pixels " << s1 << ", S = 3 pixels " << s3);
+    REQUIRE(s1 > 0);
+    REQUIRE(s3 > 0);
 }
 
 TEST_CASE("the seven \"!\" DVEs render without unknown codes", "[dve][effect]") {

@@ -31,6 +31,7 @@ constexpr uint32_t kTagMode = 0x80000022;
 constexpr uint32_t kTagColour = 0x80000023;        // Effect Color preset (vt/background.h)
 constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
 constexpr uint32_t kTagSourceWords = 0x1000001B;   // per palette index hardware words (vt/mix.h)
+constexpr uint32_t kTagDescriptor = 0x80000007;    // routing descriptor (ALGO.md 7)
 
 // Rulings 27, 32: the crouton's own folder is an Overlays drawer (4.2/Effects/2000FX/OverLays,
 // 4.2/Effects/4000FX/Overlays), any case. No crouton tag separates these effects from the rest:
@@ -102,7 +103,8 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
                 // DVE files are ANIM content; the one 9-plane DVE has no index frames (Ruling 6)
                 const auto tag = c->blobs.find(kTagSourceWords);
                 return detail::makeDveEffect(basics(animTiming(*c, int(an.planes.size()))), an,
-                                             tag != c->blobs.end() ? tag->second : std::vector<uint8_t>{}, why);
+                                             tag != c->blobs.end() ? tag->second : std::vector<uint8_t>{},
+                                             c->tag(kTagDescriptor).value_or(0), why);
             }
             AnimPlan plan = planAnim(an, c->tag(kTagMode));
             if (plan.kind == AnimKind::Unsupported) return fail(why, plan.reason);

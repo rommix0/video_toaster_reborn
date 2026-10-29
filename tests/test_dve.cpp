@@ -506,11 +506,15 @@ TEST_CASE("every DVE loads as an effect and renders its role", "[dve][effect]") 
             }
             vt::Frame want, got;
             vt::RenderCtx ctx;
-            // the "!" DVEs carry tag 0x1000001B routes: A, B and the generator mix in by level
+            // the "!" DVEs carry tag 0x1000001B routes: A, B and the generator mix in by level.
+            // Ruling 10: routing descriptors 3 and 32 move A, so S = 1 is B and S = 3 is A; any
+            // other descriptor S = 1 is A and S = 3 is B.
             const auto tag = f.crouton.blobs.find(0x1000001B);
             const auto routes = vt::dveRoutes(tag != f.crouton.blobs.end() ? tag->second : std::vector<uint8_t>{},
                                               paletteFor(f.anim, k));
-            const vt::DveMix mix{&routes, &a, &b, ctx.background, nullptr};
+            const uint32_t desc = f.crouton.tag(0x80000007).value_or(0);
+            const bool aMoves = desc == 3 || desc == 32;
+            const vt::DveMix mix{&routes, aMoves ? &b : &a, aMoves ? &a : &b, ctx.background, nullptr};
             vt::renderDve(vt::decodeDve(f.anim.planes[size_t(k)]), *moving, *background, paletteFor(f.anim, k), want,
                           ctx.guesses, routes.empty() ? nullptr : &mix);
             e->render(tbarForFrame(k, n), a, b, got, ctx);

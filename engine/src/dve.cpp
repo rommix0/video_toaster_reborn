@@ -177,7 +177,7 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
             for (int x = 0; x < kRasterW; ++x) {
                 if (index[x] >= routes.size() || routes[index[x]].source == 0) continue;
                 const DveRoute rt = routes[index[x]];
-                const Frame* bus = rt.source == 1 ? mix->a : rt.source == 3 ? mix->b : mix->generator;
+                const Frame* bus = rt.source == 1 ? mix->s1 : rt.source == 3 ? mix->s3 : mix->generator;
                 Rgba8 s = mix->colour;
                 if (bus) s = bus->at(x, y);
                 else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule

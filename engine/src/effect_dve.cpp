@@ -4,8 +4,9 @@
 //   DistortA A moved over A (Glitch effects)   Flip     A until switchFrame, then B, over black
 // The art layer's palette for frame k is the most recent non-empty cmaps[j], 1 <= j <= k, else
 // bm.cmap (the anim effects' rule). The "!" DVEs' tag 0x1000001B routes (dveRoutes, per frame
-// from that palette) mix A, B or the generator into the picture by level. Effects with unknown key codes (24..63; none in the corpus)
-// are logged once, when loaded.
+// from that palette) mix A, B or the generator into the picture by level; which bus S = 1 and
+// S = 3 show comes from the routing descriptor (tag 0x80000007, see render). Effects with unknown
+// key codes (24..63; none in the corpus) are logged once, when loaded.
 #include <string>
 
 #include "effect_detail.h"
@@ -20,8 +21,8 @@ static_assert(kRasterW == kDveWidth && kRasterH == 2 * kDveLines, "DVE control d
 
 class DveEffect final : public CroutonEffect {
 public:
-    DveEffect(CroutonBasics b, const Anim& an, DveInfo info, const std::vector<uint8_t>& tag1b)
-        : CroutonEffect(std::move(b)), info_(info) {
+    DveEffect(CroutonBasics b, const Anim& an, DveInfo info, const std::vector<uint8_t>& tag1b, uint32_t descriptor)
+        : CroutonEffect(std::move(b)), info_(info), routesMoveA_(descriptor == 3 || descriptor == 32) {
         long unknownCells = 0;
         const std::vector<Rgb>* palette = &an.bm.cmap;
         for (size_t k = 0; k < an.planes.size(); ++k) {
@@ -58,14 +59,19 @@ public:
                 background = &black_;
                 break;
         }
-        // the routes take the analog buses a / b as given, whichever clip moves
-        const DveMix mix{&routes_[size_t(k)], &a, &b, ctx.background, ctx.generator};
+        // Ruling 10 (a GUESS): S = 1 is the bus that does not move, analog; S = 3 the moving bus's
+        // picture as the move moves it (the DV path: the moving bus holds 0x30|input from the
+        // take, FREEZE.md 5). The routing descriptor says which bus moves (ALGO.md 7, 15.2):
+        // 3 and 32 move A, every other one B. The control frames' role does not decide it.
+        const DveMix mix = routesMoveA_ ? DveMix{&routes_[size_t(k)], &b, &da, ctx.background, ctx.generator}
+                                        : DveMix{&routes_[size_t(k)], &a, &db, ctx.background, ctx.generator};
         renderDve(frames_[size_t(k)], *moving, *background, palettes_[size_t(k)], out, ctx.guesses,
                   routes_[size_t(k)].empty() ? nullptr : &mix);
     }
 
 private:
     DveInfo info_;
+    bool routesMoveA_;  // routing descriptor 3 or 32: S = 1 is B, S = 3 is A's moved picture
     std::vector<DveControl> frames_;
     std::vector<std::vector<Rgb>> palettes_;  // per frame
     std::vector<std::vector<DveRoute>> routes_;  // per frame, from tag 0x1000001B; empty = none
@@ -74,7 +80,8 @@ private:
 
 }  // namespace
 
-std::unique_ptr<Effect> makeDveEffect(CroutonBasics b, const Anim& an, const std::vector<uint8_t>& tag1b, std::string* why) {
+std::unique_ptr<Effect> makeDveEffect(CroutonBasics b, const Anim& an, const std::vector<uint8_t>& tag1b, uint32_t descriptor,
+                                      std::string* why) {
     if (an.planes.empty()) {
         if (why) *why = "DVE effect without frames";
         return nullptr;
@@ -85,7 +92,7 @@ std::unique_ptr<Effect> makeDveEffect(CroutonBasics b, const Anim& an, const std
             return nullptr;
         }
     const DveInfo info = dveInfo(an);
-    return std::make_unique<DveEffect>(std::move(b), an, info, tag1b);
+    return std::make_unique<DveEffect>(std::move(b), an, info, tag1b, descriptor);
 }
 
 }  // namespace vt::detail

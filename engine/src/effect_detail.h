@@ -90,8 +90,10 @@ const char* gradientRefusal(const Bitmap&);
 // `why` may be null. Return nullptr and set *why when the effect cannot be built.
 std::unique_ptr<Effect> makeGradient(CroutonBasics, Bitmap, IndexImage, std::string* why);
 std::unique_ptr<Effect> makeAnimEffect(CroutonBasics, Anim, AnimPlan, std::string* why);
-// DVE content (isDve on the first frame); every frame must be 768x241 DVE control data.
-std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, const std::vector<uint8_t>& tag1b, std::string* why);
+// DVE content (isDve on the first frame); every frame must be 768x241 DVE control data. The
+// routing descriptor (tag 0x80000007, 0 when absent) picks the buses the tag 0x1B routes show.
+std::unique_ptr<Effect> makeDveEffect(CroutonBasics, const Anim&, const std::vector<uint8_t>& tag1b, uint32_t descriptor,
+                                      std::string* why);
 // CRFX crouton: its ` LUT` record, settings from the tags (vt/chromafx.h).
 std::unique_ptr<Effect> makeChromaEffect(CroutonBasics, const Crouton&, std::string* why);
 // ALGO crouton: its program (tag 0x1000001C) run by vt::AlgoVm, kind 0x80000063, routing
