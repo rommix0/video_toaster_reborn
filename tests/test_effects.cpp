@@ -1388,6 +1388,36 @@ TEST_CASE("Fly Over Crumpled Edge ! draws its edge in the display index's palett
     REQUIRE(same(got.at(384, 110), {cmap[60].r, cmap[60].g, cmap[60].b, 255}));
 }
 
+// Warp To Globe !'s S = 9 indexes hold a shaded Earth (palette colours with non-zero high
+// nibbles): the warped picture dissolves into it and it flies off. Before, those pixels showed the
+// generator colour, a flat disc.
+TEST_CASE("Warp To Globe ! shows its Earth, not the generator colour", "[dve][effect]") {
+    const std::string src = "4.2/Effects/4000FX/Digital/Warp To Globe !";
+    const auto c = vt::loadCrouton(golden::sourcePath(src));
+    REQUIRE(c);
+    const vt::Anim an = vt::readAnim(c->bytes, *firstForm(*c, kAnim));
+    const auto routes = vt::dveRoutes(c->blobs.at(kTagSourceWords), an.bm.cmap);
+    auto e = load(src);
+    REQUIRE(e);
+    const vt::Frame a = ramp(1), b = ramp(2);
+    vt::RenderCtx ctx = ctxWith(kWhite);
+    ctx.animFrame = 45;
+    vt::Frame got;
+    e->render(0, a, b, got, ctx);
+    const vt::DveControl dc = vt::decodeDve(an.planes[45]);
+    int earth = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const uint8_t i = dc.index[size_t(y / 2) * 768 + size_t(x)];
+            if (i >= routes.size() || routes[i].source != 9 || routes[i].level != 0) continue;
+            const vt::Rgb p = an.bm.cmap[i];
+            if (((p.r | p.g | p.b) & 0xF0) == 0) continue;
+            ++earth;
+            if (!same(got.at(x, y), {p.r, p.g, p.b, 255})) FAIL("Earth pixel (" << x << "," << y << ") is not its palette colour");
+        }
+    REQUIRE(earth >= 5000);
+}
+
 // Infinite Video Space ! has no tag 0x1B: its palette's own level bits apply. Frame 0's art is
 // black at L = 3 over the whole picture, so the transition opens on A, not black; its grey tiles
 // (L = 0, over the background) keep their palette colour.

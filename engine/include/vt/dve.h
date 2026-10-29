@@ -115,8 +115,12 @@ struct DveMix {
 //               routes[i].source is 1 or 9 the pixel is s = s1 / the generator (or colour) at (x, y)
 //               mixed with d, the pixel as drawn above (before the art layer), by
 //               w = dveLevelMix[L]: (s * (255 - w) + d * w + 127) / 255 per channel, alpha 255.
-//               S = 3 is d itself (DveMix). The art rule does not apply to a routed pixel. A route
-//               whose bus frame is null is not routed.
+//               S = 3 is d itself (DveMix). For S = 9, s is the palette colour cmap[i] instead of
+//               the generator when its high nibbles are not all 0 (a GUESS from the data: Warp To
+//               Globe !'s S = 9 indexes hold a shaded Earth that the warped picture dissolves into;
+//               Photo Fly Out !'s are white like its tag-White generator, Hand Pull !'s black, so
+//               it shows the generator). The art rule does not apply to a routed pixel. A route
+//               whose bus frame is null is not routed (S = 9 with palette colour still is).
 // Every output pixel gets alpha 255 except the moving/background/shadow cases, which keep the
 // source pixel's alpha. Returns the number of output pixels drawn as unknown-code grey.
 int renderDve(const DveControl&, const Frame& moving, const Frame& background, const std::vector<Rgb>& cmap,

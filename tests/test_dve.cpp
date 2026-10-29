@@ -356,6 +356,15 @@ TEST_CASE("renderDve mixes a routed pixel by its level", "[dve]") {
     const vt::Rgba8 d = plain.at(300, 200), m = mixed.at(300, 200);
     auto want = [](int dc) { return uint8_t((255 * (255 - 170) + dc * 170 + 127) / 255); };
     REQUIRE(m == vt::Rgba8{want(d.r), want(d.g), want(d.b), 255});
+    // S = 9 shows the index's palette colour when it is not black (high nibbles), else the generator
+    for (const vt::Rgb pc : {vt::Rgb{0x40, 0x80, 0xC0}, vt::Rgb{0x0F, 0x03, 0x00}}) {
+        const std::vector<vt::Rgb> cmap = {{0, 0, 0}, pc};
+        vt::Frame out;
+        vt::renderDve(c, moving, a, cmap, out, vt::HardwareGuesses{}, &mix);
+        const vt::Rgba8 s = pc.r >= 16 ? vt::Rgba8{pc.r, pc.g, pc.b, 255} : vt::Rgba8{255, 255, 255, 255};
+        auto w = [&](int sc, int dc) { return uint8_t((sc * (255 - 170) + dc * 170 + 127) / 255); };
+        REQUIRE(out.at(300, 200) == vt::Rgba8{w(s.r, d.r), w(s.g, d.g), w(s.b, d.b), 255});
+    }
 }
 
 TEST_CASE("decodeDve fills the display index only for \"!\" DVEs", "[dve]") {

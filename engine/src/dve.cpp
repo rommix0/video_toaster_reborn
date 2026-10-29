@@ -184,7 +184,10 @@ int renderDve(const DveControl& c, const Frame& moving, const Frame& background,
                 }
                 const Frame* bus = rt.source == 1 ? mix->s1 : mix->generator;
                 Rgba8 s = mix->colour;
-                if (bus) s = bus->at(x, y);
+                const size_t ci = index[x];
+                if (rt.source == 9 && ci < cmap.size() && ((cmap[ci].r | cmap[ci].g | cmap[ci].b) & 0xF0))
+                    s = {cmap[ci].r, cmap[ci].g, cmap[ci].b, 255};  // the art over the generator
+                else if (bus) s = bus->at(x, y);
                 else if (rt.source != 9) continue;  // no frame for that bus: leave the pixel to the art rule
                 const int w = g.dveLevelMix[rt.level & 3];
                 const Rgba8 d = dst[x];
