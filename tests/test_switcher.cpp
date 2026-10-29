@@ -1427,6 +1427,31 @@ TEST_CASE("live then freeze keeps the other still", "[switcher][dv]") {
     CHECK(r.sw.still(Source::DV1).px == numbered(2).px);
 }
 
+TEST_CASE("switching the DV input back does not show its old frames (Ruling 4)", "[switcher][dv]") {
+    auto setUp = [](Rig& r) {
+        r.sw.select(Bus::Main, Source::DV1);  // live: input 1
+        run(r, r.in1, 0, 11);                 // input 1 recorded at ticks 0..10
+        r.sw.select(Bus::Preview, Source::DV2);  // the DV input becomes input 2 (both buses show it)
+        REQUIRE(r.sw.dvInput() == 1);
+        run(r, r.in2, 11, 20, 100);
+        r.sw.select(Bus::Main, Source::In1);
+        r.sw.select(Bus::Main, Source::DV1);  // back to input 1 at tick 20
+        REQUIRE(r.sw.dvInput() == 0);
+    };
+    Rig r;
+    setUp(r);
+    r.in1 = numbered(20);
+    CHECK(r.render().px == numbered(20).px);  // the current frame, not tick 10's
+    r.sw.tick();
+    REQUIRE(r.sw.setFrozen(true));  // Preview shows DV2: DV2
+    CHECK(r.sw.still(Source::DV2).px == numbered(20).px);
+
+    Rig q;  // a freeze before the switch-back's first render has no current history: black
+    setUp(q);
+    REQUIRE(q.sw.setFrozen(true));
+    CHECK(q.sw.still(Source::DV2).px == blackFrame().px);
+}
+
 TEST_CASE("freeze, live and grab are refused during a transition", "[switcher][dv]") {
     Rig r;
     r.sw.setTBar(100);
@@ -1539,6 +1564,21 @@ TEST_CASE("load target follows the loader rule", "[switcher][dv]") {
     REQUIRE_FALSE(t.sw.loadStill(still, &why));
     CHECK(why == "a transition is running: finish it first");
     CHECK_FALSE(t.sw.frozen());
+}
+
+TEST_CASE("loading a framestore cancels a pending grab (Ruling 5)", "[switcher][dv]") {
+    Rig r;
+    run(r, r.in1, 0, 6);
+    REQUIRE(r.sw.grab(2));
+    run(r, r.in3, 6, 7);  // one tick into the wait
+    REQUIRE(r.sw.grabPending());
+    r.sw.select(Bus::Overlay, Source::DV2);  // frozen: the loader's target is DV1, the grab's DV
+    REQUIRE(r.sw.loadStill(numbered(77)));
+    CHECK_FALSE(r.sw.grabPending());
+    run(r, r.in3, 7, 12);
+    CHECK(r.sw.still(Source::DV1).px == numbered(77).px);
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::DV1);
 }
 
 TEST_CASE("loading a framestore disengages ChromaFX", "[switcher][dv][chromafx]") {

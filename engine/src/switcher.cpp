@@ -310,11 +310,15 @@ void Switcher::record(int input, const SourceFrames& in) const {
 
 const Frame* Switcher::delayed(int input) const {
     const auto& ticks = histTicks_[size_t(input)];
-    const int64_t want = int64_t(tickCount_) - digitalDelay(guesses_);
+    const int64_t now = int64_t(tickCount_);
+    const int64_t want = now - digitalDelay(guesses_);
     int newest = -1, oldest = -1;
     for (int i = 0; i < int(ticks.size()); ++i) {
         const int64_t t = ticks[size_t(i)];
-        if (t < 0) continue;
+        // Ruling 4: a frame older than the ring's span is stale (left from an earlier spell as
+        // the DV input), so "the oldest" is the oldest of the current unbroken run. Checked
+        // here rather than in record so a freeze before the switch-back's first render is covered.
+        if (t < 0 || t + int64_t(ticks.size()) <= now) continue;
         if (t <= want && (newest < 0 || t > ticks[size_t(newest)])) newest = i;
         if (oldest < 0 || t < ticks[size_t(oldest)]) oldest = i;
     }
@@ -379,7 +383,9 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
     if (shows(Bus::Main, Source::DV1) || shows(Bus::Overlay, Source::DV1)) target = Source::DV2;
     else if (shows(Bus::Main, Source::DV2) || shows(Bus::Overlay, Source::DV2)) target = Source::DV1;
     else if (shows(Bus::Preview, Source::DV2)) target = Source::DV1;
-    // Steps 4 and 6: the still frozen in the target, shown on Preview.
+    // Steps 4 and 6: the still frozen in the target, shown on Preview. A pending grab is
+    // cancelled (Ruling 5): it would overwrite DV1 and force it onto Main.
+    grabPending_ = false;
     writeStill(dvIndex(target), &still);
     frozen_ = true;
     sel_[busIndex(Bus::Preview)] = target;
