@@ -55,3 +55,33 @@ endif()
 if("${so}${se}" STREQUAL "")
     message(FATAL_ERROR "vt_render gave no reason for the missing effect")
 endif()
+
+# 4. A framestore (FRAM crouton) is not an effect: its picture goes to still.png, a PNG of the
+#    visible area (640x432; the IHDR width and height are at bytes 16..23), and --underscan gives
+#    the whole raster.
+set(out4 "${WORK_DIR}/still")
+execute_process(
+    COMMAND "${VT_RENDER}" "${VT_DATA_ROOT}/4.2/Framestore/ColorBars" --out "${out4}"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE so ERROR_VARIABLE se)
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "vt_render on a framestore failed (${rc}): ${so}${se}")
+endif()
+if(NOT EXISTS "${out4}/still.png")
+    message(FATAL_ERROR "no still.png written for the framestore")
+endif()
+file(READ "${out4}/still.png" png LIMIT 24 HEX)
+if(NOT png STREQUAL "89504e470d0a1a0a0000000d4948445200000280000001b0")  # signature, IHDR 640 x 432
+    message(FATAL_ERROR "still.png is not a 640x432 PNG: ${png}")
+endif()
+
+set(out5 "${WORK_DIR}/still_underscan")
+execute_process(
+    COMMAND "${VT_RENDER}" "${VT_DATA_ROOT}/4.2/Framestore/ColorBars" --out "${out5}" --underscan
+    RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE se)
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "vt_render --underscan on a framestore failed (${rc}): ${se}")
+endif()
+file(READ "${out5}/still.png" png5 LIMIT 24 HEX)
+if(NOT png5 STREQUAL "89504e470d0a1a0a0000000d4948445200000300000001e2")  # 768 x 482
+    message(FATAL_ERROR "underscan still.png is not 768x482: ${png5}")
+endif()

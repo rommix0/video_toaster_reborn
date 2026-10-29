@@ -1,6 +1,6 @@
 # Framestores, freeze and the camera-shutter effects: design
 
-Status: draft for the owner's approval (2026-10-29).
+Status: implemented on branch plan5-framestores (2026-10-29); still to judge by eye: §6.
 Reverse-engineering source: `../tools/re/FREEZE.md`, plus `../tools/re/FINDINGS.md` and `ALGO.md`.
 
 ## 1. Intent
@@ -74,7 +74,12 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
 ### C. Framestore files
 
 - **Loading** the 63 shipped framestores (FREEZE.md §4). They are `FORM ILBM` files, 752×480 (CG frames 768×480), 16 planes, with a `PLTP` chunk mapping planes to two 8-bit byte lanes, 6 and 7.
-  - The lane meaning is unknown (Y and chroma). The plan's first task solves it from `4.2/Framestore/ColorBars`, whose colours are known 75 % bars, and documents it.
+  - **The 16-plane mapping, solved from `4.2/Framestore/ColorBars`** (FREEZE.md §6 item 4):
+    - Lanes 6 and 7 hold **NTSC composite samples at 4 fsc**, in the DV's own levels. They are the `vt::DvQuad` samples (Y−I, Y−Q, Y+I, Y+Q) that `dv_colour.h` already decodes bit-exactly.
+    - PLTP entry n is a (lane, bit) byte pair for plane n; a lane's value is the sum of its plane bits shifted by their bit numbers.
+    - For file row r, if `((r + 1) >> 1) & 1` is set, lanes 6 and 7 trade places.
+    - For pixel x, let p = x % 4. Lane 6 is quad sample p and lane 7 is sample (p + 2) % 4; the partner pixel x ^ 1 fills the other two samples the same way. `vt::dvQuadToRgb(quad)` gives the colour.
+    - Check: ColorBars decodes to all seven 75 % bars within ±2 at rows 120 and 240, and column 0 is blanking (lane value 60).
   - The 24-plane RGB variant (lanes 8/9/10, LSB first) loads too.
   - A loaded still is placed in the 768×482 raster as FINDINGS ("DV framestore picture is 752 x 480") and the plan's task decide. Its placement is checked against ColorBars.
   - If ColorBars cannot settle the 16-plane mapping, the 16-plane files are refused with a clear reason, and own saved files (24-plane) still work. The plan reports the outcome; it does not guess silently.

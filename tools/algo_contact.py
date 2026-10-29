@@ -2,15 +2,20 @@
 
 Renders each named crouton with the vt_render CLI (one Auto transition, A = colour bars,
 B = slide) and writes build/algo_sheets/<name>.png: 8 frames evenly spaced over the transition,
-left to right, top to bottom. Run from anywhere: python -P -E tools/algo_contact.py [vt_render.exe]
+left to right, top to bottom. Run from anywhere: python -P -E tools/algo_contact.py [--set bang] [vt_render.exe]
+--set bang renders the seven "!" DVEs (tag 0x1B mix levels, Plan 5) instead of the ALGO list.
 """
-import re, shutil, subprocess, sys, tempfile
+import argparse, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parent.parent
 FX = REPO.parent / "4.2" / "Effects" / "4000FX"
-EXE = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "build" / "msvc" / "cli" / "vt_render.exe"
+ap = argparse.ArgumentParser()
+ap.add_argument("exe", nargs="?", default=REPO / "build" / "msvc" / "cli" / "vt_render.exe")
+ap.add_argument("--set", choices=["bang"], help="render this named set instead of the default list")
+args = ap.parse_args()
+EXE = Path(args.exe)
 OUT = REPO / "build" / "algo_sheets"
 
 # (sheet name, path under 4000FX). The border crouton carries tag 0x80000064 (ALGO.md 3).
@@ -24,6 +29,16 @@ EFFECTS = [
     ("Smooth Fade", "Smooth Fade"),
     ("Dip To Matte", "Dissolves/Dip To Matte"),
     ("Push On Border L-R", "Push-Pull/Push On Border L-R"),
+]
+# The seven "!" DVEs (FREEZE.md 2), in the design's order.
+BANG = [
+    ("Hand Pull !", "Digital/Hand Pull !"),
+    ("Photo Fly Out !", "Trajectory/Photo Fly Out !"),
+    ("Flip Out Bottom2 !", "Trajectory/Flip Out Bottom2 !"),
+    ("Flip Chrome Edge !", "Digital/Flip Chrome Edge !"),
+    ("Infinite Video Space !", "Space/Infinite Video Space !"),
+    ("Fly Over Crumpled Edge !", "Digital/Fly Over Crumpled Edge !"),
+    ("Warp To Globe !", "Digital/Warp To Globe !"),
 ]
 N, COLS, W, H = 8, 4, 320, 216
 
@@ -46,5 +61,5 @@ def sheet(name, rel, tmp):
 
 OUT.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory() as t:
-    for name, rel in EFFECTS:
+    for name, rel in (BANG if args.set == "bang" else EFFECTS):
         sheet(name, rel, Path(t))

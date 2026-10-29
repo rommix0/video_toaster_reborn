@@ -8,10 +8,14 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
+#include "vt/crc32.h"
+#include "vt/crouton.h"
 #include "vt/effect.h"
+#include "vt/framestore.h"
 #include "vt/raster.h"
 #include "vt/sound.h"
 #include "vt/switcher.h"
@@ -40,7 +44,10 @@ void usage(std::ostream& o) {
          "effect renders until its transition ends, which is durationTicks[speed] frames (Page\n"
          "Peel ! at fast: 60). A ChromaFX or Overlays-drawer effect never ends by itself - it\n"
          "stays engaged - so exactly durationTicks[speed] frames are rendered: for an animated\n"
-         "overlay that is one full loop of its animation over A.\n";
+         "overlay that is one full loop of its animation over A.\n"
+         "\n"
+         "A FRAM crouton (a framestore) is not an effect: its picture is written to <dir>/still.png\n"
+         "(the visible area, or the full raster with --underscan) and nothing else.\n";
 }
 
 vt::Frame makePicture(const std::string& kind, bool isB) {
@@ -79,6 +86,56 @@ bool writePpm(const fs::path& path, const vt::Frame& f, const vt::Rect& r) {
         }
         o.write(row.data(), std::streamsize(row.size()));
     }
+    return bool(o);
+}
+
+void be32(std::vector<uint8_t>& v, uint32_t x) { for (int s = 24; s >= 0; s -= 8) v.push_back(uint8_t(x >> s)); }
+
+void pngChunk(std::ostream& o, const char* type, const std::vector<uint8_t>& data) {
+    std::vector<uint8_t> b;
+    be32(b, uint32_t(data.size()));
+    b.insert(b.end(), type, type + 4);
+    b.insert(b.end(), data.begin(), data.end());
+    const uint32_t crc = vt::crc32(std::span<const uint8_t>(b).subspan(4));
+    be32(b, crc);
+    o.write(reinterpret_cast<const char*>(b.data()), std::streamsize(b.size()));
+}
+
+// 8-bit RGB PNG with stored (uncompressed) deflate blocks: the engine has no zlib, and the sheet
+// tools only need a file PIL opens.
+bool writePng(const fs::path& path, const vt::Frame& f, const vt::Rect& r) {
+    std::vector<uint8_t> raw;
+    raw.reserve(size_t(r.w * 3 + 1) * size_t(r.h));
+    for (int y = r.y; y < r.y + r.h; ++y) {
+        raw.push_back(0);  // filter: none
+        for (int x = 0; x < r.w; ++x) {
+            const vt::Rgba8& p = f.at(r.x + x, y);
+            raw.insert(raw.end(), {p.r, p.g, p.b});
+        }
+    }
+    std::vector<uint8_t> z{0x78, 0x01};
+    for (size_t at = 0; at < raw.size();) {
+        const size_t n = std::min<size_t>(65535, raw.size() - at);
+        z.push_back(at + n == raw.size() ? 1 : 0);
+        z.insert(z.end(), {uint8_t(n), uint8_t(n >> 8), uint8_t(~n), uint8_t(~n >> 8)});
+        z.insert(z.end(), raw.begin() + std::ptrdiff_t(at), raw.begin() + std::ptrdiff_t(at + n));
+        at += n;
+    }
+    uint32_t a = 1, b = 0;
+    for (uint8_t c : raw) { a = (a + c) % 65521; b = (b + a) % 65521; }
+    be32(z, (b << 16) | a);
+
+    std::ofstream o(path, std::ios::binary);
+    if (!o) return false;
+    const uint8_t sig[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+    o.write(reinterpret_cast<const char*>(sig), 8);
+    std::vector<uint8_t> ihdr;
+    be32(ihdr, uint32_t(r.w));
+    be32(ihdr, uint32_t(r.h));
+    ihdr.insert(ihdr.end(), {8, 2, 0, 0, 0});  // 8-bit RGB, deflate, no filter scheme, no interlace
+    pngChunk(o, "IHDR", ihdr);
+    pngChunk(o, "IDAT", z);
+    pngChunk(o, "IEND", {});
     return bool(o);
 }
 
@@ -131,6 +188,19 @@ int main(int argc, char** argv) {
     if (effectPath.empty() || outDir.empty()) { usage(std::cerr); return 2; }
     for (const std::string* k : {&a, &b})
         if (*k != "slide" && *k != "bars") { std::cerr << "vt_render: unknown picture '" << *k << "'\n"; return 2; }
+
+    if (const auto cr = vt::loadCrouton(fs::path(effectPath)); cr && cr->type == vt::CroutonType::Fram) {
+        std::string why;
+        const std::optional<vt::Frame> still = vt::loadFramestore(fs::path(effectPath), &why);
+        if (!still) { std::cerr << "vt_render: not a framestore: " << why << "\n"; return 1; }
+        std::error_code mk;
+        fs::create_directories(outDir, mk);
+        if (mk) { std::cerr << "vt_render: cannot create " << outDir << ": " << mk.message() << "\n"; return 1; }
+        const vt::Rect r = underscan ? vt::Rect{0, 0, vt::kRasterW, vt::kRasterH} : vt::kVisibleArea;
+        if (!writePng(fs::path(outDir) / "still.png", *still, r)) { std::cerr << "vt_render: cannot write still.png\n"; return 1; }
+        std::cout << "wrote still.png (" << r.w << "x" << r.h << ") of " << effectPath << " to " << outDir << "\n";
+        return 0;
+    }
 
     std::string whyNot;
     std::shared_ptr<const vt::Effect> effect = vt::loadEffect(fs::path(effectPath), &whyNot);
