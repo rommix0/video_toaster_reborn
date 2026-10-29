@@ -77,7 +77,7 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
 
 ### C. Framestore files
 
-- **Loading** the 63 shipped framestores (FREEZE.md §4). They are `FORM ILBM` files, 752×480 (CG frames 768×480), 16 planes, with a `PLTP` chunk mapping planes to two 8-bit byte lanes, 6 and 7.
+- **Loading** the 75 shipped framestores (FREEZE.md §4). A file is a framestore when its CrUD says FRAM, or it has none and its sibling icon's does, or it has no CrUD anywhere and its picture is a DV one this loader accepts (Ruling 9: twelve LightWaveDemo pictures; `vt::isFramestore`). They are `FORM ILBM` files, 752×480 (CG frames 768×480), 16 planes, with a `PLTP` chunk mapping planes to two 8-bit byte lanes, 6 and 7.
   - **The 16-plane mapping, solved from `4.2/Framestore/ColorBars`** (FREEZE.md §6 item 4):
     - Lanes 6 and 7 hold **NTSC composite samples at 4 fsc**, in the DV's own levels. They are the `vt::DvQuad` samples (Y−I, Y−Q, Y+I, Y+Q) that `dv_colour.h` already decodes bit-exactly.
     - PLTP entry n is a (lane, bit) byte pair for plane n; a lane's value is the sum of its plane bits shifted by their bit numbers.
@@ -86,7 +86,7 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
     - Check: ColorBars decodes to all seven 75 % bars within ±2 at rows 120 and 240, and column 0 is blanking (lane value 60).
   - The 24-plane RGB variant (lanes 8/9/10, LSB first) loads too.
   - A loaded still is placed in the 768×482 raster as FINDINGS ("DV framestore picture is 752 x 480") and the plan's task decide. Its placement is checked against ColorBars.
-  - If ColorBars cannot settle the 16-plane mapping, the 16-plane files are refused with a clear reason, and own saved files (24-plane) still work. The plan reports the outcome; it does not guess silently.
+  - ColorBars settled the 16-plane mapping (P1; FREEZE.md §6 item 4), so the 16-plane files load; none is refused for its layout.
 - **Loading behaviour** (FREEZE.md §4, proven):
   - clicking a framestore crouton loads it into **DV2**, or DV1 when the loader's rule says so (Main or Superimpose showing DV2, or Preview's saved source being DV2);
   - the store is frozen;
