@@ -91,6 +91,7 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             case CroutonType::Main: return fail(why, "Switcher move (MAIN) not reverse-engineered yet");
             case CroutonType::Ctrl: return fail(why, "Switcher move (CTRL) not reverse-engineered yet");
             case CroutonType::Crfx: return detail::makeChromaEffect(basics(fixedTiming(*c)), *c, why);
+            case CroutonType::Fram: return fail(why, "a framestore (load it into DV1/DV2), not an effect");
             default: break;
         }
 

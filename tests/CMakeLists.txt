@@ -11,6 +11,7 @@ add_executable(vt_tests
     test_crouton.cpp
     test_dve.cpp
     test_effects.cpp
+    test_framestore.cpp
     test_golden.cpp
     test_ilbm.cpp
     test_mix.cpp
