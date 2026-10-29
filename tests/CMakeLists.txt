@@ -14,6 +14,7 @@ add_executable(vt_tests
     test_framestore.cpp
     test_golden.cpp
     test_ilbm.cpp
+    test_key.cpp
     test_mix.cpp
     test_switcher.cpp
     test_timing.cpp

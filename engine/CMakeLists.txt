@@ -18,6 +18,7 @@ add_library(vt_engine STATIC
     src/effect_gradient.cpp
     src/framestore.cpp
     src/iff.cpp
+    src/key.cpp
     src/log.cpp
     src/crouton.cpp
     src/ilbm.cpp

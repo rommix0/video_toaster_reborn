@@ -43,6 +43,11 @@ struct HardwareGuesses {
     // used; a grab waits as long. HARDWARE GUESS: the code holds no delay constant; the grab
     // waits 4 fields and the manual's 1/15 s is 4 fields (FREEZE.md section 3).
     int digitalDelay = 4;
+
+    // Luma key: the number of gray levels over which the key edge ramps from the background to the
+    // fill (vt/key.h lumaKey). 0 = a hard edge. HARDWARE GUESS: the manual calls an analog key
+    // sharp; the keyer's edge is not measured (docs/2026-10-29-keys-design.md section 4).
+    int keySoftness = 0;
 };
 
 }  // namespace vt
