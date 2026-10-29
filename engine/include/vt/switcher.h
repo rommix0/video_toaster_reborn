@@ -14,7 +14,9 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "vt/background.h"
 #include "vt/effect.h"
@@ -44,6 +46,8 @@ public:
     // Overlay is present and selectable, but version 1 has no keying (spec 3): render ignores it.
     // Selections are live at all times, also during a transition: render reads the current
     // selections, and the swap at T-bar 511 (or Take) exchanges whatever is selected then.
+    // DV1 or DV2 selected while the DV store is live makes the bus's previous selection, when it
+    // was an input, the DV input (FREEZE.md 3: the bus shows that input through DV, delayed).
     void select(Bus, Source);
     Source selected(Bus) const;
 
@@ -126,8 +130,32 @@ public:
     void setCustomBackground(uint32_t word) { bkg_ = EffectColour::customWord(word); }
     EffectColour background() const { return bkg_; }
 
+    // --- DV store: DV1 and DV2 (design B) ---
+    // The store is live (DV1/DV2 on a bus show the DV input, guesses().digitalDelay ticks late)
+    // or frozen (they show their stills). It starts live with both stills black.
+    bool frozen() const { return frozen_; }
+    int dvInput() const { return dvInput_; }  // 0..3, the one DV input (starts 0)
+    const Frame& still(Source dv) const;      // DV1 or DV2 (black until written)
+    // FREEZE (true) / LIVE (false). Refused with "finish the effect first" while
+    // transitionActive() && !overlayEngaged(). Freezing writes the live DV picture (dvInput's
+    // delayed frame) into DV2 if any bus shows DV2, else DV1.
+    bool setFrozen(bool frozen, std::string* whyNot = nullptr);
+    // Grab input 0..3 into DV1: freezes if live, then digitalDelay ticks later the input's frame
+    // goes into DV1 and Main selects DV1 (FREEZE.md 3). Same refusal as setFrozen.
+    bool grab(int input, std::string* whyNot = nullptr);
+    bool grabPending() const { return grabPending_; }
+    // A framestore loaded (FREEZE.md 4): refused with "a transition is running: finish it first"
+    // while auto or the T-bar > 0 with nothing engaged; disengages an engaged ChromaFX; buses
+    // showing live DV go back to In(dvInput); target = DV2 if Main or Overlay shows DV1, DV1 if
+    // either shows DV2, else DV1 if Preview shows DV2, else DV2; the still is written there, the
+    // store frozen, the target selected on Preview.
+    bool loadStill(const Frame& still, std::string* whyNot = nullptr);
+    // SAVE's source: the DV on Preview, else on Main, else DV1. nullopt (and "SAVE: no still in
+    // DV1/DV2") if neither still was ever written.
+    std::optional<Source> saveSource(std::string* whyNot = nullptr) const;
+
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
-    // Auto and (while engaged) the ChromaFX / overlay frame counter.
+    // Auto, (while engaged) the ChromaFX / overlay frame counter and a pending grab's wait.
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
@@ -154,10 +182,13 @@ public:
     // `program`'s pixel buffer is swapped with an internal one on every call (that is what keeps
     // steady-state renders allocation-free), so program.px.data() alternates between two
     // buffers: do not keep a pointer into program.px across renders.
+    // Before composing, render writes a due grab into DV1 and records the DV input's frame in
+    // the DV history (what live DV1/DV2 show, delayed).
     void render(const SourceFrames&, Frame& program) const;
     // The picture a bus would show for source `s` (an input, DV1/DV2, or BKG: its colour or this
     // tick's Snow), with no effect applied: what the Preview monitor shows. A missing input is
     // black. Same scratch rules as render (serialised with it); `out` may alias an input frame.
+    // It reads the DV history but never records.
     void renderSource(Source s, const SourceFrames&, Frame& out) const;
 
     // The current effect's sound, once, when a transition starts; nullptr otherwise (and after
@@ -172,6 +203,11 @@ private:
     void engage();
     void disengage();
     const Frame& sourceFrame(Source, const SourceFrames&, bool& bkgBuilt, bool& blackBuilt) const;
+    void record(int input, const SourceFrames&) const;
+    // `input`'s picture through DV: the newest recorded frame with tick <= now - delay, else
+    // the oldest recorded one; null (black) if none.
+    const Frame* delayed(int input) const;
+    void writeStill(int dv, const Frame* f) const;  // dv 0 = DV1, 1 = DV2; null = black
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::Bkg};
@@ -196,7 +232,20 @@ private:
     mutable Frame colourScratch_;      // the effect colour as a picture (an overlay's B, Snow)
     mutable bool colourValid_ = false;  // colourScratch_ holds colourBuilt_ (never for Snow)
     mutable EffectColour colourBuilt_;
-    Frame dv_;  // DV1 and DV2 stay black until freeze / framestores exist (spec 3)
+    // The DV store. The stills, written_ and the grab state are mutable because render writes a
+    // due grab into DV1.
+    bool frozen_ = false;
+    int dvInput_ = 0;
+    mutable std::array<Frame, 2> stills_;  // DV1, DV2
+    mutable std::array<bool, 2> written_{};
+    mutable bool grabPending_ = false;
+    int grabInput_ = 0;
+    int grabWait_ = 0;  // ticks until the grab is due
+    // The DV history: per input, a ring of delay + 1 frames and the ticks they were recorded at
+    // (-1 = empty), allocated when the input is first recorded. Recording here is the exception
+    // to "render reads only" (with the due grab above): the lag needs the past frames.
+    mutable std::array<std::vector<Frame>, 4> hist_;
+    mutable std::array<std::vector<int64_t>, 4> histTicks_;
 };
 
 }  // namespace vt

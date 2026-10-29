@@ -133,7 +133,8 @@ TEST_CASE("select and take swap Main and Preview", "[switcher]") {
     REQUIRE(r.render().px == r.in1.px);
     r.sw.select(Bus::Overlay, Source::In2);
     REQUIRE(r.render().px == r.in1.px);
-    // DV1 and DV2 are black until framestores exist; a null input is black too
+    // a frozen DV1 or DV2 is black until written; a null input is black too
+    REQUIRE(r.sw.setFrozen(true));  // writes DV1 (no bus shows DV2)
     r.sw.select(Bus::Main, Source::DV2);
     REQUIRE(r.render().px == solid({0, 0, 0, 255}).px);
     r.src.inputs[0] = nullptr;
@@ -1338,4 +1339,231 @@ TEST_CASE("algo auto from mid T-bar uses the T-bar", "[switcher][algo]") {
     r.sw.tick();
     r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
     runOut();
+}
+
+// --- the DV store (design B, FREEZE.md 3-4) ---
+
+namespace {
+
+const vt::Frame& blackFrame() {
+    static const vt::Frame f = solid({0, 0, 0, 255});
+    return f;
+}
+
+// Input picture number n (red = n), so a frame tells which tick it came from.
+vt::Frame numbered(int n) { return solid({uint8_t(n), 0, 0, 255}); }
+
+// Renders ticks [from, to) with `in` showing numbered(tick + offset), ticking after each.
+void run(Rig& r, vt::Frame& in, int from, int to, int offset = 0) {
+    for (int n = from; n < to; ++n) {
+        in = numbered(n + offset);
+        r.render();
+        r.sw.tick();
+    }
+}
+
+}  // namespace
+
+TEST_CASE("live DV on a bus lags its input by 4 ticks", "[switcher][dv]") {
+    Rig r;
+    REQUIRE(r.sw.guesses().digitalDelay == 4);
+    REQUIRE_FALSE(r.sw.frozen());
+    // DV pressed while live takes the bus's input as the DV input (FREEZE.md 3)
+    r.sw.select(Bus::Main, Source::In3);
+    r.sw.select(Bus::Main, Source::DV2);
+    REQUIRE(r.sw.dvInput() == 2);
+    r.sw.select(Bus::Main, Source::Bkg);
+    r.sw.select(Bus::Main, Source::DV1);  // BKG is not an input: the DV input stays
+    REQUIRE(r.sw.dvInput() == 2);
+    r.sw.select(Bus::Main, Source::In1);
+    r.sw.select(Bus::Main, Source::DV1);
+    REQUIRE(r.sw.dvInput() == 0);
+    for (int n = 0; n < 10; ++n) {
+        r.in1 = numbered(n);
+        INFO("tick " << n);
+        REQUIRE(r.render().px == numbered(std::max(n - 4, 0)).px);
+        r.sw.tick();
+    }
+    CHECK(r.sw.still(Source::DV1).px == blackFrame().px);  // never written
+}
+
+TEST_CASE("freeze copies the delayed picture into DV1, or DV2 when a bus shows DV2", "[switcher][dv]") {
+    Rig r;
+    r.sw.select(Bus::Preview, Source::DV2);  // live: Preview's In2 through DV
+    REQUIRE(r.sw.dvInput() == 1);
+    run(r, r.in2, 0, 6);
+    REQUIRE(r.sw.setFrozen(true));
+    REQUIRE(r.sw.frozen());
+    CHECK(r.sw.still(Source::DV2).px == numbered(2).px);
+    CHECK(r.sw.still(Source::DV1).px == blackFrame().px);
+    // frozen, the bus shows the still whatever the input does
+    r.in2 = numbered(50);
+    vt::Frame out;
+    r.sw.renderSource(Source::DV2, r.src, out);
+    CHECK(out.px == numbered(2).px);
+    // a frozen DV does not take the bus's input
+    r.sw.select(Bus::Main, Source::In4);
+    r.sw.select(Bus::Main, Source::DV1);
+    CHECK(r.sw.dvInput() == 1);
+
+    Rig q;  // no DV on a bus: DV1
+    run(q, q.in1, 0, 6);
+    REQUIRE(q.sw.setFrozen(true));
+    CHECK(q.sw.still(Source::DV1).px == numbered(2).px);
+    CHECK(q.sw.still(Source::DV2).px == blackFrame().px);
+}
+
+TEST_CASE("live then freeze keeps the other still", "[switcher][dv]") {
+    Rig r;
+    run(r, r.in1, 0, 6);
+    REQUIRE(r.sw.setFrozen(true));  // DV1 = input 1 at tick 2
+    REQUIRE(r.sw.setFrozen(false));
+    REQUIRE_FALSE(r.sw.frozen());
+    CHECK(r.sw.still(Source::DV1).px == numbered(2).px);  // LIVE keeps the stills
+    r.sw.select(Bus::Preview, Source::DV2);              // live: input 2
+    run(r, r.in2, 6, 12, 50);
+    REQUIRE(r.sw.setFrozen(true));  // now 12: input 2 at tick 8
+    CHECK(r.sw.still(Source::DV2).px == numbered(58).px);
+    CHECK(r.sw.still(Source::DV1).px == numbered(2).px);
+}
+
+TEST_CASE("freeze, live and grab are refused during a transition", "[switcher][dv]") {
+    Rig r;
+    r.sw.setTBar(100);
+    std::string why;
+    REQUIRE_FALSE(r.sw.setFrozen(true, &why));
+    CHECK(why == "finish the effect first");
+    REQUIRE_FALSE(r.sw.frozen());
+    why.clear();
+    REQUIRE_FALSE(r.sw.setFrozen(false, &why));
+    CHECK(why == "finish the effect first");
+    why.clear();
+    REQUIRE_FALSE(r.sw.grab(0, &why));
+    CHECK(why == "finish the effect first");
+    CHECK_FALSE(r.sw.grabPending());
+    CHECK_FALSE(r.sw.frozen());
+    // an engaged ChromaFX too
+    Rig c;
+    REQUIRE(c.sw.setEffect(fadeToNeg()));
+    c.sw.setTBar(511);
+    REQUIRE(c.sw.chromaEngaged());
+    why.clear();
+    REQUIRE_FALSE(c.sw.setFrozen(true, &why));
+    CHECK(why == "finish the effect first");
+}
+
+TEST_CASE("grab 3 writes input 3 after 4 ticks, freezes and selects DV1 on Main", "[switcher][dv]") {
+    Rig r;
+    run(r, r.in1, 0, 6);  // the DV input is input 1
+    REQUIRE(r.sw.grab(2));
+    REQUIRE(r.sw.frozen());  // frozen first: DV1 = input 1 at tick 2
+    REQUIRE(r.sw.grabPending());
+    const vt::Frame frozen = r.sw.still(Source::DV1);
+    CHECK(frozen.px == numbered(2).px);
+    for (int t = 6; t < 10; ++t) {
+        INFO("tick " << t);
+        r.in3 = numbered(100 + t);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        r.render();
+        CHECK(r.sw.still(Source::DV1).px == frozen.px);
+        CHECK(r.sw.grabPending());
+        r.sw.tick();
+    }
+    CHECK(r.sw.selected(Bus::Main) == Source::DV1);
+    r.in3 = numbered(110);
+    CHECK(r.render().px == numbered(110).px);  // Main shows the grab at once
+    CHECK(r.sw.still(Source::DV1).px == numbered(110).px);
+    CHECK_FALSE(r.sw.grabPending());
+    CHECK(r.sw.frozen());
+}
+
+TEST_CASE("grab of a missing input gives black", "[switcher][dv]") {
+    Rig r;
+    r.src.inputs[3] = nullptr;
+    run(r, r.in1, 0, 1);
+    REQUIRE(r.sw.grab(3));
+    CHECK(r.sw.still(Source::DV1).px == numbered(0).px);  // the freeze's picture
+    for (int t = 0; t < 4; ++t) {
+        r.render();
+        r.sw.tick();
+    }
+    r.render();
+    CHECK_FALSE(r.sw.grabPending());
+    CHECK(r.sw.still(Source::DV1).px == blackFrame().px);
+}
+
+TEST_CASE("freeze before any render gives black", "[switcher][dv]") {
+    Rig r;
+    REQUIRE(r.sw.setFrozen(true));
+    CHECK(r.sw.still(Source::DV1).px == blackFrame().px);
+    Rig g;
+    REQUIRE(g.sw.grab(1));
+    CHECK(g.sw.still(Source::DV1).px == blackFrame().px);
+    // a live DV with no history yet is black too
+    Rig l;
+    l.sw.select(Bus::Preview, Source::DV1);
+    vt::Frame out;
+    l.sw.renderSource(Source::DV1, l.src, out);
+    CHECK(out.px == blackFrame().px);
+}
+
+TEST_CASE("load target follows the loader rule", "[switcher][dv]") {
+    const vt::Frame still = numbered(77);
+    struct Case {
+        const char* name;
+        bool frozen;
+        Bus bus;
+        Source dv;
+        Source target;
+    };
+    // FREEZE.md 4 step 2
+    for (const Case& c : {Case{"Main DV1", true, Bus::Main, Source::DV1, Source::DV2},
+                          Case{"Overlay DV2", true, Bus::Overlay, Source::DV2, Source::DV1},
+                          Case{"Preview DV2", true, Bus::Preview, Source::DV2, Source::DV1},
+                          Case{"nothing", false, Bus::Overlay, Source::Bkg, Source::DV2},
+                          Case{"Main live DV1", false, Bus::Main, Source::DV1, Source::DV2}}) {
+        INFO(c.name);
+        Rig r;
+        if (c.frozen) REQUIRE(r.sw.setFrozen(true));
+        r.sw.select(c.bus, c.dv);
+        REQUIRE(r.sw.loadStill(still));
+        CHECK(r.sw.frozen());
+        CHECK(r.sw.selected(Bus::Preview) == c.target);
+        CHECK(r.sw.still(c.target).px == still.px);
+        if (!c.frozen && c.dv == Source::DV1) CHECK(r.sw.selected(c.bus) == Source::In1);  // stripped
+    }
+    // refused while a transition runs
+    Rig t;
+    t.sw.setTBar(100);
+    std::string why;
+    REQUIRE_FALSE(t.sw.loadStill(still, &why));
+    CHECK(why == "a transition is running: finish it first");
+    CHECK_FALSE(t.sw.frozen());
+}
+
+TEST_CASE("loading a framestore disengages ChromaFX", "[switcher][dv][chromafx]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(fadeToNeg()));
+    r.sw.setTBar(511);
+    REQUIRE(r.sw.chromaEngaged());
+    REQUIRE(r.sw.loadStill(numbered(5)));
+    CHECK_FALSE(r.sw.chromaEngaged());
+    CHECK_FALSE(r.sw.transitionActive());
+    CHECK(r.sw.selected(Bus::Preview) == Source::DV2);
+}
+
+TEST_CASE("saveSource order", "[switcher][dv]") {
+    Rig r;
+    std::string why;
+    CHECK_FALSE(r.sw.saveSource(&why));
+    CHECK(why == "SAVE: no still in DV1/DV2");
+    REQUIRE(r.sw.loadStill(numbered(5)));  // DV2, on Preview
+    CHECK(r.sw.saveSource() == Source::DV2);
+    r.sw.select(Bus::Preview, Source::In2);
+    r.sw.select(Bus::Main, Source::DV1);
+    CHECK(r.sw.saveSource() == Source::DV1);
+    r.sw.select(Bus::Main, Source::DV2);  // Main is read, not just the DV1 fallback
+    CHECK(r.sw.saveSource() == Source::DV2);
+    r.sw.select(Bus::Main, Source::In1);
+    CHECK(r.sw.saveSource() == Source::DV1);
 }

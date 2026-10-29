@@ -11,6 +11,11 @@ constexpr int kTBarEnd = 511;
 constexpr Rgba8 kBlack{0, 0, 0, 255};
 
 size_t busIndex(Bus b) { return static_cast<size_t>(b); }
+bool isInput(Source s) { return s <= Source::In4; }
+bool isDv(Source s) { return s == Source::DV1 || s == Source::DV2; }
+int dvIndex(Source s) { return s == Source::DV2 ? 1 : 0; }
+int digitalDelay(const HardwareGuesses& g) { return std::clamp(g.digitalDelay, 0, 8); }
+constexpr const char* kFinishEffect = "finish the effect first";
 
 // What an engaged overlay lays over Main (Ruling 32).
 enum class OverlayB { Colour, Main, Preview };
@@ -26,10 +31,14 @@ OverlayB overlayB(const Effect& e) {
 
 Switcher::Switcher() : effect_(makeDissolve()), effectColour_(effect_->effectColour()) {
     speed_ = effect_->timing().defaultSpeed;
-    std::fill(dv_.px.begin(), dv_.px.end(), kBlack);
+    for (Frame& f : stills_) std::fill(f.px.begin(), f.px.end(), kBlack);
 }
 
-void Switcher::select(Bus b, Source s) { sel_[busIndex(b)] = s; }
+void Switcher::select(Bus b, Source s) {
+    Source& cur = sel_[busIndex(b)];
+    if (!frozen_ && isDv(s) && isInput(cur)) dvInput_ = static_cast<int>(cur);  // FREEZE.md 3
+    cur = s;
+}
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
 
 bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
@@ -146,6 +155,12 @@ void Switcher::take() {
 void Switcher::tick() {
     ++tickCount_;
     if (engaged_) ++engagedTicks_;
+    // The grab's wait is over: DV1 goes on Main and the store freezes (FREEZE.md 3: grab steps
+    // 7-8, then message 0xb to the MAIN DV1 node). The next render writes the frame.
+    if (grabPending_ && grabWait_ > 0 && --grabWait_ == 0) {
+        sel_[busIndex(Bus::Main)] = Source::DV1;
+        frozen_ = true;
+    }
     if (!auto_) return;
     if (autoDir_ == Direction::Forward) {
         autoAcc_ += kTBarEnd;
@@ -172,7 +187,7 @@ const Frame& Switcher::sourceFrame(Source s, const SourceFrames& in, bool& bkgBu
             f = in.inputs[static_cast<size_t>(s)];  // null = no picture, black
             break;
         case Source::DV1: case Source::DV2:
-            f = &dv_;
+            f = frozen_ ? &stills_[size_t(dvIndex(s))] : delayed(dvInput_);  // live: one DV input
             break;
         case Source::Bkg:
             if (!bkgBuilt) {
@@ -201,6 +216,11 @@ void Switcher::renderSource(Source s, const SourceFrames& in, Frame& out) const 
 }
 
 void Switcher::render(const SourceFrames& in, Frame& program) const {
+    if (grabPending_ && grabWait_ == 0) {
+        writeStill(0, in.inputs[size_t(grabInput_)]);
+        grabPending_ = false;
+    }
+    record(dvInput_, in);
     bool bkgBuilt = false, blackBuilt = false;
     auto pick = [&](Source s) -> const Frame& { return sourceFrame(s, in, bkgBuilt, blackBuilt); };
 
@@ -270,6 +290,110 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         effect_->render(tbar_, a, b, out, ctx);
     }
     program.px.swap(out.px);
+}
+
+// --- DV store ---
+
+void Switcher::record(int input, const SourceFrames& in) const {
+    auto& frames = hist_[size_t(input)];
+    auto& ticks = histTicks_[size_t(input)];
+    const size_t n = size_t(digitalDelay(guesses_)) + 1;
+    if (frames.size() != n) {  // first use, or the delay changed: start afresh
+        frames.resize(n);
+        ticks.assign(n, -1);
+    }
+    const size_t slot = tickCount_ % n;
+    if (const Frame* f = in.inputs[size_t(input)]) frames[slot].px = f->px;
+    else std::fill(frames[slot].px.begin(), frames[slot].px.end(), kBlack);
+    ticks[slot] = tickCount_;
+}
+
+const Frame* Switcher::delayed(int input) const {
+    const auto& ticks = histTicks_[size_t(input)];
+    const int64_t want = int64_t(tickCount_) - digitalDelay(guesses_);
+    int newest = -1, oldest = -1;
+    for (int i = 0; i < int(ticks.size()); ++i) {
+        const int64_t t = ticks[size_t(i)];
+        if (t < 0) continue;
+        if (t <= want && (newest < 0 || t > ticks[size_t(newest)])) newest = i;
+        if (oldest < 0 || t < ticks[size_t(oldest)]) oldest = i;
+    }
+    const int i = newest >= 0 ? newest : oldest;
+    return i >= 0 ? &hist_[size_t(input)][size_t(i)] : nullptr;
+}
+
+void Switcher::writeStill(int dv, const Frame* f) const {
+    Frame& still = stills_[size_t(dv)];
+    if (f) still.px = f->px;
+    else std::fill(still.px.begin(), still.px.end(), kBlack);
+    written_[size_t(dv)] = true;
+}
+
+const Frame& Switcher::still(Source dv) const { return stills_[size_t(dvIndex(dv))]; }
+
+// FREEZE, LIVE and grab wait for the effect (design B: the DV memory is shared, spec 5.8); an
+// engaged overlay does not hold them up.
+bool Switcher::setFrozen(bool frozen, std::string* whyNot) {
+    if (transitionActive() && !overlayEngaged()) {
+        if (whyNot) *whyNot = kFinishEffect;
+        return false;
+    }
+    if (frozen && !frozen_) {
+        // The live picture goes into one still, DV2 if a bus shows DV2, else DV1; the other is kept.
+        const bool dv2 = std::find(sel_.begin(), sel_.end(), Source::DV2) != sel_.end();
+        writeStill(dv2 ? 1 : 0, delayed(dvInput_));
+    }
+    frozen_ = frozen;
+    return true;
+}
+
+// FREEZE.md 3 (0xc3774): freeze if live, wait 4 fields, write the input into DV1; tick and
+// render finish it.
+bool Switcher::grab(int input, std::string* whyNot) {
+    if (!setFrozen(true, whyNot)) return false;
+    grabInput_ = std::clamp(input, 0, 3);
+    grabWait_ = digitalDelay(guesses_);
+    grabPending_ = true;
+    if (grabWait_ == 0) sel_[busIndex(Bus::Main)] = Source::DV1;  // no wait for tick to end
+    return true;
+}
+
+// FREEZE.md 4 (FRAM handler 0x122364).
+bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
+    if ((auto_ || tbar_ > 0) && !engaged_) {
+        if (whyNot) *whyNot = "a transition is running: finish it first";
+        return false;
+    }
+    // Step 1: ChromaFX off, live digital stripped from the buses.
+    if (chromaEngaged()) {
+        auto_ = false;
+        tbar_ = 0;
+        disengage();
+    }
+    if (!frozen_)
+        for (Source& s : sel_)
+            if (isDv(s)) s = static_cast<Source>(dvInput_);
+    // Step 2: the target DV.
+    auto shows = [&](Bus b, Source s) { return sel_[busIndex(b)] == s; };
+    Source target = Source::DV2;
+    if (shows(Bus::Main, Source::DV1) || shows(Bus::Overlay, Source::DV1)) target = Source::DV2;
+    else if (shows(Bus::Main, Source::DV2) || shows(Bus::Overlay, Source::DV2)) target = Source::DV1;
+    else if (shows(Bus::Preview, Source::DV2)) target = Source::DV1;
+    // Steps 4 and 6: the still frozen in the target, shown on Preview.
+    writeStill(dvIndex(target), &still);
+    frozen_ = true;
+    sel_[busIndex(Bus::Preview)] = target;
+    return true;
+}
+
+std::optional<Source> Switcher::saveSource(std::string* whyNot) const {
+    if (!written_[0] && !written_[1]) {
+        if (whyNot) *whyNot = "SAVE: no still in DV1/DV2";
+        return std::nullopt;
+    }
+    for (Bus b : {Bus::Preview, Bus::Main})
+        if (isDv(sel_[busIndex(b)])) return sel_[busIndex(b)];
+    return Source::DV1;
 }
 
 std::shared_ptr<const Sound> Switcher::pendingSound() {

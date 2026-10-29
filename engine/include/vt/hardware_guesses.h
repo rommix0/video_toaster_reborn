@@ -38,6 +38,11 @@ struct HardwareGuesses {
     // shows the source alone and L = 3 the DVE picture alone (Photo Fly Out ! flashes white, then
     // fades the photo in). HARDWARE GUESS: FREEZE.md section 2 does not give the mixer's weights.
     std::array<uint8_t, 4> dveLevelMix{0, 85, 170, 255};
+
+    // DV store: the ticks (fields) a live digital picture lags its input, clamped to 0..8 where
+    // used; a grab waits as long. HARDWARE GUESS: the code holds no delay constant; the grab
+    // waits 4 fields and the manual's 1/15 s is 4 fields (FREEZE.md section 3).
+    int digitalDelay = 4;
 };
 
 }  // namespace vt
