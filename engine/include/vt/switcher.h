@@ -52,7 +52,7 @@ public:
     // DV1 or DV2 selected while the DV store is live makes the bus's previous selection, when it
     // was an input, the DV input (FREEZE.md 3: the bus shows that input through DV, delayed).
     // Refused (false, the reason in *whyNot, the bus kept): None on Main or Preview ("no source");
-    // DV2 on Superimpose while the store is frozen or the bus shows no input to make live
+    // DV2 on Superimpose while the store is frozen or the bus shows neither an input nor live DV
     // ("Superimpose: DV2 alone cannot be keyed"). A Superimpose source other than the one it has
     // turns the keyer on (its polarity kept); the same one again does nothing; None empties the
     // bus and leaves the keyer as it is.

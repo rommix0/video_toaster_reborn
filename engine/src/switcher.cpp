@@ -42,8 +42,8 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
     Source& cur = sel_[busIndex(b)];
     if (b == Bus::Superimpose) {
         if (s == cur) return true;  // the lit source again: nothing
-        // DV2 alone is the plain still unless the store is live and the bus has an input to make live.
-        if (s == Source::DV2 && (frozen_ || !isInput(cur))) return refuse("Superimpose: DV2 alone cannot be keyed");
+        // DV2 alone is the plain still unless the store is live and the bus has an input (or live DV) to show.
+        if (s == Source::DV2 && (frozen_ || !(isInput(cur) || isDv(cur)))) return refuse("Superimpose: DV2 alone cannot be keyed");
     } else if (s == Source::None) {
         return refuse("no source");
     }

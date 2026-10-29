@@ -193,6 +193,18 @@ TEST_CASE("DV2 alone on Superimpose is refused", "[switcher][key]") {
         CHECK(r.sw.dvInput() == 3);
     }
     {
+        Rig r;  // live, live DV already on the bus: DV2 shows the same live DV input
+        r.sw.select(Bus::Superimpose, Source::In4);
+        REQUIRE(r.sw.select(Bus::Superimpose, Source::DV1));
+        REQUIRE(r.sw.dvInput() == 3);
+        CHECK(r.sw.select(Bus::Superimpose, Source::DV2));
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::DV2);
+        CHECK(r.sw.dvInput() == 3);
+        r.sw.select(Bus::Superimpose, Source::Bkg);  // BKG is no DV to make live
+        CHECK_FALSE(r.sw.select(Bus::Superimpose, Source::DV2));
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::Bkg);
+    }
+    {
         Rig r;  // live, nothing on the bus
         why.clear();
         CHECK_FALSE(r.sw.select(Bus::Superimpose, Source::DV2, &why));
