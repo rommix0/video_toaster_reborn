@@ -880,25 +880,22 @@ TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
 }
 
 // ALGO.md 3 counts 462 ALGO files in 4.2: 230 croutons and their 232 icons (the .i files carry
-// the tags too). Of the croutons, 2 are Art Card Key (4 with the icons) and 228 play.
-TEST_CASE("every ALGO crouton but Art Card Key loads", "[effect][factory][algo]") {
+// the tags too). Of the croutons, 2 are Art Card Key (4 with the icons); all 230 load.
+TEST_CASE("every ALGO crouton loads", "[effect][factory][algo]") {
     int loaded = 0, artCardKey = 0;
     for (const auto& p : croutonsOfType(vt::CroutonType::Algo, "4.2")) {
         std::string why;
         INFO(p.string());
         const auto c = vt::loadCrouton(p);
-        if (c->tag(0x80000063).value_or(0) == 5) {
-            REQUIRE(vt::loadEffect(p, &why) == nullptr);
-            REQUIRE(why == "Art Card Key needs keys (not built yet)");
-            ++artCardKey;
-            continue;
-        }
+        const auto e = vt::loadEffect(p, &why);
         INFO(why);
-        REQUIRE(vt::loadEffect(p, &why) != nullptr);
+        REQUIRE(e != nullptr);
+        REQUIRE(e->isArtCardKey() == (c->tag(0x80000063).value_or(0) == 5));
+        artCardKey += e->isArtCardKey();
         ++loaded;
     }
     REQUIRE(artCardKey == 2);
-    REQUIRE(loaded == 228);
+    REQUIRE(loaded == 230);
 }
 
 namespace {
@@ -1608,4 +1605,91 @@ TEST_CASE("load errors name a file outside the ANSI code page", "[effect]") {
     } catch (const std::runtime_error& e) {
         CHECK(std::string(e.what()).find(name) != std::string::npos);
     }
+}
+
+TEST_CASE("routing descriptors are read from the crouton (tag 0x80000007)", "[effect][key]") {
+    for (auto [src, want] : {std::pair{"4.2/Effects/4000FX/Push-Pull/Push On L-R", 2u},
+                             std::pair{"4.2/Effects/2000FX/Blinds/Blinds 3 Shrink", 3u},
+                             std::pair{"4.2/Effects/2000FX/Digital/Infinite Tiles", 5u},
+                             std::pair{"4.2/Effects/2000FX/Blinds/Split Corners In", 17u},
+                             std::pair{"4.2/Effects/2000FX/Smooth Fade", 1u}}) {
+        INFO(src);
+        const auto e = load(src);
+        REQUIRE(e);
+        CHECK(e->routingDescriptor() == want);
+    }
+    CHECK(vt::makeDissolve()->routingDescriptor() == 1);
+    CHECK(vt::makeCut()->routingDescriptor() == 1);
+}
+
+TEST_CASE("Art Card Key loads as its own effect", "[effect][key]") {
+    for (const char* dir : {"2000FX", "4000FX"}) {
+        const auto e = load(std::string("4.2/Effects/") + dir + "/Control/ART CARD KEY");
+        INFO(dir);
+        REQUIRE(e);
+        CHECK(e->isArtCardKey());
+        CHECK(!e->usesDvMemory());
+        CHECK(e->digitalMove() == vt::DigitalMove::None);
+        const vt::Frame a = pattern(1), b = pattern(2);
+        CHECK(renderAt(*e, 300, a, b).px == a.px);
+    }
+    CHECK(!vt::makeDissolve()->isArtCardKey());
+}
+
+namespace {
+
+int countColour(const vt::Frame& f, vt::Rgba8 c) {
+    return int(std::count_if(f.px.begin(), f.px.end(), [&](const vt::Rgba8& p) { return same(p, c); }));
+}
+
+}  // namespace
+
+TEST_CASE("keyFill: a digital move's key-0 area is the fill colour", "[effect][key]") {
+    const vt::Rgba8 red{255, 0, 0, 255}, green{0, 255, 0, 255};
+    const vt::Frame a = solid(red), b = solid(green);
+    // The DVE move also draws a drop shadow, which darkens whatever sits behind it: dark red over
+    // the red background, grey over the white fill. Push On L-R draws none.
+    for (auto [src, shadow] : {std::pair{"4.2/Effects/4000FX/Push-Pull/Push On L-R", false},
+                               std::pair{"4.2/Effects/2000FX/Blinds/Split Corners In", true}}) {
+        INFO(src);
+        const auto e = load(src);
+        REQUIRE(e);
+        vt::RenderCtx c = ctxWith();
+        const vt::Frame plain = renderAt(*e, 256, a, b, c);
+        CHECK(countColour(plain, kWhite) == 0);
+        c.keyFill = kWhite;
+        const vt::Frame out = renderAt(*e, 256, a, b, c);
+        const int white = countColour(out, kWhite);
+        CHECK(white >= 1000);
+        const int grey = int(std::count_if(out.px.begin(), out.px.end(), [&](const vt::Rgba8& p) {
+            return p.r == p.g && p.g == p.b && !same(p, kWhite);
+        }));
+        CHECK(white + countColour(out, red) + countColour(out, green) + grey == int(out.px.size()));
+        if (!shadow) {
+            CHECK(grey == 0);
+            continue;
+        }
+        // the same shadow without the fill: dark red, as many pixels
+        const int dark = int(std::count_if(plain.px.begin(), plain.px.end(),
+                                           [&](const vt::Rgba8& p) { return p.g == 0 && p.b == 0 && !same(p, red); }));
+        CHECK(dark > 0);
+        CHECK(dark == grey);
+        CHECK(dark + countColour(plain, red) + countColour(plain, green) == int(plain.px.size()));
+    }
+}
+
+TEST_CASE("keyFill: a fade-level move ignores its level in key mode", "[effect][key]") {
+    const vt::Rgba8 red{255, 0, 0, 255}, green{0, 255, 0, 255};
+    const auto e = load("4.2/Effects/2000FX/Digital/Expand Fade In");
+    REQUIRE(e);
+    const int n = std::max(2, e->timing().durationTicks[size_t(vt::Speed::Fast)]);
+    vt::RenderCtx c = ctxWith();
+    c.speed = vt::Speed::Fast;
+    c.autoSteps = n;
+    c.autoStep = n / 2;
+    c.take = 1;
+    c.keyFill = kWhite;
+    const vt::Frame out = renderAt(*e, 256, solid(red), solid(green), c);
+    CHECK(countColour(out, kWhite) > 0);
+    CHECK(countColour(out, green) + countColour(out, kWhite) == int(out.px.size()));
 }

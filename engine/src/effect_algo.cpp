@@ -66,10 +66,11 @@ public:
         }
         const AlgoStep& s = *step_;
         const bool second = algoSecondStep(tbar, ctx.autoStep, n, flags_);
-        auto matte = [&]() -> const Frame& {
-            std::fill(matte_.px.begin(), matte_.px.end(), ctx.background);
+        auto matteOf = [&](Rgba8 c) -> const Frame& {
+            std::fill(matte_.px.begin(), matte_.px.end(), c);
             return matte_;
         };
+        auto matte = [&]() -> const Frame& { return matteOf(ctx.background); };
 
         if (isDigital(kind_)) {
             DveControl control = algoControl(s);
@@ -91,9 +92,11 @@ public:
                     break;
                 default: moving = second ? &db : &da; background = &matte(); break;  // 6: BKG matte
             }
+            if (ctx.keyFill) background = &matteOf(*ctx.keyFill);  // key mode: the fill replaces any bus
             renderDve(control, *moving, *background, {}, out, ctx.guesses);
-            // ALGO.md 15.4 (GUESS): the level fades the key-0 background toward the composite.
-            if (s.level >= 0) mixLevel(*background, out, s.level, out);
+            // ALGO.md 15.4 (GUESS): the level fades the key-0 background toward the composite;
+            // in key mode the mixer is in key mode too, so no level.
+            if (s.level >= 0 && !ctx.keyFill) mixLevel(*background, out, s.level, out);
         } else if (kind_ == 2) {
             const int level = s.level < 0 ? 255 : s.level;  // mixLevel clamps to 0..255
             if (desc_ == 1) mixLevel(a, b, level, out);
@@ -116,6 +119,16 @@ private:
     mutable Frame matte_;
 };
 
+// The Art Card Key crouton (kind 5): no program runs. The Switcher composes the card itself
+// (vt/switcher.h); render only passes A through.
+class ArtCardKeyEffect final : public CroutonEffect {
+public:
+    using CroutonEffect::CroutonEffect;
+    int frameCount() const override { return 1; }
+    bool isArtCardKey() const override { return true; }
+    void render(int, const Frame& a, const Frame&, Frame& out, const RenderCtx&) const override { out = a; }
+};
+
 }  // namespace
 
 std::unique_ptr<Effect> makeAlgoEffect(CroutonBasics b, const Crouton& c, std::string* why) {
@@ -124,7 +137,7 @@ std::unique_ptr<Effect> makeAlgoEffect(CroutonBasics b, const Crouton& c, std::s
         return nullptr;
     };
     const int kind = int(c.tag(kTagKind).value_or(0));
-    if (kind == 5) return fail("Art Card Key needs keys (not built yet)");
+    if (kind == 5) return std::make_unique<ArtCardKeyEffect>(std::move(b));
     const auto it = c.blobs.find(kTagProgram);
     if (it == c.blobs.end()) return fail("ALGO effect without a program");
     const uint32_t desc = c.tag(kTagDescriptor).value_or(0);

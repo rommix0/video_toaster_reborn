@@ -87,7 +87,8 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         auto basics = [&](Timing t) {
             return detail::CroutonBasics{name, t, detail::loadSound(*c, name),
                                          effectColourFromTags(c->tag(kTagColour), c->tag(kTagCustomColour)),
-                                         c->type != CroutonType::Crfx && inOverlaysDrawer(path)};
+                                         c->type != CroutonType::Crfx && inOverlaysDrawer(path),
+                                         uint32_t(c->tag(kTagDescriptor).value_or(1))};
         };
 
         switch (c->type) {

@@ -58,6 +58,10 @@ struct RenderCtx {
     // DVE picture drawn from this one) and S = 1 the other bus, analog (vt::DveMix).
     const Frame* digitalA = nullptr;
     const Frame* digitalB = nullptr;
+    // Key mode (the Superimpose bus flies a key, design 2 B): a digital move (ALGO kinds 0/3, DVE
+    // ANIMs) draws its key-0 area in this colour instead of a bus or the matte, the "!" DVEs'
+    // S = 1 routes show it, and an ALGO channel-23 level is not applied. Other effects ignore it.
+    std::optional<Rgba8> keyFill;
 };
 
 // Which bus a digital move moves first (FREEZE.md 5): None for everything but the DVE moves
@@ -100,6 +104,12 @@ public:
     // transition (Rulings 27, 32). No crouton tag tells them apart, so loadEffect decides from
     // the path: the file's own folder is named "Overlays" (any case).
     virtual bool isOverlay() const { return false; }
+    // The routing descriptor (crouton tag 0x80000007; ALGO.md 15.2) that says which buses the
+    // move shows. 1 when absent: cut, dissolve and untagged croutons act as descriptor 1.
+    virtual uint32_t routingDescriptor() const { return 1; }
+    // True for the Art Card Key crouton (ALGO kind 5): the Switcher composes the card itself;
+    // render only passes `a` through.
+    virtual bool isArtCardKey() const { return false; }
 };
 
 // Cut: A below tbar 256, B from 256. Dissolve: per-channel linear mix
@@ -112,7 +122,7 @@ std::unique_ptr<Effect> makeDissolve();
 // use the DV memory, wipes and fades). Otherwise the kind is decided by its content: an ANIM form
 // -> DVE move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient
 // wipe. Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: MAIN/CTRL
-// (Switcher code), Art Card Key and unsupported ALGO programs, bar pictures, unsupported control
+// (Switcher code) and unsupported ALGO programs, bar pictures, unsupported control
 // image sizes, undecodable files.
 // An existing, readable file with no CrUD whose sibling icon (<name>.i or .I) is an ALGO crouton plays that crouton's
 // program (the original reads the CrUD from the icon file; the two Smooth Fade files); the

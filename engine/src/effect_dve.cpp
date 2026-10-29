@@ -7,6 +7,7 @@
 // from that palette) mix the other bus or the generator into the picture by level; which bus
 // S = 1 shows comes from the routing descriptor (tag 0x80000007, see render). Effects with unknown
 // key codes (24..63; none in the corpus) are logged once, when loaded.
+#include <algorithm>
 #include <string>
 
 #include "effect_detail.h"
@@ -66,7 +67,13 @@ public:
         // 0x30|input from the take, FREEZE.md 5). The routing descriptor says which bus moves
         // (ALGO.md 7, 15.2): 3 and 32 move A, every other one B. The control frames' role does not
         // decide it.
-        const DveMix mix{&routes_[size_t(k)], routesMoveA_ ? &b : &a, ctx.background, ctx.generator};
+        // Key mode: the fill replaces the key-0 background (the Flip role's black too) and S = 1.
+        const Frame* s1 = routesMoveA_ ? &b : &a;
+        if (ctx.keyFill) {
+            std::fill(fill_.px.begin(), fill_.px.end(), *ctx.keyFill);
+            background = s1 = &fill_;
+        }
+        const DveMix mix{&routes_[size_t(k)], s1, ctx.background, ctx.generator};
         renderDve(frames_[size_t(k)], *moving, *background, palettes_[size_t(k)], out, ctx.guesses,
                   routes_[size_t(k)].empty() ? nullptr : &mix);
     }
@@ -78,6 +85,7 @@ private:
     std::vector<std::vector<Rgb>> palettes_;  // per frame
     std::vector<std::vector<DveRoute>> routes_;  // per frame, from tag 0x1000001B; empty = none
     Frame black_;
+    mutable Frame fill_;  // render scratch: the keyFill colour
 };
 
 }  // namespace

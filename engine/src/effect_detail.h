@@ -65,6 +65,7 @@ struct CroutonBasics {
     std::optional<Sound> sound;
     std::optional<EffectColour> colour;  // tags 0x80000023/0x24 (effectColourFromTags)
     bool overlay = false;  // from an Overlays drawer (Effect::isOverlay)
+    uint32_t descriptor = 1;  // routing descriptor, tag 0x80000007 (Effect::routingDescriptor)
 };
 
 // Base of the crouton effects: answers the Effect queries that come from CroutonBasics.
@@ -76,6 +77,7 @@ public:
     const Sound* sound() const override { return b_.sound ? &*b_.sound : nullptr; }
     std::optional<EffectColour> effectColour() const override { return b_.colour; }
     bool isOverlay() const override { return b_.overlay; }
+    uint32_t routingDescriptor() const override { return b_.descriptor; }
 
 protected:
     const CroutonBasics& basics() const { return b_; }
