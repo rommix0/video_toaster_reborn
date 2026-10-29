@@ -55,10 +55,36 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
 
 void Switcher::setKeyMode(KeyMode m) {
+    if (takeOpen() && keyModeLocked(effect_->routingDescriptor())) return;  // the effect holds it (C5)
     keyOn_ = m != KeyMode::Off;
     if (keyOn_) keyBlack_ = m == KeyMode::Black;
     else sel_[busIndex(Bus::Superimpose)] = Source::None;  // OFF empties the bus
 }
+
+void Switcher::setKeyLevel(int l) {
+    if (takeOpen() && keyLevelLocked(effect_->routingDescriptor())) return;  // the effect holds it (C5)
+    keyLevel_ = std::clamp(l, 0, kKeyLevelMax);
+}
+
+// C2: only a digital move that is neither an overlay nor a ChromaFX can fly the key.
+KeyMove Switcher::keyMove() const {
+    const Effect& e = *effect_;
+    if (e.digitalMove() == DigitalMove::None || e.isOverlay() || e.isChromaFx()) return KeyMove::Drops;
+    return keyMoveFor(e.routingDescriptor());
+}
+
+// Decided from the keyer as it is now (C6): a key flies with the keyer on and something to fly.
+// Fly on needs no Superimpose source; fly off and two-phase with an empty bus are plain moves.
+KeyMove Switcher::flight() const {
+    const KeyMove m = keyMove();
+    if (!keyOn_ || m == KeyMove::Drops) return KeyMove::Drops;
+    if (m != KeyMove::FliesOn && sel_[busIndex(Bus::Superimpose)] == Source::None) return KeyMove::Drops;
+    return m;
+}
+
+// C5: a take is open while Auto runs or the T-bar is off 0 with nothing engaged; never under the
+// Art Card Key (its T-bar is the clip control).
+bool Switcher::takeOpen() const { return (auto_ || (tbar_ > 0 && !engaged_)) && !effect_->isArtCardKey(); }
 
 bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     auto refuse = [&](const char* why) {
@@ -91,13 +117,21 @@ void Switcher::beginTransitionIfIdle() {
     soundPending_ = effect_->sound() != nullptr;
     ++take_;
     grabSelects_ = false;  // a pending grab must not switch Main or freeze mid-transition
+    if (keyMove() == KeyMove::Drops) keyOn_ = false;  // design 2 B: the key drops at take start
     // FREEZE.md 5 (flag 0x200): a digital move with the store frozen and no DV on a bus sends the
     // store live (the stills are kept), then routes the moving bus's input through DV. With a DV
     // on a bus the freeze stays, and the move moves that still.
     const DigitalMove m = effect_->digitalMove();
     if (m == DigitalMove::None) return;
     if (frozen_ && std::none_of(sel_.begin(), sel_.end(), isDv)) frozen_ = false;
-    const Source moving = sel_[busIndex(m == DigitalMove::A ? Bus::Main : Bus::Preview)];
+    // A flying key routes the picture it flies instead: Preview's (fly on) or the Superimpose
+    // source (fly off, two-phase).
+    const KeyMove f = flight();
+    const Bus movingBus = f == KeyMove::FliesOn ? Bus::Preview
+                          : f != KeyMove::Drops ? Bus::Superimpose
+                          : m == DigitalMove::A ? Bus::Main
+                                                : Bus::Preview;
+    const Source moving = sel_[busIndex(movingBus)];
     if (!frozen_ && isInput(moving)) dvInput_ = static_cast<int>(moving);
 }
 
@@ -116,18 +150,38 @@ void Switcher::finishAt511() {
     auto_ = false;
     if (staysEngaged()) {
         tbar_ = kTBarEnd;  // stays engaged, no swap (Rulings 21, 27)
-    } else {
-        std::swap(sel_[busIndex(Bus::Main)], sel_[busIndex(Bus::Preview)]);
-        tbar_ = 0;  // the effect is finished; the T-bar counts as back at 0
+        return;
+    }
+    tbar_ = 0;  // the effect is finished; the T-bar counts as back at 0
+    // Design 2 B: a flying key never swaps, and the keyer stays on.
+    Source& prev = sel_[busIndex(Bus::Preview)];
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    switch (flight()) {
+        case KeyMove::Drops:
+            std::swap(sel_[busIndex(Bus::Main)], prev);
+            sup = Source::None;  // C7
+            break;
+        case KeyMove::FliesOn: sup = prev; break;  // Preview is the key
+        case KeyMove::FliesOff:                    // the key source sits on Preview, ready to fly back on
+            prev = sup;
+            sup = Source::None;
+            break;
+        case KeyMove::TwoPhase: break;  // the buses as at take start
     }
 }
 
 // The T-bar is back at 0 (by hand or by a reverse Auto): nothing swaps; an overlay ends; a
-// Transition-mode ChromaFX disengages, a Filter-mode one stays engaged.
+// Transition-mode ChromaFX disengages, a Filter-mode one stays engaged. Superimpose is emptied
+// (C7, KEY.md 4), its source first going to Preview after fly off and two-phase; a dropped key
+// stays off.
 void Switcher::arriveAt0() {
+    const KeyMove f = flight();
     auto_ = false;
     tbar_ = 0;
     if (!effect_->isChromaFilter()) disengage();
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    if (f == KeyMove::FliesOff || f == KeyMove::TwoPhase) sel_[busIndex(Bus::Preview)] = sup;
+    sup = Source::None;
 }
 
 void Switcher::setTBar(int pos) {
@@ -266,8 +320,10 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     const bool digital = effect_->digitalMove() != DigitalMove::None;
     if (digital) {
         const Source m = sel_[busIndex(Bus::Main)], p = sel_[busIndex(Bus::Preview)];
+        const Source s = sel_[busIndex(Bus::Superimpose)];
         if (isInput(m) && int(m) != dvInput_) record(int(m), in);
         if (isInput(p) && p != m && int(p) != dvInput_) record(int(p), in);
+        if (isInput(s) && s != m && s != p && int(s) != dvInput_) record(int(s), in);
     }
     // The DV path's picture of a bus: its input, delayed, while the store is live.
     auto digitalOf = [&](Source s) { return digital && !frozen_ && isInput(s) ? delayed(int(s)) : nullptr; };
@@ -276,9 +332,8 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
 
     const Frame& a = pick(sel_[busIndex(Bus::Main)]);
     // Output goes to a separate frame: DVE effects must not alias their inputs, and `program`
-    // may be one of the input frames. (A key during a transition comes with the effects' routing.) The scratch
-    // frames are members and `program`'s buffer is swapped in and out, so a steady stream of
-    // renders allocates nothing.
+    // may be one of the input frames. The scratch frames are members and `program`'s buffer is
+    // swapped in and out, so a steady stream of renders allocates nothing.
     Frame& out = outScratch_;
     out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
     if (!transitionActive()) {
@@ -353,7 +408,30 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         const int fpf = timing.fieldsPerFrame[static_cast<size_t>(speed)];
         if (overlay && fpf > 0 && effect_->frameCount() > 0)
             ctx.animFrame = static_cast<int>(engagedTicks_ / uint32_t(fpf) % uint32_t(effect_->frameCount()));
-        effect_->render(tbar_, a, b, out, ctx);
+        const KeyMove fly = flight();
+        if (fly == KeyMove::Drops) {
+            effect_->render(tbar_, a, b, out, ctx);
+        } else {
+            // Design 2 B: the move flies a picture over the polarity's colour (C3, C9), and that is
+            // keyed by its own luma as the idle key is. Two-phase: from T-bar 256 Main's picture
+            // over the Superimpose source (C4).
+            const Source main = sel_[busIndex(Bus::Main)], sup = sel_[busIndex(Bus::Superimpose)];
+            const bool second = fly == KeyMove::TwoPhase && tbar_ >= 256;
+            const Source sa = fly == KeyMove::FliesOn ? sel_[busIndex(Bus::Preview)] : sup;
+            const Source sb = fly == KeyMove::TwoPhase ? main : sa;
+            const Source keyed = second ? main : sa;
+            const Source under = second ? sup : main;
+            ctx.keyFill = bkgColour(keyBlack_ ? BkgColour::Black : BkgColour::White);
+            ctx.digitalA = digitalOf(sa);
+            ctx.digitalB = digitalOf(sb);
+            // Rendered even when nothing shows of it: an ALGO move steps its take's VM per render.
+            Frame& f = keyScratch_;
+            effect_->render(tbar_, pick(sa), pick(sb), f, ctx);
+            const Frame& u = pick(under);
+            if (keyed == under || keyLevel_ == kKeyLevelMax) out.px = u.px;  // no key condition, or L 257
+            else if (keyLevel_ == 0) out.px = f.px;
+            else lumaKey(f, u, f, keyClip(keyBlack_, keyLevel_), keyBlack_, guesses_.keySoftness, out);
+        }
     }
     program.px.swap(out.px);
 }

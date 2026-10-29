@@ -62,10 +62,12 @@ public:
     // --- keyer (design 2 A) ---
     // Off keeps the last polarity (power-up: off, White) and empties Superimpose; Black and White
     // turn the keyer on with that polarity. The level is the clip level 0..kKeyLevelMax, clamped
-    // (power-up 128).
+    // (power-up 128). While a take is open (Auto running, or the T-bar off 0 with nothing
+    // engaged) the effect's routing descriptor may hold them: a mode change is ignored if
+    // keyModeLocked, a level change if keyLevelLocked (KEY.md 4: the original reverts it).
     void setKeyMode(KeyMode);
     KeyMode keyMode() const { return !keyOn_ ? KeyMode::Off : keyBlack_ ? KeyMode::Black : KeyMode::White; }
-    void setKeyLevel(int l) { keyLevel_ = std::clamp(l, 0, kKeyLevelMax); }
+    void setKeyLevel(int l);
     int keyLevel() const { return keyLevel_; }
 
     // --- effect ---
@@ -109,6 +111,16 @@ public:
     // pos is clamped to 0..511. A manual move to a different position stops a running Auto.
     // Ordinary effects: reaching 511 swaps Main and Preview at once and the T-bar reads 0 again
     // (the next render shows the new Main plainly); returning to 0 mid-way swaps nothing.
+    // With a key up the effect's routing descriptor decides (design 2 B, keyMoveFor), from the
+    // keyer as it is at each step:
+    //  * drops the key (also every non-digital move, overlay and ChromaFX): the keyer turns off
+    //    at take start; 511 swaps, and 511 or the return to 0 empties Superimpose;
+    //  * fly on (needs only the keyer on): 511 does not swap but puts Preview's source on
+    //    Superimpose; the return to 0 empties Superimpose;
+    //  * fly off (needs a Superimpose source too, else it is a plain move): 511 or the return to
+    //    0 puts the Superimpose source on Preview and empties Superimpose, without a swap;
+    //  * two-phase (the same need): 511 changes no bus; the return to 0 is as fly off.
+    // Main is never changed by a flying move, and the keyer stays on.
     // The engine's T-bar reads 0 after a hand-driven 511, so the UI must reset its T-bar widget
     // then (otherwise its next setTBar(510) starts a new transition).
     // ChromaFX: leaving 0 engages it (see render); 511 does not swap; returning to 0
@@ -189,6 +201,11 @@ public:
     //    and a Superimpose source other than Main: the key (L 0: Superimpose alone; 257: A alone;
     //    else lumaKey by the clip value, keyClip, with the Superimpose picture as fill and signal);
     //  * ordinary effect: the effect at the current T-bar position (stateless per position);
+    //  * a flying key (see setTBar): the effect, given a = b = Preview (fly on), a = b =
+    //    Superimpose (fly off) or a = Superimpose, b = Main (two-phase), with RenderCtx::keyFill
+    //    the polarity's colour (Black or White, bkgColour), keyed by its own luma over Main as
+    //    the idle key is (two-phase from T-bar 256: over the Superimpose source). Program is the
+    //    picture under the key when the keyed source is that same source;
     //  * engaged ChromaFX: the effect's output with B = Preview source at the T-bar position
     //    (Program shows the recoloured Preview), frameNumber = ticks since engagement;
     //  * engaged overlay (Ruling 32), A = Main source:
@@ -212,7 +229,7 @@ public:
     // buffers: do not keep a pointer into program.px across renders.
     // Before composing, render writes a due grab into DV1 and records the DV input's frame in
     // the DV history (what live DV1/DV2 show, delayed); while the effect is a digital move
-    // (Effect::digitalMove()), also the inputs on Main and Preview. A digital move's
+    // (Effect::digitalMove()), also the inputs on Main, Preview and Superimpose. A digital move's
     // RenderCtx::digitalA / digitalB are those buses' inputs, delayed, while the store is live.
     void render(const SourceFrames&, Frame& program) const;
     // The picture a bus would show for source `s` (an input, DV1/DV2, or BKG: its colour or this
@@ -232,6 +249,9 @@ private:
     void arriveAt0();
     void engage();
     void disengage();
+    KeyMove keyMove() const;  // the effect's key move: Drops unless a digital move (C2)
+    KeyMove flight() const;   // what this take does with the key now: Drops if nothing flies
+    bool takeOpen() const;    // the keyer locks apply (C5)
     const Frame& sourceFrame(Source, const SourceFrames&, bool& bkgBuilt, bool& blackBuilt) const;
     void record(int input, const SourceFrames&) const;
     // `input`'s picture through DV: the newest recorded frame with tick <= now - delay, else
@@ -260,7 +280,7 @@ private:
     uint32_t tickCount_ = 0;
     EffectColour bkg_;           // the BKG source
     std::optional<EffectColour> effectColour_;  // the effect's matte colour; none: BKG's
-    mutable Frame bkgScratch_, blackScratch_, outScratch_;  // render's working frames
+    mutable Frame bkgScratch_, blackScratch_, outScratch_, keyScratch_;  // render's working frames
     mutable Frame colourScratch_;      // the effect colour as a picture (an overlay's B, Snow)
     mutable bool colourValid_ = false;  // colourScratch_ holds colourBuilt_ (never for Snow)
     mutable EffectColour colourBuilt_;

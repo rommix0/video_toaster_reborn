@@ -19,7 +19,7 @@ namespace vt::media {
 // refused postChecked since the loop was made, so a repeat of the same refusal is visible too.
 struct SwitcherSnapshot {
     vt::Source main = vt::Source::In1, preview = vt::Source::In2, superimpose = vt::Source::None;
-    vt::KeyMode keyMode = vt::KeyMode::Off;  // the keyer (Off: Superimpose is empty)
+    vt::KeyMode keyMode = vt::KeyMode::Off;  // the keyer (Off with a source on Superimpose: a take dropped the key)
     int keyLevel = 128;                      // the clip level, 0..257
     int tbar = 0;
     bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;

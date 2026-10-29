@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <unordered_set>
 #include <vector>
 
 #include "catch_amalgamated.hpp"
@@ -1934,4 +1935,265 @@ TEST_CASE("ChromaFX has no lag", "[switcher][dv][chromafx]") {
         r.sw.tick();
         q.sw.tick();
     }
+}
+
+// --- Take, Auto and the T-bar with a key up (design 2 B) ---
+
+namespace {
+
+const char* const kPushOn = "4.2/Effects/4000FX/Push-Pull/Push On L-R";     // ALGO, fly on (2)
+const char* const kSplitIn = "4.2/Effects/2000FX/Blinds/Split Corners In";  // DVE, fly on (17)
+const char* const kBlinds3 = "4.2/Effects/2000FX/Blinds/Blinds 3 Shrink";   // fly off (3)
+const char* const kTiles = "4.2/Effects/2000FX/Digital/Infinite Tiles";     // two-phase (5)
+const char* const kSmoothFade = "4.2/Effects/2000FX/Smooth Fade";           // drops
+
+std::shared_ptr<const vt::Effect> loadDesc(const char* rel, uint32_t desc) {
+    auto e = load(rel);
+    REQUIRE(e->routingDescriptor() == desc);
+    return e;
+}
+
+// Program's pixels by where their colour comes from: x's colours, y's colours (not x's), neither.
+struct Mix {
+    int x = 0, y = 0, other = 0;
+};
+Mix mixOf(const vt::Frame& out, const vt::Frame& x, const vt::Frame& y) {
+    auto rgb = [](vt::Rgba8 c) { return uint32_t(c.r) | uint32_t(c.g) << 8 | uint32_t(c.b) << 16; };
+    std::unordered_set<uint32_t> xs, ys;
+    for (vt::Rgba8 c : x.px) xs.insert(rgb(c));
+    for (vt::Rgba8 c : y.px) ys.insert(rgb(c));
+    Mix m;
+    for (vt::Rgba8 c : out.px) {
+        if (xs.count(rgb(c))) ++m.x;
+        else if (ys.count(rgb(c))) ++m.y;
+        else ++m.other;
+    }
+    return m;
+}
+
+// Runs Auto to the end on r and q side by side (render, then tick); f(r's Program, q's Program, T-bar).
+template <class F>
+void autoBoth(Rig& r, Rig& q, F f) {
+    r.sw.autoTransition(r.sw.speed());
+    q.sw.autoTransition(q.sw.speed());
+    for (int n = 0; r.sw.autoRunning(); ++n) {
+        REQUIRE(n < 10000);
+        const int tbar = r.sw.tbar();
+        const vt::Frame got = r.render(), plain = q.render();
+        f(got, plain, tbar);
+        r.sw.tick();
+        q.sw.tick();
+    }
+}
+
+vt::HardwareGuesses noDelay() {
+    vt::HardwareGuesses g;
+    g.digitalDelay = 0;
+    return g;
+}
+
+}  // namespace
+
+TEST_CASE("a dissolve with a key up drops the key from the first field", "[switcher][key]") {
+    for (auto e : {dissolve(), loadDesc(kSmoothFade, 1)}) {
+        INFO(e->name());
+        const bool isDissolve = e->name() == dissolve()->name();
+        Rig r, q;  // q: the same take without a key
+        for (Rig* x : {&r, &q}) REQUIRE(x->sw.setEffect(e));
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setKeyMode(vt::KeyMode::Black);
+        r.sw.setKeyLevel(128);
+        int n = 0;
+        autoBoth(r, q, [&](const vt::Frame& got, const vt::Frame& plain, int tbar) {
+            if (n++ == 0 && isDissolve) CHECK(got.px == direct(*e, tbar, r.in1, r.in2).px);
+            CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+            CHECK(got.px == plain.px);
+        });
+        CHECK(r.sw.selected(Bus::Main) == Source::In2);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    }
+}
+
+TEST_CASE("Push On with a key up flies Preview on as a key (design 7)", "[switcher][key]") {
+    for (auto [path, desc] : {std::pair{kPushOn, 2u}, std::pair{kSplitIn, 17u}}) {
+        INFO(path);
+        Rig r, q;  // q: the plain move
+        for (Rig* x : {&r, &q}) {
+            x->sw.setGuesses(noDelay());
+            REQUIRE(x->sw.setEffect(loadDesc(path, desc)));
+            x->sw.select(Bus::Preview, Source::In3);
+        }
+        r.sw.setKeyMode(vt::KeyMode::Black);  // the bus empty
+        r.sw.setKeyLevel(128);
+        bool mid = false;
+        autoBoth(r, q, [&](const vt::Frame& got, const vt::Frame& plain, int tbar) {
+            if (mid || tbar < 256) return;
+            mid = true;
+            CHECK(got.px != r.in1.px);
+            CHECK(got.px != plain.px);
+            const Mix m = mixOf(got, r.in1, r.in3);
+            CHECK(m.other == 0);
+            CHECK(m.y > 0);
+        });
+        CHECK(mid);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+    }
+}
+
+TEST_CASE("fly on with Preview = Main shows Main and still keys Preview at the end", "[switcher][key]") {
+    Rig r, q;
+    for (Rig* x : {&r, &q}) {
+        x->sw.setGuesses(noDelay());
+        REQUIRE(x->sw.setEffect(loadDesc(kPushOn, 2)));
+    }
+    r.sw.select(Bus::Preview, Source::In1);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    autoBoth(r, q, [&](const vt::Frame& got, const vt::Frame&, int) { CHECK(got.px == r.in1.px); });
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In1);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In1);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+}
+
+TEST_CASE("fly off with a key up: the key source lands on Preview", "[switcher][key]") {
+    Rig r, q;
+    for (Rig* x : {&r, &q}) REQUIRE(x->sw.setEffect(loadDesc(kBlinds3, 3)));
+    r.sw.select(Bus::Superimpose, Source::In3);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    autoBoth(r, q, [](const vt::Frame&, const vt::Frame&, int) {});
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+}
+
+TEST_CASE("fly off with an empty Superimpose runs as a normal move", "[switcher][key]") {
+    Rig r, q;
+    for (Rig* x : {&r, &q}) REQUIRE(x->sw.setEffect(loadDesc(kBlinds3, 3)));
+    r.sw.setKeyMode(vt::KeyMode::Black);  // on, nothing to fly
+    autoBoth(r, q, [](const vt::Frame& got, const vt::Frame& plain, int) { CHECK(got.px == plain.px); });
+    CHECK(r.sw.selected(Bus::Main) == Source::In2);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In1);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+}
+
+TEST_CASE("a two-phase move keys Superimpose over Main, then Main over Superimpose, and ends as it began",
+          "[switcher][key]") {
+    Rig r;
+    r.sw.setGuesses(noDelay());
+    REQUIRE(r.sw.setEffect(loadDesc(kTiles, 5)));
+    r.sw.select(Bus::Superimpose, Source::In3);  // keyer on, White
+    for (int t : {128, 300}) {
+        INFO("T-bar " << t);
+        r.sw.setTBar(t);
+        const Mix m = mixOf(r.render(), r.in1, r.in3);
+        CHECK(m.other == 0);
+        CHECK(m.x > 0);
+        CHECK(m.y > 0);
+        r.sw.tick();
+    }
+    r.sw.setTBar(511);
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);
+}
+
+TEST_CASE("back to T-bar 0", "[switcher][key]") {
+    {
+        Rig r;  // fly on: Superimpose emptied, Preview kept
+        REQUIRE(r.sw.setEffect(loadDesc(kPushOn, 2)));
+        r.sw.select(Bus::Preview, Source::In3);
+        r.sw.select(Bus::Superimpose, Source::In4);
+        r.sw.setTBar(200);
+        r.sw.setTBar(0);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.keyMode() == vt::KeyMode::White);
+    }
+    {
+        Rig r;  // fly off: the key source to Preview
+        REQUIRE(r.sw.setEffect(loadDesc(kBlinds3, 3)));
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        r.sw.setTBar(0);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In3);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+        CHECK(r.sw.keyMode() == vt::KeyMode::White);
+    }
+    {
+        Rig r;  // drops: the keyer stays off
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        r.sw.setTBar(0);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+    }
+}
+
+TEST_CASE("locks during a take", "[switcher][key]") {
+    {
+        Rig r;  // a dissolve holds the mode and the level
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        REQUIRE(r.sw.keyMode() == vt::KeyMode::Off);  // dropped at take start
+        r.sw.setKeyLevel(40);
+        r.sw.setKeyMode(vt::KeyMode::White);
+        CHECK(r.sw.keyLevel() == 128);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+        r.sw.setTBar(511);
+        CHECK(r.sw.keyLevel() == 128);
+        r.sw.setKeyLevel(40);  // no take open: applies
+        CHECK(r.sw.keyLevel() == 40);
+    }
+    {
+        Rig r;  // descriptor 5 holds the mode, not the level
+        REQUIRE(r.sw.setEffect(loadDesc(kTiles, 5)));
+        r.sw.select(Bus::Superimpose, Source::In3);
+        r.sw.setTBar(200);
+        r.sw.setKeyMode(vt::KeyMode::Black);
+        CHECK(r.sw.keyMode() == vt::KeyMode::White);
+        r.sw.setKeyMode(vt::KeyMode::Off);
+        CHECK(r.sw.keyMode() == vt::KeyMode::White);
+        CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+        r.sw.setKeyLevel(40);
+        CHECK(r.sw.keyLevel() == 40);
+    }
+    {
+        Rig r, q;  // fly on: OFF applies, and the move finishes as a plain Push On
+        for (Rig* x : {&r, &q}) {
+            REQUIRE(x->sw.setEffect(loadDesc(kPushOn, 2)));
+            x->sw.select(Bus::Preview, Source::In3);
+        }
+        r.sw.setKeyMode(vt::KeyMode::Black);
+        for (Rig* x : {&r, &q}) {
+            x->sw.setTBar(200);
+            x->render();
+        }
+        r.sw.setKeyMode(vt::KeyMode::Off);
+        CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+        for (Rig* x : {&r, &q}) x->sw.setTBar(300);
+        CHECK(r.render().px == q.render().px);
+        r.sw.setTBar(511);
+        CHECK(r.sw.selected(Bus::Main) == Source::In3);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In1);
+    }
+}
+
+TEST_CASE("no key while ChromaFX or an overlay is engaged", "[switcher][key]") {
+    const char* src = GENERATE("4.2/Effects/ChromaFx/Fade To Neg", "4.2/Effects/4000FX/Overlays/Snowfall Loop");
+    INFO(src);
+    Rig r, q;  // q: no Superimpose source
+    for (Rig* x : {&r, &q}) REQUIRE(x->sw.setEffect(load(src)));
+    r.sw.select(Bus::Superimpose, Source::In3);
+    for (Rig* x : {&r, &q}) x->sw.setTBar(511);
+    REQUIRE((r.sw.chromaEngaged() || r.sw.overlayEngaged()));
+    CHECK(r.render().px == q.render().px);
 }
