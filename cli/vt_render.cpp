@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "vt/crc32.h"
-#include "vt/crouton.h"
 #include "vt/effect.h"
 #include "vt/framestore.h"
 #include "vt/raster.h"
@@ -46,8 +45,9 @@ void usage(std::ostream& o) {
          "stays engaged - so exactly durationTicks[speed] frames are rendered: for an animated\n"
          "overlay that is one full loop of its animation over A.\n"
          "\n"
-         "A FRAM crouton (a framestore) is not an effect: its picture is written to <dir>/still.png\n"
-         "(the visible area, or the full raster with --underscan) and nothing else.\n";
+         "A framestore (TYPE FRAM in its CrUD or its icon's, or a bare DV picture) is not an effect:\n"
+         "its picture is written to <dir>/still.png (the visible area, or the full raster with\n"
+         "--underscan) and nothing else.\n";
 }
 
 vt::Frame makePicture(const std::string& kind, bool isB) {

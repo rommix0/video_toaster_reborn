@@ -35,7 +35,6 @@
 #include "vt/assets/font.h"
 #include "vt/assets/hunk.h"
 #include "vt/assets/panel.h"
-#include "vt/crouton.h"
 #include "vt/effect.h"
 #include "vt/framestore.h"
 #include "vt/log.h"
