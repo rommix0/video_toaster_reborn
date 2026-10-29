@@ -30,6 +30,7 @@ public:
             frames_.push_back(decodeDve(an.planes[k]));
             palettes_.push_back(*palette);
             routes_.push_back(dveRoutes(tag1b, *palette));
+            if (routes_.back().empty()) frames_.back().index.clear();  // only routes read it: 185 KB a frame
             for (uint8_t v : frames_.back().key) unknownCells += v >= 24 && v < 64;
         }
         if (unknownCells > 0)
