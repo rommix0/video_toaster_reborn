@@ -26,6 +26,7 @@ QString firstDifference(const AppSettings& a, const AppSettings& b) {
         if (!sameInput(a.inputs[i], b.inputs[i])) return QStringLiteral("input%1").arg(i + 1);
     if (a.toasterRoot != b.toasterRoot) return QStringLiteral("toasterRoot");
     if (a.recordingPath != b.recordingPath) return QStringLiteral("recording/path");
+    if (a.framestorePath != b.framestorePath) return QStringLiteral("framestores/path");
     if (a.recordingFormat != b.recordingFormat) return QStringLiteral("recording/format");
     if (a.audioOutDevice != b.audioOutDevice) return QStringLiteral("audioOutDevice");
     if (a.panelPalette != b.panelPalette) return QStringLiteral("panelPalette");
@@ -59,6 +60,7 @@ AppSettings filled(const QString& file) {
     s.inputs[3].kind = InputKind::None;
     s.inputs[3].path = "kept";
     s.recordingPath = QStringLiteral("E:/Recordings");
+    s.framestorePath = QStringLiteral("E:/My Framestores");
     s.recordingFormat = vt::media::RecordFormat::ProResMov;
     s.audioOutDevice = QStringLiteral("{0.0.0.00000000}.{abc}");
     s.panelPalette = PanelPalette::Preview;
@@ -131,6 +133,7 @@ void TestSettings::defaultsWhenThereIsNoFile() {
     QVERIFY(!def.underscan);
     QCOMPARE(def.panelPalette, PanelPalette::Rgb);
     QCOMPARE(def.recordingFormat, vt::media::RecordFormat::H264Mkv);
+    QVERIFY(def.framestorePath.endsWith(QStringLiteral("vtoast/Framestore")));
     QCOMPARE(def.inputs[0].kind, InputKind::None);
     QVERIFY(def.inputs[0].loop);
     QCOMPARE(def.inputs[0].retryMs, 2000);
@@ -231,6 +234,7 @@ void TestSettings::dialogEdits() {
     auto* out = find<QComboBox>(dlg, 0, "audioOut");
     find<QComboBox>(dlg, 0, "recordingFormat")->setCurrentIndex(2);
     find<QLineEdit>(dlg, 0, "recordingPath")->setText(QStringLiteral("F:/rec"));
+    find<QLineEdit>(dlg, 0, "framestorePath")->setText(QStringLiteral("F:/stills"));
     out->setCurrentIndex(out->findData(QStringLiteral("id-hdmi")));
     find<QComboBox>(dlg, 0, "panelPalette")->setCurrentIndex(1);
 
@@ -248,6 +252,7 @@ void TestSettings::dialogEdits() {
     QCOMPARE(got.inputs[3].audioDevice, std::string("id-mic-a"));
     QCOMPARE(got.recordingFormat, vt::media::RecordFormat::Ffv1Mkv);
     QCOMPARE(got.recordingPath, QStringLiteral("F:/rec"));
+    QCOMPARE(got.framestorePath, QStringLiteral("F:/stills"));
     QCOMPARE(got.audioOutDevice, QStringLiteral("id-hdmi"));
     QCOMPARE(got.panelPalette, PanelPalette::Preview);
 }

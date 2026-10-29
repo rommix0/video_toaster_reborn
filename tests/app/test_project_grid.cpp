@@ -16,6 +16,7 @@ using namespace apptest;
 using vt::assets::Crouton;
 
 std::filesystem::path effects() { return std::filesystem::path(VT_DATA_ROOT) / "4.2/Effects"; }
+std::filesystem::path data42() { return std::filesystem::path(VT_DATA_ROOT) / "4.2"; }
 
 const std::vector<Crouton>& wipes() {
     static const auto c = vt::assets::scanCroutons(effects() / "4000FX/Wipes");
@@ -59,6 +60,7 @@ private slots:
     void wheelScrollsByRows();
     void loadedBoxAndNextBracket();
     void drawerPicker();
+    void framestoreDrawers();
     void fitZoomChoice();
     void windowedZoomChoice();
 };
@@ -179,7 +181,7 @@ void TestProjectGrid::loadedBoxAndNextBracket() {
 void TestProjectGrid::drawerPicker() {
     FakeActions fake;
     auto* screen = new ToasterScreen(layout(), font(), fake);
-    ProjectView view(effects(), screen);
+    ProjectView view(data42(), std::filesystem::path("no/such/folder"), screen);
     QCOMPARE(view.screen(), screen);
     QComboBox* picker = view.drawerPicker();
     const int wipesAt = picker->findText(QStringLiteral("4000FX/Wipes"));
@@ -193,6 +195,40 @@ void TestProjectGrid::drawerPicker() {
     QCOMPARE(screen->project().croutons().size(), size_t(79));
     QCOMPARE(screen->project().croutons()[10].name, wipes()[10].name);
     QVERIFY(fake.calls.isEmpty());
+}
+
+// After the Effects drawers: Framestore (and its subfolders), CG/Frames, and the saved folder, which
+// is listed even when it does not exist and is re-read by rescan() and setSavedFolder().
+void TestProjectGrid::framestoreDrawers() {
+    FakeActions fake;
+    auto* screen = new ToasterScreen(layout(), font(), fake);
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const std::filesystem::path saved = std::filesystem::path(dir.path().toStdU16String()) / "Saved";
+    ProjectView view(data42(), saved, screen);
+    QComboBox* picker = view.drawerPicker();
+    const int wipes = picker->findText(QStringLiteral("4000FX/Wipes")), bars = picker->findText(QStringLiteral("Framestore")),
+              cg = picker->findText(QStringLiteral("Framestore/CGDemo")), frames = picker->findText(QStringLiteral("CG/Frames")),
+              savedAt = picker->findText(QStringLiteral("Saved framestores"));
+    QVERIFY(wipes >= 0 && bars > wipes && cg > bars && frames > cg);
+    QCOMPARE(savedAt, picker->count() - 1);
+    picker->setCurrentIndex(bars);
+    bool found = false;
+    for (const auto& c : screen->project().croutons()) found |= c.name == "ColorBars";
+    QVERIFY(found);
+    picker->setCurrentIndex(savedAt);  // the folder is not there
+    QVERIFY(screen->project().croutons().empty());
+
+    // A crouton written into it shows after rescan(); setSavedFolder() points the drawer elsewhere.
+    QVERIFY(std::filesystem::create_directories(saved));
+    std::filesystem::copy(data42() / "Framestore/ColorBars", saved / "Bars");
+    std::filesystem::copy(data42() / "Framestore/ColorBars.I", saved / "Bars.I");
+    QVERIFY(screen->project().croutons().empty());
+    view.rescan();
+    QCOMPARE(screen->project().croutons().size(), size_t(1));
+    QCOMPARE(screen->project().croutons()[0].name, std::string("Bars"));
+    view.setSavedFolder(data42() / "Framestore");
+    QVERIFY(screen->project().croutons().size() > 1);
 }
 
 // Review Focus 1: the largest whole-number zoom whose screen plus 40 px of window chrome fits, and

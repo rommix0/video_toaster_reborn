@@ -58,6 +58,7 @@ AppSettings testSettings(const QTemporaryDir& dir) {
     s.inputs[0] = fileInput("f30.mkv");
     s.inputs[1] = fileInput("f25_169.mkv");
     s.recordingPath = dir.filePath(QStringLiteral("rec"));
+    s.framestorePath = dir.filePath(QStringLiteral("Saved"));
     s.screenZoom = 1;
     s.monitorZoom = 1;
     return s;
@@ -112,8 +113,11 @@ struct FakeAudio : AudioDevice {
 };
 
 struct LastPicture : vt::media::MonitorSink {
-    vt::Frame program;
-    void onPictures(int64_t, const vt::Frame& p, const vt::Frame&) override { program = p; }
+    vt::Frame program, preview;
+    void onPictures(int64_t, const vt::Frame& p, const vt::Frame& v) override {
+        program = p;
+        preview = v;
+    }
 };
 
 // The Program picture after `ticks` offline ticks of a loop showing only `input` on Main.
@@ -162,6 +166,9 @@ private slots:
     void effectCacheIsBounded();
     void freezeButtonFreezesTheStore();
     void grabPutsTheInputInDv1OnMain();
+    void framestoreCroutonLoadsIntoDv2();
+    void saveWritesTheStillAndListsIt();
+    void freezeDuringATransitionIsRefused();
     void invalidDataRootThenChosenInSettings();
     void recordingIsFinishedWhenTheWindowCloses();
     void stoppingARecordingDoesNotBlock();
@@ -307,6 +314,96 @@ void TestAppE2e::grabPutsTheInputInDv1OnMain() {
     const vt::media::SwitcherSnapshot s = c.loop().switcherState();
     QCOMPARE(s.main, vt::Source::DV1);
     QVERIFY(s.frozen);
+}
+
+// A FRAM crouton loads into a DV (DV2 here: none is shown yet) and is shown frozen on Preview, at
+// the framestore's place in the raster (x0 = 8, y0 = 1): the ColorBars white and yellow bars.
+void TestAppE2e::framestoreCroutonLoadsIntoDv2() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    LastPicture last;
+    c.loop().addMonitor(&last);
+    const int bars = showCrouton(c, "Framestore", "ColorBars");
+    QVERIFY(bars >= 0);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), bars));
+    c.runOffline(1);
+    c.loop().removeMonitor(&last);
+    const vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.preview, vt::Source::DV2);
+    QVERIFY(s.frozen);
+    auto near = [](vt::Rgba8 p, int r, int g, int b) {
+        return std::abs(p.r - r) <= 2 && std::abs(p.g - g) <= 2 && std::abs(p.b - b) <= 2;
+    };
+    const vt::Rgba8 white = last.preview.at(61, 121), yellow = last.preview.at(61 + 107, 121);
+    QVERIFY2(near(white, 191, 191, 191), qPrintable(QStringLiteral("%1 %2 %3").arg(white.r).arg(white.g).arg(white.b)));
+    QVERIFY2(near(yellow, 191, 191, 0), qPrintable(QStringLiteral("%1 %2 %3").arg(yellow.r).arg(yellow.g).arg(yellow.b)));
+}
+
+// SAVE writes <path> and <path>.I from the still in DV1/DV2 and lists it in "Saved framestores".
+// Without a still, or during an effect, it writes nothing and the status bar says why.
+void TestAppE2e::saveWritesTheStillAndListsIt() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    QStatusBar* bar = c.window().statusBar();
+    const QString test1 = dir.filePath(QStringLiteral("Saved/Test1"));
+
+    QVERIFY(c.saveFramestore(test1));
+    c.runOffline(1);
+    QCoreApplication::processEvents();
+    QVERIFY2(bar->currentMessage().contains(QStringLiteral("SAVE: no still in DV1/DV2")), qPrintable(bar->currentMessage()));
+    QVERIFY(!QFileInfo::exists(test1));
+
+    const int bars = showCrouton(c, "Framestore", "ColorBars");
+    QVERIFY(bars >= 0);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), bars));
+    c.runOffline(1);
+    c.setTBar(100);
+    c.runOffline(1);
+    bar->clearMessage();
+    QVERIFY(c.saveFramestore(test1));
+    c.runOffline(1);
+    QCoreApplication::processEvents();
+    QVERIFY2(bar->currentMessage().contains(QStringLiteral("finish the effect first")), qPrintable(bar->currentMessage()));
+    QVERIFY(!QFileInfo::exists(test1));
+
+    c.setTBar(0);
+    c.runOffline(1);
+    QVERIFY(c.saveFramestore(test1));
+    c.runOffline(1);
+    QCoreApplication::processEvents();
+    QVERIFY(QFileInfo(test1).isFile());
+    QVERIFY(QFileInfo(test1 + QStringLiteral(".I")).isFile());
+    QCOMPARE(bar->currentMessage(), QStringLiteral("Saved Test1"));
+
+    QComboBox* picker = c.projectView()->drawerPicker();
+    picker->setCurrentIndex(picker->findText(QStringLiteral("Saved framestores")));
+    const auto& croutons = c.screen()->project().croutons();
+    QCOMPARE(croutons.size(), size_t(1));
+    QCOMPARE(croutons[0].name, std::string("Test1"));
+    // It is a framestore crouton like the shipped ones: loading it again shows no error.
+    bar->clearMessage();
+    c.loadCrouton(0, false);
+    c.runOffline(1);
+    QVERIFY2(bar->currentMessage().isEmpty(), qPrintable(bar->currentMessage()));
+}
+
+// FREEZE with the T-bar at 100 shows the engine's refusal.
+void TestAppE2e::freezeDuringATransitionIsRefused() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    c.setTBar(100);
+    c.runOffline(1);
+    c.window().statusBar()->clearMessage();
+    c.setFrozen(true);
+    c.runOffline(1);
+    QVERIFY2(c.window().statusBar()->currentMessage().contains(QStringLiteral("finish the effect first")),
+             qPrintable(c.window().statusBar()->currentMessage()));
 }
 
 // The controller keeps the kEffectCache (12) most recently clicked croutons loaded. A DVE move

@@ -33,6 +33,7 @@ public:
     QString toasterRoot;                                // default: the build-time VT_DATA_ROOT
     std::array<vt::media::InputConfig, 4> inputs;       // inputs 1-4; options and retryMs are kept too
     QString recordingPath;                              // the output folder; default: the Movies folder
+    QString framestorePath;                             // framestores/path: where SAVE writes; default: Documents/vtoast/Framestore
     vt::media::RecordFormat recordingFormat = vt::media::RecordFormat::H264Mkv;
     QString audioOutDevice;                             // OutputDevice::id; "" = the default device
     PanelPalette panelPalette = PanelPalette::Rgb;
@@ -83,7 +84,7 @@ private:
     QListWidget* pages_ = nullptr;
     std::array<InputPage*, 4> inputPages_{};
     QComboBox* format_ = nullptr;
-    QLineEdit *recordingPath_ = nullptr, *root_ = nullptr;
+    QLineEdit *recordingPath_ = nullptr, *framestorePath_ = nullptr, *root_ = nullptr;
     QComboBox *audioOut_ = nullptr, *palette_ = nullptr;
     QLabel* rootStatus_ = nullptr;
     QPushButton* ok_ = nullptr;

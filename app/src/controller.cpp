@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QDialog>
 #include <QDir>
+#include <QFileDialog>
 #include <QFile>
 #include <QKeyEvent>
 #include <QLabel>
@@ -34,7 +35,9 @@
 #include "vt/assets/font.h"
 #include "vt/assets/hunk.h"
 #include "vt/assets/panel.h"
+#include "vt/crouton.h"
 #include "vt/effect.h"
+#include "vt/framestore.h"
 #include "vt/log.h"
 #include "vt/media/audio_out.h"
 #include "vt/media/program_loop.h"
@@ -254,7 +257,7 @@ void AppController::buildPanel() {
         const auto font = vt::assets::loadColorFont(
             hunks(dir.filePath(QStringLiteral("4.2/Programs/System_Support/Fonts/CGInterface/14.4C"))));
         auto* screen = new ToasterScreen(layout, font, *this);
-        auto* view = new ProjectView(toPath(dir.filePath(QStringLiteral("4.2/Effects"))), screen);
+        auto* view = new ProjectView(toPath(dir.filePath(QStringLiteral("4.2"))), toPath(settings_.framestorePath), screen);
         screen->setPanelPalette(settings_.panelPalette == PanelPalette::Preview);
         // The drawer list must not keep the keys (Space, Return, digits) from the screen.
         connect(view->drawerPicker(), &QComboBox::activated, screen, [screen] { screen->setFocus(); });
@@ -409,6 +412,17 @@ void AppController::loadCrouton(int index, bool run) {
         effect = hit->second;
         effects_.erase(hit);
     } else {
+        // A FRAM crouton is a still for DV1/DV2 (FREEZE.md 4), not an effect: no Auto, nothing cached.
+        // (Only a cache miss looks: an effect is read twice then, but an effect file can be large.)
+        if (const auto crouton = vt::loadCrouton(c.effect); crouton && crouton->type == vt::CroutonType::Fram) {
+            std::string why;
+            auto still = vt::loadFramestore(c.effect, &why);
+            if (!still) return message(tr("not a framestore: %1").arg(QString::fromStdString(why)));
+            loop_->postChecked([f = std::make_shared<const vt::Frame>(std::move(*still))](vt::Switcher& sw, std::string& why) {
+                return sw.loadStill(*f, &why);
+            });
+            return;
+        }
         std::string why;
         effect = vt::loadEffect(c.effect, &why);
         if (!effect) {
@@ -437,8 +451,38 @@ void AppController::grab(int input) {
     loop_->postChecked([input](vt::Switcher& sw, std::string& why) { return sw.grab(input, &why); });
 }
 
-// Task 7 writes the still to a file.
-void AppController::saveFramestore() { message(tr("SAVE: not wired up yet")); }
+void AppController::saveFramestore() {
+    QDir().mkpath(settings_.framestorePath);
+    const QString file = QFileDialog::getSaveFileName(window_.get(), tr("Save framestore"), settings_.framestorePath);
+    if (!file.isEmpty()) saveFramestore(file);
+}
+
+// The still is the one saveSource picks. The file is written on the loop thread; the status message
+// and the drawer rescan go back to the UI thread.
+// ponytail: writing on the loop thread, so a frame may drop on SAVE; move it to a worker if that shows.
+bool AppController::saveFramestore(const QString& path) {
+    if (path.isEmpty()) return false;
+    const fs::path file = toPath(path);
+    loop_->postChecked([this, file](vt::Switcher& sw, std::string& why) {
+        if (sw.transitionActive() && !sw.overlayEngaged()) {
+            why = "finish the effect first";
+            return false;
+        }
+        const auto dv = sw.saveSource(&why);
+        if (!dv) return false;
+        if (!vt::saveFramestore(file, sw.still(*dv), &why)) return false;
+        const QString name = QString::fromStdU16String(file.filename().generic_u16string());
+        QMetaObject::invokeMethod(
+            this,
+            [this, name] {
+                if (view_) view_->rescan();
+                message(tr("Saved %1").arg(name));
+            },
+            Qt::QueuedConnection);
+        return true;
+    });
+    return true;
+}
 
 void AppController::notImplemented(const QString& what) { message(tr("%1: not in version 1").arg(what)); }
 
@@ -587,10 +631,12 @@ void AppController::applySettings(const AppSettings& next) {
     settings_ = next;
     for (size_t i = 0; i < 4; ++i)
         if (!sameInput(prev.inputs[i], next.inputs[i])) loop_->setInput(int(i), next.inputs[i]);
-    if (next.toasterRoot != prev.toasterRoot || !screen_)
+    if (next.toasterRoot != prev.toasterRoot || !screen_) {
         buildPanel();
-    else if (next.panelPalette != prev.panelPalette)
-        screen_->setPanelPalette(next.panelPalette == PanelPalette::Preview);
+    } else {
+        if (next.framestorePath != prev.framestorePath) view_->setSavedFolder(toPath(next.framestorePath));
+        if (next.panelPalette != prev.panelPalette) screen_->setPanelPalette(next.panelPalette == PanelPalette::Preview);
+    }
     if (audio_ && (next.audioOutDevice != prev.audioOutDevice || !audio_->running())) {
         audio_->stop();
         startAudio();

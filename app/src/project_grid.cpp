@@ -132,17 +132,32 @@ void ProjectGrid::compose() {
     }
 }
 
-ProjectView::ProjectView(const fs::path& effectsRoot, ToasterScreen* screen, QWidget* parent)
+ProjectView::ProjectView(const fs::path& data42, const fs::path& savedFolder, ToasterScreen* screen, QWidget* parent)
     : QWidget(parent), picker_(new QComboBox(this)), screen_(screen) {
     auto* box = new QVBoxLayout(this);
     box->setContentsMargins(0, 0, 0, 0);
     box->addWidget(picker_, 0, Qt::AlignLeft);
     box->addWidget(screen_, 1);  // takes the room left: the panel snaps to the zoom that fits it
-    const fs::path root = effectsRoot.lexically_normal();
-    for (const auto& d : croutonDrawers(root))
-        picker_->addItem(toQString(d.lexically_relative(root)), toQString(d));
+    const fs::path root = data42.lexically_normal();
+    for (const auto& d : croutonDrawers(root / "Effects"))
+        picker_->addItem(toQString(d.lexically_relative(root / "Effects")), toQString(d));
+    for (const fs::path& still : {root / "Framestore", root / "CG" / "Frames"})
+        for (const auto& d : croutonDrawers(still, true)) picker_->addItem(toQString(d.lexically_relative(root)), toQString(d));
+    picker_->addItem(tr("Saved framestores"), toQString(savedFolder));
+    savedAt_ = picker_->count() - 1;
     connect(picker_, &QComboBox::currentIndexChanged, this, &ProjectView::showDrawer);
-    if (picker_->count() > 0) showDrawer(0);
+    showDrawer(0);
+}
+
+void ProjectView::setSavedFolder(const fs::path& folder) {
+    picker_->setItemData(savedAt_, toQString(folder));
+    if (picker_->currentIndex() == savedAt_) rescan();
+}
+
+void ProjectView::rescan() {
+    const int row = screen_->project().scrollRow();
+    showDrawer(picker_->currentIndex());
+    screen_->setScrollRow(row);
 }
 
 void ProjectView::showDrawer(int index) {
@@ -150,7 +165,7 @@ void ProjectView::showDrawer(int index) {
     screen_->setCroutons(vt::assets::scanCroutons(fs::path(picker_->itemData(index).toString().toStdU16String())));
 }
 
-std::vector<fs::path> croutonDrawers(const fs::path& effectsRoot) {
+std::vector<fs::path> croutonDrawers(const fs::path& root, bool includeRoot) {
     std::vector<fs::path> out;
     std::error_code ec;
     auto holdsCroutons = [](const fs::path& dir) {
@@ -163,7 +178,8 @@ std::vector<fs::path> croutonDrawers(const fs::path& effectsRoot) {
                    std::find(names.begin(), names.end(), n + ".I") != names.end();
         });
     };
-    for (auto it = fs::recursive_directory_iterator(effectsRoot, ec); !ec && it != fs::recursive_directory_iterator();
+    if (includeRoot && holdsCroutons(root)) out.push_back(root);
+    for (auto it = fs::recursive_directory_iterator(root, ec); !ec && it != fs::recursive_directory_iterator();
          it.increment(ec))
         if (std::error_code de; it->is_directory(de) && holdsCroutons(it->path())) out.push_back(it->path());
     std::sort(out.begin(), out.end(), [](const fs::path& a, const fs::path& b) {

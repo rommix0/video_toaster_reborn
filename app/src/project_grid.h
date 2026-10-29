@@ -66,22 +66,29 @@ private:
 };
 
 // Stand-in for the original drawer browsing (not recreated in v1): a plain combo above the screen
-// listing the drawers under <toasterRoot>/4.2/Effects that hold croutons ("4000FX/Wipes"); choosing
-// one fills the screen's Project grid. The first drawer is shown at the start.
+// listing the drawers that hold croutons; choosing one fills the screen's Project grid. In order:
+// those under <data42>/Effects ("4000FX/Wipes"), then <data42>/Framestore and its subfolders
+// ("Framestore", "Framestore/CGDemo"), <data42>/CG/Frames ("CG/Frames") and the folder SAVE writes
+// to ("Saved framestores": listed even when it is empty or missing). The first drawer is shown at
+// the start.
 class ProjectView : public QWidget {
     Q_OBJECT
 public:
-    ProjectView(const std::filesystem::path& effectsRoot, ToasterScreen* screen, QWidget* parent = nullptr);
+    ProjectView(const std::filesystem::path& data42, const std::filesystem::path& savedFolder, ToasterScreen* screen,
+                QWidget* parent = nullptr);
     QComboBox* drawerPicker() const { return picker_; }
     ToasterScreen* screen() const { return screen_; }
+    void setSavedFolder(const std::filesystem::path&);  // re-reads it if it is the drawer shown
+    void rescan();                                      // re-reads the drawer shown, keeping the scroll row
 
 private:
     void showDrawer(int index);
 
     QComboBox* picker_;
     ToasterScreen* screen_;
+    int savedAt_ = -1;  // the "Saved framestores" item
 };
 
-// The folders under effectsRoot (any depth) holding at least one effect file with a sibling icon,
-// sorted by path (ASCII case-insensitive).
-std::vector<std::filesystem::path> croutonDrawers(const std::filesystem::path& effectsRoot);
+// The folders under `root` (any depth; `root` itself too if includeRoot) holding at least one
+// effect file with a sibling icon, sorted by path (ASCII case-insensitive).
+std::vector<std::filesystem::path> croutonDrawers(const std::filesystem::path& root, bool includeRoot = false);

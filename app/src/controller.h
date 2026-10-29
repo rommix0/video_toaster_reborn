@@ -64,6 +64,10 @@ namespace vt::media { class Recorder; }
 //   recently clicked stay loaded, keyed by path) is a postChecked, so a refusal shows in the status bar (each time SwitcherSnapshot::refusalCount
 //   changes) while the panel keeps showing the engine's state. FREEZE, LIVE and the grab buttons are
 //   postChecked too: the engine refuses them during a transition or an engaged ChromaFX.
+// - A FRAM crouton (the Framestore, CG/Frames and "Saved framestores" drawers) loads as a still into
+//   DV1/DV2 (vt::loadFramestore, then a postChecked loadStill); a double click does not run Auto.
+//   SAVE asks for a file in settings.framestorePath and posts the write of the still saveSource picks;
+//   the status bar says "Saved <name>" and the "Saved framestores" drawer is re-read.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
 //   the log queue (the vt::setLogSink callback only queues: it runs under a global lock on worker
 //   threads) into the status bar and the log view (Help -> Log), and updates the status labels.
@@ -143,7 +147,8 @@ public:
     void loadCrouton(int index, bool run) override;
     void setFrozen(bool frozen) override;
     void grab(int input) override;
-    void saveFramestore() override;
+    void saveFramestore() override;               // asks for a file
+    bool saveFramestore(const QString& path);     // posts the save to `path`; false: no path
     void notImplemented(const QString& what) override;
 
     // The main window's DevicePixelRatioChange, and the key presses of the whole application (see

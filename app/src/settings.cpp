@@ -103,6 +103,7 @@ void writeInput(QSettings& s, const InputConfig& c) {
 AppSettings::AppSettings(QString file)
     : toasterRoot(defaultRoot()),
       recordingPath(QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)),
+      framestorePath(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QStringLiteral("/vtoast/Framestore")),
       file_(std::move(file)) {}
 
 QString AppSettings::defaultFile() {
@@ -129,6 +130,7 @@ void AppSettings::load() {
     if (s.contains(QStringLiteral("path"))) out.recordingPath = text(s, QStringLiteral("path"), {});
     if (const auto f = indexOf(kFormatNames, text(s, QStringLiteral("format"), {}))) out.recordingFormat = RecordFormat(*f);
     s.endGroup();
+    if (s.contains(QStringLiteral("framestores/path"))) out.framestorePath = text(s, QStringLiteral("framestores/path"), {});
     out.audioOutDevice = text(s, QStringLiteral("audioOutDevice"), out.audioOutDevice);
     if (const auto p = indexOf(kPaletteNames, text(s, QStringLiteral("panelPalette"), {}))) out.panelPalette = PanelPalette(*p);
     if (const auto z = integer(s, QStringLiteral("screenZoom"), 0, 8)) out.screenZoom = *z;
@@ -154,6 +156,7 @@ bool AppSettings::save() const {
     s.setValue(QStringLiteral("path"), recordingPath);
     s.setValue(QStringLiteral("format"), QLatin1String(kFormatNames[int(recordingFormat)]));
     s.endGroup();
+    s.setValue(QStringLiteral("framestores/path"), framestorePath);
     s.setValue(QStringLiteral("audioOutDevice"), audioOutDevice);
     s.setValue(QStringLiteral("panelPalette"), QLatin1String(kPaletteNames[int(panelPalette)]));
     s.setValue(QStringLiteral("screenZoom"), screenZoom);
@@ -365,6 +368,9 @@ QWidget* SettingsDialog::makeRecordingPage() {
     recordingPath_->setObjectName(QStringLiteral("recordingPath"));
     form->addRow(tr("Format:"), format_);
     form->addRow(tr("Output folder:"), folderRow(recordingPath_, page, tr("Recording folder")));
+    framestorePath_ = new QLineEdit(base_.framestorePath, page);
+    framestorePath_->setObjectName(QStringLiteral("framestorePath"));
+    form->addRow(tr("Framestore folder:"), folderRow(framestorePath_, page, tr("Framestore folder")));
     return page;
 }
 
@@ -418,6 +424,7 @@ AppSettings SettingsDialog::settings() const {
     for (size_t i = 0; i < 4; ++i) s.inputs[i] = inputPages_[i]->config();
     s.recordingFormat = RecordFormat(format_->currentIndex());
     s.recordingPath = recordingPath_->text();
+    s.framestorePath = framestorePath_->text();
     s.audioOutDevice = audioOut_->currentData().toString();
     s.toasterRoot = root_->text();
     s.panelPalette = PanelPalette(palette_->currentIndex());
