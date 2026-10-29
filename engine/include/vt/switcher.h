@@ -65,6 +65,9 @@ public:
     // (power-up 128). While a take is open (Auto running, or the T-bar off 0 with nothing
     // engaged) the effect's routing descriptor may hold them: a mode change is ignored if
     // keyModeLocked, a level change if keyLevelLocked (KEY.md 4: the original reverts it).
+    // Under Art Card Key (design 2 C) nothing locks: the level is clamped to 255 and sets the
+    // T-bar to 2L; Black/White re-apply the card (keyer on, an empty Superimpose restored); Off
+    // also remembers the Superimpose source for the next T-bar move to restore.
     void setKeyMode(KeyMode);
     KeyMode keyMode() const { return !keyOn_ ? KeyMode::Off : keyBlack_ ? KeyMode::Black : KeyMode::White; }
     void setKeyLevel(int l);
@@ -82,6 +85,9 @@ public:
     // reset). The effect colour becomes e's own and the speed button e's default
     // (timing().defaultSpeed, tag 0x55: the Switcher sets $1f4 from it when a crouton is
     // loaded); setSpeed then changes it.
+    // Art Card Key (isArtCardKey, design 2 C) turns the keyer on, remembers the Superimpose source
+    // (an empty bus gets the remembered one back), clamps L to 255 and puts the T-bar at 2L.
+    // Loading anything else after it turns the keyer off and empties Superimpose.
     bool setEffect(std::shared_ptr<const Effect> e, std::string* whyNot = nullptr);
     const Effect& effect() const { return *effect_; }
 
@@ -127,6 +133,8 @@ public:
     // disengages a Transition-mode crouton (a Filter-mode one stays engaged).
     // Overlays (effect().isOverlay(), Rulings 27, 32): leaving 0 engages it; 511 does not swap;
     // returning to 0 ends it.
+    // Art Card Key: the T-bar is the clip control and never starts a transition: L = pos / 2,
+    // the keyer on, an empty Superimpose restored; 511 does not swap. Auto does nothing.
     void setTBar(int pos);
     int tbar() const { return tbar_; }
     // Sets the speed button to `speed` and runs the T-bar from where it is to 511 (Forward) or
@@ -156,7 +164,8 @@ public:
     // stays). Ends any transition (T-bar 0, Auto stopped,
     // ChromaFX disengaged) and drops a sound pendingSound() has not handed over. On an engaged
     // overlay it only ends the overlay, without a cut (overlays never switch sources, nor touch
-    // Superimpose).
+    // Superimpose). Under Art Card Key the cut keeps the card: with the keyer on Superimpose gets
+    // the card's source back, and the T-bar stays at 2L.
     void take();
 
     // --- background (BKG source) ---
@@ -197,6 +206,8 @@ public:
     void tick();
 
     // Program = effect(tbar, A = Main source, B = Preview source). Rules:
+    //  * Art Card Key: Main keyed over Preview by the Superimpose source's luma, v = Black ? L :
+    //    255 - L (lumaKey), with the keyer on and a Superimpose source; else Main;
     //  * no transition (T-bar 0, Auto not running, nothing engaged): Program = A, or, with the keyer on
     //    and a Superimpose source other than Main: the key (L 0: Superimpose alone; 257: A alone;
     //    else lumaKey by the clip value, keyClip, with the Superimpose picture as fill and signal);
@@ -252,6 +263,7 @@ private:
     KeyMove keyMove() const;  // the effect's key move: Drops unless a digital move (C2)
     KeyMove flight() const;   // what this take does with the key now: Drops if nothing flies
     bool takeOpen() const;    // the keyer locks apply (C5)
+    void applyCard();         // Art Card Key, KEY.md 6 steps 3-4: Superimpose, L <= 255, T-bar 2L
     const Frame& sourceFrame(Source, const SourceFrames&, bool& bkgBuilt, bool& blackBuilt) const;
     void record(int input, const SourceFrames&) const;
     // `input`'s picture through DV: the newest recorded frame with tick <= now - delay, else
@@ -263,6 +275,7 @@ private:
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::None};  // Main, Preview, Superimpose
     bool keyOn_ = false, keyBlack_ = false;
     int keyLevel_ = 128;
+    Source cardSaved_ = Source::None;  // the Superimpose source Art Card Key restores
     std::shared_ptr<const Effect> effect_;
     int tbar_ = 0;
     bool auto_ = false;

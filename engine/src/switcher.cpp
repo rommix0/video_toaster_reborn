@@ -8,6 +8,7 @@ namespace vt {
 namespace {
 
 constexpr int kTBarEnd = 511;
+constexpr int kCardLevelMax = 255;  // Art Card Key clamps L (KEY.md 6 step 4)
 constexpr Rgba8 kBlack{0, 0, 0, 255};
 
 size_t busIndex(Bus b) { return static_cast<size_t>(b); }
@@ -55,6 +56,18 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
 
 void Switcher::setKeyMode(KeyMode m) {
+    if (effect_->isArtCardKey()) {
+        Source& sup = sel_[busIndex(Bus::Superimpose)];
+        keyOn_ = m != KeyMode::Off;
+        if (keyOn_) {
+            keyBlack_ = m == KeyMode::Black;
+            applyCard();
+        } else {  // the card ends until the T-bar moves; its source is kept for then
+            if (sup != Source::None) cardSaved_ = sup;
+            sup = Source::None;
+        }
+        return;
+    }
     if (takeOpen() && keyModeLocked(effect_->routingDescriptor())) return;  // the effect holds it (C5)
     keyOn_ = m != KeyMode::Off;
     if (keyOn_) keyBlack_ = m == KeyMode::Black;
@@ -62,6 +75,11 @@ void Switcher::setKeyMode(KeyMode m) {
 }
 
 void Switcher::setKeyLevel(int l) {
+    if (effect_->isArtCardKey()) {
+        keyLevel_ = std::clamp(l, 0, kCardLevelMax);
+        applyCard();
+        return;
+    }
     if (takeOpen() && keyLevelLocked(effect_->routingDescriptor())) return;  // the effect holds it (C5)
     keyLevel_ = std::clamp(l, 0, kKeyLevelMax);
 }
@@ -86,6 +104,18 @@ KeyMove Switcher::flight() const {
 // Art Card Key (its T-bar is the clip control).
 bool Switcher::takeOpen() const { return (auto_ || (tbar_ > 0 && !engaged_)) && !effect_->isArtCardKey(); }
 
+// With the keyer on, a Superimpose source is remembered and an empty bus gets the remembered one
+// back; L is clamped to 255 and the T-bar follows it (2L).
+void Switcher::applyCard() {
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    if (keyOn_) {
+        if (sup != Source::None) cardSaved_ = sup;
+        else sup = cardSaved_;
+    }
+    keyLevel_ = std::min(keyLevel_, kCardLevelMax);
+    tbar_ = 2 * keyLevel_;
+}
+
 bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     auto refuse = [&](const char* why) {
         if (whyNot) *whyNot = why;
@@ -105,10 +135,18 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     tbar_ = 0;
     disengage();
     soundPending_ = false;
+    if (effect_->isArtCardKey() && !e->isArtCardKey()) {  // leaving the card ends its key
+        keyOn_ = false;
+        sel_[busIndex(Bus::Superimpose)] = Source::None;
+    }
     effect_ = std::move(e);
     ++take_;  // the new effect starts a new take (ALGO.md 15.1: a crouton selected ends the take)
     effectColour_ = effect_->effectColour();
     speed_ = effect_->timing().defaultSpeed;
+    if (effect_->isArtCardKey()) {  // design 2 C: the keyer on, the T-bar at 2L
+        keyOn_ = true;
+        applyCard();
+    }
     return true;
 }
 
@@ -188,6 +226,13 @@ void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
     auto_ = false;             // the hand takes over
+    if (effect_->isArtCardKey()) {  // the clip control: the card is held, no transition starts
+        keyOn_ = true;
+        keyLevel_ = pos / 2;
+        applyCard();
+        tbar_ = pos;
+        return;
+    }
     if (tbar_ == 0 && pos > 0) {
         beginTransitionIfIdle();
         if (staysEngaged()) engage();
@@ -198,6 +243,7 @@ void Switcher::setTBar(int pos) {
 }
 
 void Switcher::autoTransition(Speed speed, Direction dir) {
+    if (effect_->isArtCardKey()) return;  // the card is held: Auto does nothing
     speed_ = speed;
     const Timing t = effect_->timing();
     if (dir == Direction::Forward) {
@@ -227,6 +273,7 @@ void Switcher::autoTransition(Speed speed, Direction dir) {
 
 void Switcher::take() {
     const bool overlay = overlayEngaged();
+    const bool card = effect_->isArtCardKey();
     auto_ = false;
     tbar_ = 0;
     disengage();
@@ -241,7 +288,9 @@ void Switcher::take() {
     const bool same = main == prev;
     std::swap(main, prev);
     if (same && sup != Source::None) prev = sup;
+    if (card && sup != Source::None) cardSaved_ = sup;
     sup = Source::None;
+    if (card) applyCard();  // KEY.md 6 step 3: the cut keeps the card
 }
 
 void Switcher::tick() {
@@ -336,7 +385,17 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     // swapped in and out, so a steady stream of renders allocates nothing.
     Frame& out = outScratch_;
     out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
-    if (!transitionActive()) {
+    if (effect_->isArtCardKey()) {
+        // Design 2 C: the card on Superimpose cuts the hole through which Main shows over Preview.
+        const Source sup = sel_[busIndex(Bus::Superimpose)];
+        if (keyOn_ && sup != Source::None) {
+            const int l = std::min(keyLevel_, kCardLevelMax);
+            lumaKey(a, pick(sel_[busIndex(Bus::Preview)]), pick(sup), keyBlack_ ? l : kCardLevelMax - l, keyBlack_,
+                    guesses_.keySoftness, out);
+        } else {
+            out.px = a.px;
+        }
+    } else if (!transitionActive()) {
         out.px = a.px;
         // The key: a Superimpose source that is not Main, over Main (design 2 A).
         const Source sup = sel_[busIndex(Bus::Superimpose)];

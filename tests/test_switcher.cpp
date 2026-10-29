@@ -2197,3 +2197,114 @@ TEST_CASE("no key while ChromaFX or an overlay is engaged", "[switcher][key]") {
     REQUIRE((r.sw.chromaEngaged() || r.sw.overlayEngaged()));
     CHECK(r.render().px == q.render().px);
 }
+
+namespace {
+
+std::shared_ptr<const vt::Effect> artCard() { return load("4.2/Effects/2000FX/Control/ART CARD KEY"); }
+
+}  // namespace
+
+TEST_CASE("Art Card Key: the T-bar is the clip control", "[switcher][key][card]") {
+    Rig r;
+    REQUIRE(r.sw.keyLevel() == 128);
+    REQUIRE(r.sw.setEffect(artCard()));
+    CHECK(r.sw.tbar() == 256);
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);  // loading it turns the keyer on
+    r.sw.setTBar(100);
+    CHECK(r.sw.keyLevel() == 50);
+    CHECK(r.sw.tbar() == 100);
+    r.sw.setKeyLevel(257);
+    CHECK(r.sw.keyLevel() == 255);
+    CHECK(r.sw.tbar() == 510);
+    r.sw.autoTransition(vt::Speed::Fast);
+    CHECK(!r.sw.autoRunning());
+    for (int n = 0; n < 100; ++n) {
+        r.render();
+        r.sw.tick();
+    }
+    CHECK(r.sw.tbar() == 510);
+    CHECK(r.sw.keyLevel() == 255);
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In2);
+    r.sw.autoTransition(vt::Speed::Fast, vt::Direction::Reverse);
+    CHECK(!r.sw.autoRunning());
+    r.sw.setTBar(511);  // 511 does not swap
+    CHECK(r.sw.tbar() == 511);
+    CHECK(r.sw.keyLevel() == 255);
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    r.sw.setTBar(0);
+    CHECK(r.sw.keyLevel() == 0);
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+}
+
+TEST_CASE("Art Card Key keys Main over Preview through Superimpose", "[switcher][key][card]") {
+    Rig r;
+    // The art card: every other pixel white, so some of it keys at v 255.
+    for (size_t i = 0; i < r.in3.px.size(); i += 2) r.in3.px[i] = {255, 255, 255, 255};
+    r.sw.select(Bus::Superimpose, Source::In3);
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    REQUIRE(r.sw.setEffect(artCard()));
+    r.sw.setTBar(0);
+    CHECK(r.render().px == r.in1.px);  // v 0: Y >= 0 everywhere
+    r.sw.setTBar(511);
+    REQUIRE(r.sw.keyLevel() == 255);
+    const vt::Frame top = r.render();
+    for (size_t i = 0; i < top.px.size(); ++i) {
+        const bool white = vt::keyLuma(r.in3.px[i]) == 255;
+        REQUIRE(top.px[i] == (white ? r.in1.px[i] : r.in2.px[i]));
+    }
+    r.sw.setTBar(200);
+    vt::Frame want;
+    vt::lumaKey(r.in1, r.in2, r.in3, 100, true, r.sw.guesses().keySoftness, want);
+    CHECK(r.render().px == want.px);
+    r.sw.setKeyMode(vt::KeyMode::White);  // v = 255 - L
+    vt::lumaKey(r.in1, r.in2, r.in3, 155, false, r.sw.guesses().keySoftness, want);
+    CHECK(r.render().px == want.px);
+}
+
+TEST_CASE("Art Card Key: Take keeps the card, OFF ends it until the T-bar moves", "[switcher][key][card]") {
+    Rig r;
+    REQUIRE(r.sw.setEffect(artCard()));
+    r.sw.select(Bus::Superimpose, Source::In3);  // picked after loading: the card keeps it too
+    r.sw.setKeyMode(vt::KeyMode::Black);
+    r.sw.setTBar(200);
+    r.sw.take();
+    CHECK(r.sw.selected(Bus::Main) == Source::In2);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In1);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);  // restored
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+    CHECK(r.sw.tbar() == 200);
+    vt::Frame want;
+    vt::lumaKey(r.in2, r.in1, r.in3, 100, true, r.sw.guesses().keySoftness, want);
+    CHECK(r.render().px == want.px);
+    r.sw.setKeyMode(vt::KeyMode::Off);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(r.render().px == r.in2.px);  // Program = Main
+    r.sw.setTBar(300);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
+    CHECK(r.sw.keyMode() == vt::KeyMode::Black);
+    CHECK(r.sw.keyLevel() == 150);
+}
+
+TEST_CASE("Art Card Key: FREEZE is refused while the T-bar is above 0; leaving the card turns the keyer off",
+          "[switcher][key][card]") {
+    Rig r;
+    r.sw.select(Bus::Superimpose, Source::In3);
+    REQUIRE(r.sw.setEffect(artCard()));
+    REQUIRE(r.sw.tbar() == 256);
+    std::string why;
+    CHECK(!r.sw.setFrozen(true, &why));
+    CHECK(!r.sw.grab(2, &why));
+    CHECK(!r.sw.loadStill(r.in4, &why));
+    CHECK(!r.sw.frozen());
+    r.sw.setTBar(0);
+    CHECK(r.sw.setFrozen(true, &why));
+    CHECK(r.sw.setFrozen(false, &why));
+    r.sw.setTBar(300);
+    REQUIRE(r.sw.setEffect(dissolve()));
+    CHECK(r.sw.keyMode() == vt::KeyMode::Off);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(r.sw.tbar() == 0);
+    CHECK(r.sw.setFrozen(true, &why));
+}
