@@ -7,6 +7,7 @@
 #include "log_detail.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
+#include "vt/framestore.h"
 #include "vt/iff.h"
 
 namespace vt {
@@ -63,6 +64,8 @@ std::optional<Crouton> algoSibling(const std::filesystem::path& p) {
     return std::nullopt;
 }
 
+constexpr const char* kFramestoreRefusal = "a framestore (load it into DV1/DV2), not an effect";
+
 std::unique_ptr<Effect> fail(std::string* why, std::string reason) {
     if (why) *why = std::move(reason);
     return nullptr;
@@ -73,8 +76,10 @@ std::unique_ptr<Effect> fail(std::string* why, std::string reason) {
 std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::string* why) {
     try {
         auto c = loadCrouton(path);
-        if (c && c->type == CroutonType::None)  // Ruling 9: only for a file that exists
+        if (c && c->type == CroutonType::None) {  // no CrUD of its own: the sibling icon's (Ruling 9)
+            if (isFramestore(path)) return fail(why, kFramestoreRefusal);  // FRAM icon, or a bare DV picture
             if (auto icon = algoSibling(path)) c = std::move(icon);
+        }
         if (!c) return fail(why, "not a crouton file: " + path.string());
         const auto u8 = path.filename().u8string();
         const std::string name(u8.begin(), u8.end());
@@ -92,7 +97,7 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             case CroutonType::Main: return fail(why, "Switcher move (MAIN) not reverse-engineered yet");
             case CroutonType::Ctrl: return fail(why, "Switcher move (CTRL) not reverse-engineered yet");
             case CroutonType::Crfx: return detail::makeChromaEffect(basics(fixedTiming(*c)), *c, why);
-            case CroutonType::Fram: return fail(why, "a framestore (load it into DV1/DV2), not an effect");
+            case CroutonType::Fram: return fail(why, kFramestoreRefusal);
             default: break;
         }
 

@@ -412,9 +412,10 @@ void AppController::loadCrouton(int index, bool run) {
         effect = hit->second;
         effects_.erase(hit);
     } else {
-        // A FRAM crouton is a still for DV1/DV2 (FREEZE.md 4), not an effect: no Auto, nothing cached.
-        // (Only a cache miss looks: an effect is read twice then, but an effect file can be large.)
-        if (const auto crouton = vt::loadCrouton(c.effect); crouton && crouton->type == vt::CroutonType::Fram) {
+        // A framestore is a still for DV1/DV2 (FREEZE.md 4), not an effect: no Auto, nothing cached.
+        // vt::isFramestore decides (FRAM in the file's CrUD or its icon's, or a bare DV picture).
+        // Only a cache miss asks: an effect file is read twice then, but it can be large.
+        if (vt::isFramestore(c.effect)) {
             std::string why;
             auto still = vt::loadFramestore(c.effect, &why);
             if (!still) return message(tr("not a framestore: %1").arg(QString::fromStdString(why)));

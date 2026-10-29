@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -65,8 +66,7 @@ TEST_CASE("every shipped framestore loads") {
             if (!it->is_regular_file()) continue;
             const auto ext = it->path().extension().string();
             if (ext == ".i" || ext == ".I") continue;  // the icon files hold no picture
-            auto c = vt::loadCrouton(it->path());
-            if (!c || c->type != vt::CroutonType::Fram) continue;
+            if (!vt::isFramestore(it->path())) continue;
             ++count;
             std::string why;
             if (!vt::loadFramestore(it->path(), &why)) {
@@ -77,7 +77,27 @@ TEST_CASE("every shipped framestore loads") {
     }
     CAPTURE(count, bad);
     CHECK(bad == 0);
-    CHECK(count >= 60);  // FREEZE.md §4: 63
+    CHECK(count == 75);  // FREEZE.md §4: 63 with CrUD FRAM, 12 LightWaveDemo pictures without (Ruling 9)
+}
+
+TEST_CASE("framestores without a CrUD of their own load (Ruling 9)") {
+    // ApeBot: FRAM only in ApeBot.I; Theater: no CrUD in the file or in Theater.i
+    for (const char* rel : {"4.2/Framestore/LightWaveDemo/ApeBot", "4.2/Framestore/LightWaveDemo/Theater"}) {
+        INFO(rel);
+        const auto p = framestore(rel);
+        const auto c = vt::loadCrouton(p);
+        REQUIRE(c);
+        CHECK(c->type == vt::CroutonType::None);
+        CHECK(vt::isFramestore(p));
+        std::string why;
+        CHECK(vt::loadFramestore(p, &why));
+        CHECK(!vt::loadEffect(p, &why));
+        CHECK(why == "a framestore (load it into DV1/DV2), not an effect");
+    }
+    // a CrUD-less effect whose icon carries its program (Plan 4 Ruling 9) and an effect are not
+    CHECK(!vt::isFramestore(framestore("4.2/Effects/2000FX/Smooth Fade")));
+    CHECK(!vt::isFramestore(framestore("4.2/Effects/4000FX/Digital/Hand Pull !")));
+    CHECK(!vt::isFramestore(framestore("4.2/Framestore/nothing")));
 }
 
 TEST_CASE("framestore refuses bad files") {
@@ -107,8 +127,9 @@ TEST_CASE("framestore save then load is exact") {
     const vt::Frame still = ramp(3);
     std::string why;
     const auto file = t.dir / "Ramp";
-    REQUIRE(vt::saveFramestore(file, still, &why));
-    INFO(why);
+    const bool saved = vt::saveFramestore(file, still, &why);
+    INFO(why);  // INFO copies `why` now: after the call, before the REQUIRE that needs it
+    REQUIRE(saved);
 
     const auto back = vt::loadFramestore(file, &why);
     INFO(why);
@@ -162,13 +183,34 @@ TEST_CASE("framestore save creates the folder and handles unicode names") {
     const auto file = t.dir / "new folder" / std::filesystem::path(u8"Bärs ✓");
     const vt::Frame still = ramp(1);
     std::string why;
-    REQUIRE(vt::saveFramestore(file, still, &why));
+    const bool saved = vt::saveFramestore(file, still, &why);
     INFO(why);
+    REQUIRE(saved);
     const auto back = vt::loadFramestore(file, &why);
     INFO(why);
     REQUIRE(back);
     CHECK(back->px == still.px);
     CHECK(std::filesystem::exists(std::filesystem::path(file) += ".I"));
+
+    // a refusal names the file in UTF-8 (path::string() is the ANSI code page: "?" for ✓, or a throw)
+    const std::u8string missing = u8"Fehlt ✓";
+    CHECK(!vt::loadFramestore(t.dir / missing, &why));
+    CHECK(why.starts_with("cannot read "));
+    CHECK(why.ends_with(std::string(missing.begin(), missing.end())));
+}
+
+TEST_CASE("framestore SAVE over an existing file replaces it") {
+    TempDir t;
+    const auto file = t.dir / "Twice";
+    std::string why;
+    REQUIRE(vt::saveFramestore(file, ramp(1), &why));
+    const bool again = vt::saveFramestore(file, ramp(3), &why);
+    INFO(why);
+    REQUIRE(again);
+    const auto back = vt::loadFramestore(file, &why);
+    INFO(why);
+    REQUIRE(back);
+    CHECK(back->px == ramp(3).px);
 }
 
 TEST_CASE("framestore save fails cleanly") {

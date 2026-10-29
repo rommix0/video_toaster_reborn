@@ -6,7 +6,9 @@
 #include <cstdlib>
 #include <exception>
 #include <fstream>
+#include <span>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -26,6 +28,12 @@ constexpr int kMaxW = 768, kMaxH = 480;
 struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
+
+// For messages: path::string() throws on MSVC for names outside the ANSI code page ("Bärs ✓").
+std::string utf8(const std::filesystem::path& p) {
+    const auto s = p.u8string();
+    return {s.begin(), s.end()};
+}
 
 // The picture of a plane set as `lanes` 8-bit samples per pixel: PLTP entry n is the byte pair
 // (lane, bit) of plane n, lane value = sum of plane bit << bit. Every lane in
@@ -51,7 +59,7 @@ std::vector<uint8_t> gatherLanes(const Planes& pl, int w, const std::vector<std:
     return out;
 }
 
-// FREEZE.md §4 (P1): lanes 6 and 7 are NTSC composite samples at 4 fsc, the DvQuad samples. Every
+// FREEZE.md §4: lanes 6 and 7 are NTSC composite samples at 4 fsc, the DvQuad samples. Every
 // 4th row pair trades the lanes; a pixel pair x, x^1 supplies the four samples of one quad.
 void decodeComposite(const std::vector<uint8_t>& lanes, int w, int h, Frame& out, Rect r) {
     const uint8_t* l6 = lanes.data();
@@ -71,7 +79,7 @@ void decodeComposite(const std::vector<uint8_t>& lanes, int w, int h, Frame& out
     }
 }
 
-// ---- saving: the layout of 4.2/Framestore/ColorBars (FREEZE.md §4 P3) ----
+// ---- saving: the layout of 4.2/Framestore/ColorBars (FREEZE.md §4) ----
 
 using Bytes = std::vector<uint8_t>;
 
@@ -193,7 +201,7 @@ Bytes iconFile(const Frame& still, Rect r) {
     return out;
 }
 
-// The picture: 24-plane RGB, PLTP lanes 8/9/10 (R, G, B) LSB first (P2), ByteRun1 rows.
+// The picture: 24-plane RGB, PLTP lanes 8/9/10 (R, G, B) LSB first (FREEZE.md §4), ByteRun1 rows.
 Bytes pictureForm(const Frame& still, Rect r) {
     Bytes pltp;
     for (int n = 0; n < 24; ++n) pltp.insert(pltp.end(), {uint8_t(8 + n / 8), uint8_t(n % 8)});
@@ -219,12 +227,29 @@ void writeFile(const std::filesystem::path& p, const Bytes& a, const Bytes& b = 
     f.write(reinterpret_cast<const char*>(a.data()), std::streamsize(a.size()));
     f.write(reinterpret_cast<const char*>(b.data()), std::streamsize(b.size()));
     f.close();
-    if (!f) throw std::runtime_error("cannot write " + p.string());
+    if (!f) throw std::runtime_error("cannot write " + utf8(p));
 }
 
 }  // namespace
 
 Rect framestoreRect(int w, int h) { return {(kRasterW - w) / 2, kFramestoreY0, w, h}; }
+
+bool isFramestore(const std::filesystem::path& path) {
+    try {
+        const auto c = loadCrouton(path);
+        if (!c) return false;
+        if (c->type != CroutonType::None) return c->type == CroutonType::Fram;
+        for (const char* ext : {".i", ".I"}) {
+            auto sib = path;
+            sib += ext;
+            if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)
+                return icon->type == CroutonType::Fram;
+        }
+        return loadFramestore(path).has_value();  // Theater (LightWaveDemo): no CrUD anywhere
+    } catch (const std::exception&) {
+        return false;
+    }
+}
 
 std::optional<Frame> loadFramestore(const std::filesystem::path& path, std::string* whyNot) {
     auto fail = [&](std::string why) -> std::optional<Frame> {
@@ -233,7 +258,7 @@ std::optional<Frame> loadFramestore(const std::filesystem::path& path, std::stri
     };
     try {
         auto c = loadCrouton(path);
-        if (!c) return fail("cannot read " + path.string());
+        if (!c) return fail("cannot read " + utf8(path));
         // The first FORM ILBM is the picture; later ones are the 80x50 icons.
         const auto form = std::ranges::find(c->forms, kIlbmForm, &Form::type);
         if (form == c->forms.end()) return fail("no picture (FORM ILBM)");

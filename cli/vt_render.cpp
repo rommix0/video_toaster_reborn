@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
     for (const std::string* k : {&a, &b})
         if (*k != "slide" && *k != "bars") { std::cerr << "vt_render: unknown picture '" << *k << "'\n"; return 2; }
 
-    if (const auto cr = vt::loadCrouton(fs::path(effectPath)); cr && cr->type == vt::CroutonType::Fram) {
+    if (vt::isFramestore(fs::path(effectPath))) {
         std::string why;
         const std::optional<vt::Frame> still = vt::loadFramestore(fs::path(effectPath), &why);
         if (!still) { std::cerr << "vt_render: not a framestore: " << why << "\n"; return 1; }
