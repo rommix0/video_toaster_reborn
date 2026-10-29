@@ -52,13 +52,14 @@ const Form* firstForm(const Crouton& c, std::array<char, 4> type) {
     return nullptr;
 }
 
-// Ruling 9: the original reads a crouton's CrUD from its icon file. Two files (the Smooth Fade pair
-// in 2000FX and 4000FX) hold no CrUD themselves; their program is in the sibling <name>.i / .I.
-std::optional<Crouton> algoSibling(const std::filesystem::path& p) {
+// Ruling 9: the original reads a crouton's CrUD from its icon file. Five files hold no CrUD
+// themselves: the Smooth Fade pair in 2000FX and 4000FX (ALGO) and the ChromaFX BluePoster, Gamma
+// and Zebra Stripe (CRFX, LUT and all); theirs is in the sibling <name>.i / .I.
+std::optional<Crouton> iconSibling(const std::filesystem::path& p) {
     for (const char* ext : {".i", ".I"}) {
         auto sib = p;
         sib += ext;
-        if (auto c = loadCrouton(sib); c && c->type == CroutonType::Algo) return c;
+        if (auto c = loadCrouton(sib); c && (c->type == CroutonType::Algo || c->type == CroutonType::Crfx)) return c;
     }
     return std::nullopt;
 }
@@ -77,7 +78,7 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
         auto c = loadCrouton(path);
         if (c && c->type == CroutonType::None) {  // no CrUD of its own: the sibling icon's (Ruling 9)
             if (isFramestore(path)) return fail(why, kFramestoreRefusal);  // FRAM icon, or a bare DV picture
-            if (auto icon = algoSibling(path)) c = std::move(icon);
+            if (auto icon = iconSibling(path)) c = std::move(icon);
         }
         if (!c) return fail(why, "not a crouton file: " + detail::utf8(path));
         const std::string name = detail::utf8(path.filename());

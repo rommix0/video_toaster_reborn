@@ -1031,6 +1031,20 @@ TEST_CASE("algo program read from the icon file (Smooth Fade)", "[algo]") {
     }
 }
 
+// The same holds for three ChromaFX: their files carry only a 16-plane picture, the CRFX CrUD (and
+// its LUT) is in the icon.
+TEST_CASE("ChromaFX settings read from the icon file", "[chromafx]") {
+    for (const char* name : {"BluePoster", "Gamma", "Zebra Stripe"}) {
+        INFO(name);
+        std::string why;
+        const auto e = vt::loadEffect(dataRoot() / "4.2/Effects/ChromaFx" / name, &why);
+        INFO(why);
+        REQUIRE(e);
+        CHECK(e->isChromaFx());
+        CHECK(e->name() == name);
+    }
+}
+
 TEST_CASE("algo take resets", "[algo]") {
     // The history 100 -> 300 reaches V[239] (ALGO.md 15.1, raster lines 478..479, outside the
     // visible area), so its frame at 300 differs from a fresh take's. Without a reset, take 2 would
