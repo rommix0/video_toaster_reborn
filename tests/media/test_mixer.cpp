@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <filesystem>
 #include <numbers>
+#include <string>
 #include <thread>
 
 #include "vt/media/time.h"
@@ -112,6 +114,20 @@ TEST_CASE("a cut ramps over one tick") {
     // And the right channel is the same.
     CHECK(out[1] == out[0]);
     CHECK(out[2 * n - 1] == out[2 * (n - 1)]);
+}
+
+TEST_CASE("Art Card Key: audio follows Main at any T-bar") {
+    vt::Switcher sw;
+    std::string why;
+    std::shared_ptr<const vt::Effect> card =
+        vt::loadEffect(std::filesystem::path(VT_DATA_ROOT) / "4.2/Effects/2000FX/Control/ART CARD KEY", &why);
+    INFO(why);
+    REQUIRE(card);
+    REQUIRE(sw.setEffect(card));
+    REQUIRE(sw.tbar() == 256);  // held: no transition runs
+    Rig r;
+    r.run(MixState::of(sw));
+    for (float s : r.run(MixState::of(sw))) CHECK(s == Catch::Approx(0.5f).margin(1e-6));
 }
 
 TEST_CASE("ChromaFX engaged follows Preview, overlay follows Main") {

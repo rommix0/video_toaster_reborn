@@ -30,9 +30,10 @@ struct TickLevel {
 
 } // namespace
 
+// Art Card Key holds its T-bar (the clip control) with no transition running: audio follows Main.
 MixState MixState::of(const vt::Switcher& sw) {
     return {sw.selected(vt::Bus::Main), sw.selected(vt::Bus::Preview), sw.tbar(),
-            sw.transitionActive(), sw.chromaEngaged(), sw.overlayEngaged()};
+            sw.transitionActive() && !sw.effect().isArtCardKey(), sw.chromaEngaged(), sw.overlayEngaged()};
 }
 
 AudioMixer::AudioMixer() {
