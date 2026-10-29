@@ -1230,13 +1230,10 @@ TEST_CASE("Photo Fly Out ! flashes white, then fades A in", "[dve][effect]") {
             REQUIRE(same(o, kWhite));
         } else if (k <= 6) {
             REQUIRE(((idx >> 2) & 3) == k - 3);
-            std::vector<vt::Rgb> pal = an.bm.cmap;
-            for (int j = 1; j <= k; ++j)
-                if (size_t(j) < an.cmaps.size() && an.cmaps[size_t(j)] && !an.cmaps[size_t(j)]->empty()) pal = *an.cmaps[size_t(j)];
             vt::Frame d;
             vt::DveControl noArt = dc;
             noArt.art.clear();
-            vt::renderDve(noArt, *moving, *background, pal, d, ctx.guesses);
+            vt::renderDve(noArt, *moving, *background, {}, d, ctx.guesses);
             const vt::Rgba8 dp = d.at(kProbeX, kProbeY);
             const int wk = w[k - 4];
             REQUIRE(same(o, {uint8_t((255 * (255 - wk) + dp.r * wk + 127) / 255), uint8_t((255 * (255 - wk) + dp.g * wk + 127) / 255),
