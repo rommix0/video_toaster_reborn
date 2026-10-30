@@ -6,13 +6,11 @@
 // given to setState().
 //
 // The T-bar is dragged with the left button on it or the right button anywhere on the screen
-// (switcher.main 0x1123e), by the same Toaster-pixel scale; letting go sends releaseTBar. While the
-// snapshot says `positioning` (a Positionable effect, tools/re/POSITION.md) and no drag is held, the
-// pointer is hidden and grabbed: its moves go to movePosition as mouse counts
-// (HardwareGuesses::positionCountsPerPixel per Toaster pixel), Space or Return keeps the position
-// (KeepAndStop), the left button finishes the take, the right button goes back to a T-bar drag.
-// The pointer then goes back to where it was. Losing the window's focus or hiding the screen lets a
-// held T-bar drag go and ends positioning as Space does.
+// (switcher.main 0x1123e), by the same Toaster-pixel scale; letting go sends releaseTBar, and so
+// does losing the window's focus or hiding the screen during a drag. While the snapshot says
+// `positioning` (a Positionable effect, tools/re/POSITION.md; the Position dock's trackball moves
+// it) Space and Return keep the position (KeepAndStop), and a T-bar press first goes back to the
+// T-bar with the position kept (BackToTBar). The pointer is never captured.
 #include <QImage>
 #include <QList>
 #include <QRegion>
@@ -65,7 +63,6 @@ public:
     // the T-bar has fewer than 86 images.
     ToasterScreen(const vt::assets::PanelLayout&, const vt::assets::ColorFont& cgInterface14,
                   SwitcherActions&, QWidget* parent = nullptr);
-    ~ToasterScreen() override;  // positioning: the grab and the blank cursor go, the pointer comes back
 
     // Zoom = device pixels per Toaster pixel (whole numbers >= 1), so one Toaster pixel is exactly
     // zoom x zoom device pixels at any devicePixelRatio. The widget takes any size from 768x481
@@ -144,10 +141,9 @@ private:
     QPointF toScreen(const QPointF& logical) const;
     QPoint toScreenPixel(const QPointF& logical) const;
     int tbarFor(double screenY) const;
+    void grabTbar();                       // a T-bar press while positioning: BackToTBar first
     void startRightDrag(double screenY);
     void endDrag();                        // a T-bar drag let go: releaseTBar
-    void letGo();                          // focus lost or hidden: the drag let go, positioning ended
-    void updateCapture();                  // capture_ follows the snapshot, the drags and ended_
     void openBkgPopup();
 
     vt::assets::PanelLayout layout_;
@@ -166,11 +162,6 @@ private:
     bool rightDrag_ = false;                         // the right button drags the T-bar
     int tbarAtPress_ = 0;                            // right drag: the T-bar when it began
     double pressY_ = 0;                              // right drag: where it began, in Toaster pixels
-    bool capture_ = false;                           // positioning: the pointer hidden and grabbed
-    bool ended_ = false;                             // positioning ended here, the snapshot not caught up
-    QPoint savedPos_, centre_;                       // capture: the pointer before it, where it is kept (global)
-    QPointF lastGlobal_;                             // capture: the pointer's last position (global)
-    QPointF counts_;                                 // capture: mouse counts not sent yet
     int pressed_ = -1;                               // node drawn pressed while the mouse holds it
     int preferredZoom_ = 1;                          // setZoom: sizeHint()
     int zoom_ = 1;                                   // in effect: the largest that fits the widget

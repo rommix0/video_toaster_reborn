@@ -6,6 +6,7 @@ add_executable(vt_app_tests
     test_main_window.cpp
     test_mixer_dock.cpp
     test_monitor.cpp
+    test_position_dock.cpp
     test_project_grid.cpp
     test_settings.cpp
     test_toaster_screen.cpp

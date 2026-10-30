@@ -6,6 +6,7 @@ add_library(vt_app_lib STATIC
     src/main_window.cpp
     src/mixer_dock.cpp
     src/monitor_window.cpp
+    src/position_dock.cpp
     src/project_grid.cpp
     src/settings.cpp
     src/toaster_screen.cpp

@@ -15,6 +15,7 @@ std::unique_ptr<QObject> makeToasterScreenTests();
 std::unique_ptr<QObject> makeProjectGridTests();
 std::unique_ptr<QObject> makeMonitorTests();
 std::unique_ptr<QObject> makeMixerDockTests();
+std::unique_ptr<QObject> makePositionDockTests();
 std::unique_ptr<QObject> makeSettingsTests();
 std::unique_ptr<QObject> makeAppE2eTests();
 
@@ -65,6 +66,7 @@ int main(int argc, char** argv) {
     tests.push_back(makeProjectGridTests());
     tests.push_back(makeMonitorTests());
     tests.push_back(makeMixerDockTests());
+    tests.push_back(makePositionDockTests());
     tests.push_back(makeSettingsTests());
     tests.push_back(makeAppE2eTests());
 

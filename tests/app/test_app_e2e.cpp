@@ -26,6 +26,7 @@
 #include "main_window.h"
 #include "mixer_dock.h"
 #include "monitor_window.h"
+#include "position_dock.h"
 #include "project_grid.h"
 #include "test_support.h"
 #include "toaster_screen.h"
@@ -169,7 +170,7 @@ private slots:
     void grabPutsTheInputInDv1OnMain();
     void framestoreCroutonLoadsIntoDv2();
     void controlCroutonsSetPreview();
-    void positionableShrinkFollowsTheMouse();
+    void positionableShrinkRollsOnTheTrackball();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
     void keyedDv2IsRefusedAndAKeyedInputShows();
@@ -369,18 +370,23 @@ void TestAppE2e::controlCroutonsSetPreview() {
     QVERIFY(c.window().statusBar()->currentMessage().contains(QStringLiteral("project control")));
 }
 
-// tools/re/POSITION.md: Positionable Shrink with the T-bar let go mid-way follows the mouse, Space
-// keeps the position and holds the take open, Auto finishes it.
-void TestAppE2e::positionableShrinkFollowsTheMouse() {
+// tools/re/POSITION.md: Positionable Shrink with the T-bar let go mid-way is positioned with the
+// Position dock's trackball; Finish keeps the position and ends the take.
+void TestAppE2e::positionableShrinkRollsOnTheTrackball() {
     QTemporaryDir dir;
     AppSettings settings = testSettings(dir);
     AppController c(settings, Mode::Offline);
     QVERIFY(c.screen());
     ToasterScreen& w = *c.screen();
+    PositionDock& dock = c.positionDock();
+    QCOMPARE(dock.windowTitle(), QStringLiteral("Position"));
+    QVERIFY(!dock.isHidden());
+    QVERIFY(c.window().windowMenu()->actions().contains(dock.toggleViewAction()));
     const int i = showCrouton(c, "4000FX/Special", "Positionable Shrink");
     QVERIFY(i >= 0);
     QTest::mouseClick(&w, Qt::LeftButton, {}, cellCentre(w, i));
     c.runOffline(1);
+    QVERIFY(!dock.ball()->isEnabled());
     auto position = [&] {
         vt::EffectPosition p;
         c.loop().post([&p](vt::Switcher& sw) { p = sw.position(); });
@@ -393,30 +399,25 @@ void TestAppE2e::positionableShrinkFollowsTheMouse() {
     QTest::mouseRelease(&w, Qt::LeftButton, {}, mid);
     c.runOffline(1);
     QVERIFY(c.loop().switcherState().positioning);
-    QCOMPARE(QWidget::mouseGrabber(), &w);
-    const int tbar = c.loop().switcherState().tbar;
+    QVERIFY(dock.ball()->isEnabled());
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);  // the pointer stays free
 
-    const QPoint to = w.mapToGlobal(w.rect().center()) + QPoint(10, 5) * w.zoom();  // 10, 5 Toaster pixels
-    QMouseEvent move(QEvent::MouseMove, w.mapFromGlobal(QPointF(to)), QPointF(to), Qt::NoButton, Qt::NoButton,
-                     Qt::NoModifier);
-    QApplication::sendEvent(&w, &move);
+    const QPoint at = dock.ball()->rect().center();
+    QTest::mousePress(dock.ball(), Qt::LeftButton, {}, at);
+    QTest::mouseMove(dock.ball(), at + QPoint(10, 5));
+    QTest::mouseRelease(dock.ball(), Qt::LeftButton, {}, at + QPoint(10, 5));
     const vt::EffectPosition p = position();
     QCOMPARE(p.h, 5);  // kind 3: half a control cell per count, rounded away from 0
     QCOMPARE(p.v, 3);
 
-    QTest::keyClick(&w, Qt::Key_Space);
+    dock.finishButton()->click();
     c.runOffline(1);
-    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    const vt::media::SwitcherSnapshot s = c.loop().switcherState();
     QVERIFY(!s.positioning);
-    QVERIFY(s.transition);
-    QCOMPARE(QWidget::mouseGrabber(), nullptr);
-    QCOMPARE(position().bakedAt, tbar);
-    QCOMPARE(s.main, vt::Source::In1);
-    QTest::keyClick(&w, Qt::Key_Space);  // Auto from the stop finishes the take
-    c.runOffline(autoTicks(dataRoot().toStdString() + "/4.2/Effects/4000FX/Special/Positionable Shrink") + 2);
-    s = c.loop().switcherState();
     QVERIFY(!s.transition);
     QCOMPARE(s.main, vt::Source::In2);
+    QVERIFY(!dock.ball()->isEnabled());
+    QCOMPARE(position().h, 5);  // kept with the effect
 }
 
 // SAVE writes <path> and <path>.I from the still in DV1/DV2 and lists it in "Saved framestores".

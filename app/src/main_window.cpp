@@ -54,11 +54,15 @@ int MainWindow::chromeHeight() const {
 }
 
 int MainWindow::chromeWidth() const {
-    int w = 2 * style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
-    for (QDockWidget* d : findChildren<QDockWidget*>(Qt::FindDirectChildrenOnly))
-        if (!d->isHidden() && !d->isFloating() && (dockWidgetArea(d) & (Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea)))
-            w += d->sizeHint().width() + style()->pixelMetric(QStyle::PM_DockWidgetSeparatorExtent);
-    return w;
+    // The docks of one side are stacked in one column: the widest counts.
+    int left = 0, right = 0;
+    for (QDockWidget* d : findChildren<QDockWidget*>(Qt::FindDirectChildrenOnly)) {
+        if (d->isHidden() || d->isFloating()) continue;
+        const int dw = d->sizeHint().width() + style()->pixelMetric(QStyle::PM_DockWidgetSeparatorExtent);
+        if (dockWidgetArea(d) == Qt::LeftDockWidgetArea) left = std::max(left, dw);
+        if (dockWidgetArea(d) == Qt::RightDockWidgetArea) right = std::max(right, dw);
+    }
+    return 2 * style()->pixelMetric(QStyle::PM_DefaultFrameWidth) + left + right;
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {

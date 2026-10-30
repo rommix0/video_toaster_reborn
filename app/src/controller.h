@@ -53,6 +53,7 @@ class MainWindow;
 class QActionGroup;
 class QKeyEvent;
 class MixerDock;
+class PositionDock;
 class MonitorWindow;
 class ProjectView;
 class QLabel;
@@ -122,6 +123,7 @@ public:
     MonitorWindow& programMonitor() { return *program_; }
     MonitorWindow& previewMonitor() { return *preview_; }
     MixerDock& mixerDock() { return *mixer_; }
+    PositionDock& positionDock() { return *position_; }
     vt::media::ProgramLoop& loop() { return *loop_; }
     ToasterScreen* screen() const;     // null while the data root is not valid
     ProjectView* projectView() const;
@@ -194,6 +196,7 @@ private:
     std::unique_ptr<MonitorWindow> program_, preview_;
     std::unique_ptr<MainWindow> window_;
     MixerDock* mixer_ = nullptr;
+    PositionDock* position_ = nullptr;
     QPointer<ToasterScreen> screen_;
     QPointer<ProjectView> view_;
     QPointer<SettingsDialog> settingsDialog_;

@@ -29,6 +29,7 @@
 
 #include "main_window.h"
 #include "mixer_dock.h"
+#include "position_dock.h"
 #include "monitor_window.h"
 #include "project_grid.h"
 #include "toaster_screen.h"
@@ -150,6 +151,8 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent, 
     window_ = std::make_unique<MainWindow>();
     mixer_ = new MixerDock(loop_->mixer(), window_.get());
     window_->addDockWidget(Qt::RightDockWidgetArea, mixer_);
+    position_ = new PositionDock(*this, window_.get());
+    window_->addDockWidget(Qt::RightDockWidgetArea, position_);
     connect(window_.get(), &MainWindow::closing, this, &AppController::shutdown);
     connect(window_->settingsAction(), &QAction::triggered, this, [this] { openSettings(); });
     connect(window_->recordAction(), &QAction::triggered, this, [this] { recording_ ? stopRecording() : startRecording(); });
@@ -160,6 +163,7 @@ AppController::AppController(AppSettings& settings, Mode mode, QObject* parent, 
             m->raise();
         });
     windows->addAction(mixer_->toggleViewAction());
+    windows->addAction(position_->toggleViewAction());
     zoomGroup_ = new QActionGroup(this);
     connect(window_->zoomMenu(), &QMenu::aboutToShow, this, &AppController::fillZoomMenu);
     window_->installEventFilter(this);
@@ -367,7 +371,8 @@ bool AppController::forwardKey(QObject* receiver, QKeyEvent* e) {
     // The widget the key was typed into: a key a text field ignores comes here again for its parents.
     QWidget* origin = QApplication::focusWidget() ? QApplication::focusWidget() : w;
     const QWidget* top = origin->window();
-    if (top != window_.get() && top != mixer_ && top != program_.get() && top != preview_.get()) return false;
+    if (top != window_.get() && top != mixer_ && top != position_ && top != program_.get() && top != preview_.get())
+        return false;
     if (QApplication::activePopupWidget() || QApplication::activeModalWidget()) return false;
     if (qobject_cast<QLineEdit*>(origin) || qobject_cast<QAbstractSpinBox*>(origin) || qobject_cast<QTextEdit*>(origin) ||
         qobject_cast<QPlainTextEdit*>(origin))
@@ -554,6 +559,7 @@ void AppController::poll() {
         refusalsShown_ = s.refusalCount;
         if (!s.lastRefusal.empty()) message(tr("Refused: %1").arg(QString::fromStdString(s.lastRefusal)));
     }
+    position_->setState(s);
     if (screen_) {
         screen_->setState(s);
         fs::path current;
