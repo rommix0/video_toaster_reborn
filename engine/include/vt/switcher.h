@@ -256,12 +256,14 @@ public:
     // --- ToasterCG key pages (docs/2026-10-30-cg-keys-design.md, tools/re/CGKEY.md) ---
     // While a page is loaded it is the loaded crouton: Auto, the T-bar, Take, the keyer buttons and
     // the Superimpose bus act on it as section 2 C-E say, and tbar() / autoRunning() are its own.
-    // Loading: refused as loadStill while a transition runs. Clicking the page that is loaded
-    // again (same path) puts its DV on Preview; with cutOn (a double click) it is loaded if it is not
-    // already, then cut on. Otherwise the previous page is cleared, the effect becomes the plain
-    // built-in dissolve (the page replaces the loaded crouton), an engaged ChromaFX disengages,
-    // live DV on a bus goes back to its input, and the fill goes into DV1/DV2 by loadStill's rule,
-    // the store frozen; no bus or keyer changes. The speed button goes to the page's default.
+    // Loading: clicking the page that is loaded again (same path) puts its DV on Preview; with cutOn
+    // (a double click) it is loaded if it is not already, then cut on. Otherwise the previous page is
+    // cleared, an engaged ChromaFX disengages, and the effect becomes the plain built-in dissolve as
+    // setEffect does it (the page replaces the loaded crouton: a take in progress is abandoned, a
+    // held Art Card Key ends); live DV on a bus goes back to its input; Superimpose is emptied if it
+    // and Main show different DVs; then the fill goes into DV1/DV2 by loadStill's rule, the store
+    // frozen. Nothing else on the buses or the keyer changes. The speed button goes to the page's
+    // default. Refused only for a page that is not a decoded one.
     bool loadCgPage(std::shared_ptr<const CgKeyPage>, bool cutOn = false, std::string* whyNot = nullptr);
     // Another crouton selected (setEffect and loadStill do it themselves; a control crouton calls
     // it): as the end of an off-dissolve, a cut that empties Superimpose (Main kept, Preview gets the

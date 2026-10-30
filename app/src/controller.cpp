@@ -454,6 +454,9 @@ void AppController::loadCrouton(int index, bool run) {
             std::string why;
             auto page = vt::loadCgKeyPage(c.effect, &why);
             if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
+            // The snapshot read now is tick T or later; the load runs at the start of tick T + 1, or
+            // T + 2 if T + 1 had already taken its commands, so the snapshot of T + 2 shows it.
+            pageHoldUntil_ = loop_->switcherState().tick + 2;
             loop_->postChecked([this, p = std::make_shared<const vt::CgKeyPage>(std::move(*page)), run](vt::Switcher& sw,
                                                                                                     std::string& why) {
                 if (!sw.loadCgPage(p, run, &why)) return false;
@@ -586,7 +589,8 @@ void AppController::poll() {
         {
             const std::lock_guard l(effectMu_);
             current = currentEffect_;
-            if (currentIsPage_ && s.cgPage.dv == vt::Source::None) current.clear();  // the page has gone: the Fade is left
+            // The page has gone (the Fade is left), judged only from a snapshot taken after its load.
+            if (currentIsPage_ && s.cgPage.dv == vt::Source::None && s.tick >= pageHoldUntil_) current.clear();
         }
         int loaded = -1;
         const auto& croutons = screen_->project().croutons();

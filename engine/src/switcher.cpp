@@ -824,7 +824,6 @@ bool Switcher::loadCgPage(std::shared_ptr<const CgKeyPage> page, bool cutOn, std
     };
     if (!page || page->alpha.size() != size_t(kRasterW) * kRasterH || page->fill.px.size() != page->alpha.size())
         return refuse("not a decoded CG key page");  // render indexes the alpha by raster pixel
-    if ((auto_ || tbar_ > 0) && !engaged_) return refuse("a transition is running: finish it first");
     if (cgPage_ && cgPage_->path == page->path) {  // the loaded page again
         if (cutOn) cgCutOn();                       // a double click's second half
         else sel_[busIndex(Bus::Preview)] = cgDv_;  // 0x123aba
@@ -836,10 +835,17 @@ bool Switcher::loadCgPage(std::shared_ptr<const CgKeyPage> page, bool cutOn, std
         tbar_ = 0;
         disengage();
     }
-    setEffect(makeDissolve());  // the page is the loaded crouton; the built-in Fade is what it leaves
+    // The page is the loaded crouton, as an effect click: a take is abandoned, a held Art Card Key
+    // ends; the built-in Fade is what the page leaves.
+    setEffect(makeDissolve());
     if (!frozen_)
         for (Source& s : sel_)
             if (isDv(s)) s = static_cast<Source>(dvInput_);  // live digital stripped
+    // Main and Superimpose showing different DVs: Superimpose is emptied, so the page cannot go into
+    // the DV Main shows (0x123b76, after the strip and before the pick).
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    const Source main = sel_[busIndex(Bus::Main)];
+    if (isDv(main) && isDv(sup) && main != sup) sup = Source::None;
     cgDv_ = dvTarget();
     grabPending_ = false;
     writeStill(dvIndex(cgDv_), &page->fill);

@@ -165,13 +165,47 @@ TEST_CASE("a CG key page loads into a DV by the framestore rule with nothing on 
     CHECK(q.sw.still(Source::DV1).px == p->fill.px);
     CHECK(q.sw.selected(Bus::Main) == Source::DV2);
 
-    // A transition running: refused as a framestore load is.
-    Rig t;
+    // Main and Superimpose show different DVs: Superimpose is emptied first (CGKEY.md 1 step 4), so
+    // the page goes into Superimpose's DV and Main's still stays on air.
+    Rig k;
+    REQUIRE(k.sw.loadStill(k.in3));  // DV2 = red
+    REQUIRE(k.sw.select(Bus::Main, Source::DV2));
+    REQUIRE(k.sw.select(Bus::Superimpose, Source::DV1));
+    REQUIRE(k.sw.loadCgPage(p));
+    CHECK(k.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK(k.sw.selected(Bus::Main) == Source::DV2);
+    CHECK(k.sw.cgPage().dv == Source::DV1);
+    CHECK(k.sw.still(Source::DV2).px == k.in3.px);
+    CHECK(k.render().px == k.in3.px);
+}
+
+TEST_CASE("a CG key page click mid-take or under a held Art Card Key loads as an effect click does", "[cgkeys][switcher]") {
+    const auto p = page("LowerThird1");
+    Rig t;  // a dissolve half way: abandoned without a swap
     t.sw.setTBar(200);
+    REQUIRE(t.sw.loadCgPage(p));
+    CHECK(t.sw.cgPage() == vt::CgPageState{Source::DV2, false, 0, true});
+    CHECK(t.sw.tbar() == 0);
+    CHECK_FALSE(t.sw.transitionActive());
+    CHECK(t.sw.selected(Bus::Main) == Source::In1);
+    CHECK(t.sw.selected(Bus::Preview) == Source::In2);
+    CHECK(t.render().px == t.in1.px);
+
+    Rig c;  // the Art Card Key held with the T-bar at 2L: the card ends, nothing on air
     std::string why;
-    CHECK_FALSE(t.sw.loadCgPage(p, false, &why));
-    CHECK(why == "a transition is running: finish it first");
-    CHECK(t.sw.cgPage().dv == Source::None);
+    auto card = vt::loadEffect(dataRoot() / "4.2/Effects/2000FX/Control/ART CARD KEY", &why);
+    INFO(why);
+    REQUIRE(card);
+    REQUIRE(c.sw.setEffect(std::move(card)));
+    REQUIRE(c.sw.select(Bus::Superimpose, Source::In3));
+    c.sw.setKeyLevel(100);
+    REQUIRE(c.sw.tbar() == 200);
+    REQUIRE(c.sw.loadCgPage(p, false, &why));
+    CHECK(c.sw.cgPage() == vt::CgPageState{Source::DV2, false, 0, true});
+    CHECK(c.sw.keyMode() == vt::KeyMode::Off);
+    CHECK(c.sw.selected(Bus::Superimpose) == Source::None);
+    CHECK_FALSE(c.sw.effect().isArtCardKey());
+    CHECK(c.render().px == c.in1.px);
 }
 
 TEST_CASE("Auto dissolves a CG key page on in N + 1 steps of 4 fields, the next Auto off", "[cgkeys][switcher]") {

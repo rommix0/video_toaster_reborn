@@ -217,6 +217,7 @@ private:
     std::mutex effectMu_;
     std::filesystem::path currentEffect_;  // the crouton the loop last made current (set on the loop thread)
     bool currentIsPage_ = false;           // ... a CG key page: marked only while the engine has it loaded
+    int64_t pageHoldUntil_ = -1;           // a page load posted: its mark holds until a snapshot this new (UI thread)
     uint64_t refusalsShown_ = 0;
 
     bool recording_ = false;
