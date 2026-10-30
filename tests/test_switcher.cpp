@@ -2508,6 +2508,17 @@ TEST_CASE("the right button goes back to a T-bar drag with the position kept", "
     CHECK(r.sw.position().h > kept.h);
 }
 
+// The UI's snapshot can lag a release by a poll, so a grab can arrive without BackToTBar first.
+TEST_CASE("a T-bar grab while positioning keeps the position", "[switcher][position]") {
+    Rig r;
+    positionAt200(r, wipeIn());
+    const vt::EffectPosition kept = r.sw.position();
+    REQUIRE((kept.h || kept.v));
+    r.sw.setTBar(260);
+    CHECK_FALSE(r.sw.positioning());
+    CHECK(r.sw.position() == kept);
+}
+
 TEST_CASE("an offset kept into a drag that ends the take is baked only where 0xb7054 overflows", "[switcher][position]") {
     // Shrink / WIPE IN at 511 and Expand / WIPE OUT at 0: the anchors become paths from the centre.
     // At the other end the bake would keep the size and slide the picture: the position is dropped.

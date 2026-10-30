@@ -1,7 +1,5 @@
 #include "toaster_screen.h"
 
-#include <QCursor>
-#include <QScreen>
 #include <QVBoxLayout>
 #include <QtTest>
 #include <cmath>

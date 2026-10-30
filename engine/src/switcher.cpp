@@ -232,7 +232,9 @@ void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
     auto_ = false;             // the hand takes over
-    if (!std::exchange(dragging_, true)) position_ = {};  // a grab: 0xb6eac resets the program
+    // A grab: 0xb6eac resets the program. A grab while positioning is the back-to-T-bar exit,
+    // whether or not the UI sent it first (its snapshot can lag a release by a poll).
+    if (!std::exchange(dragging_, true) && !positioning_) position_ = {};
     positioning_ = false;
     handTBar_ = pos;
     if (effect_->isArtCardKey()) {  // the clip control: the card is held, no transition starts
