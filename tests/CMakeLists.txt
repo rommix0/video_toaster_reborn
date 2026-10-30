@@ -7,6 +7,7 @@ add_executable(vt_tests
     test_anim.cpp
     test_background.cpp
     test_cgkeys.cpp
+    test_cgscrolls.cpp
     test_chromafx.cpp
     test_crc32.cpp
     test_crouton.cpp

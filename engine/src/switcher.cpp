@@ -144,6 +144,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
             return refuse("a DVE move is running: finish it before choosing another DV-memory effect");
     }
     clearCgPage();  // another crouton selected
+    clearCgScroll();
     // Abandon whatever was in progress, without a swap: the buses as at a return to 0 (C7), decided
     // by the old effect. Not under Art Card Key: the card holds the T-bar with no take.
     if (transitionActive() && !effect_->isArtCardKey()) arriveAt0();
@@ -416,6 +417,7 @@ void Switcher::tick() {
         sel_[busIndex(Bus::Main)] = Source::DV1;
         frozen_ = true;
     }
+    if (scrollPlaying_ && ++scrollField_ >= scroll_->endField) scrollPlaying_ = false;  // its end: Main alone
     if (cgAuto_ && --cgWait_ <= 0) {  // the next level of a page dissolve, or its end
         if (++cgStep_ < cgRamp_.size()) {
             cgLevel_ = cgRamp_[cgStep_];
@@ -518,7 +520,10 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     // swapped in and out, so a steady stream of renders allocates nothing.
     Frame& out = outScratch_;
     out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
-    if (cgUp()) {
+    if (scrollPlaying_) {
+        out.px = a.px;  // CGSCROLL.md 2 "Mixer state": Main, the page keyed over it, any key hidden
+        drawCgScroll(out);
+    } else if (cgUp()) {
         // Design 2 C: the page's DV (fill) over Main by its alpha at level L (the mix law is a guess).
         const Frame& fill = pick(cgDv_);
         std::array<int, 4> k{};
@@ -728,6 +733,7 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
         return false;
     }
     clearCgPage();  // another crouton selected
+    clearCgScroll();
     // Step 1: ChromaFX off, live digital stripped from the buses.
     if (chromaEngaged()) {
         auto_ = false;
@@ -915,6 +921,71 @@ void Switcher::cgFinish() {
     }
     cgLevel_ = 0;  // 0x124014, then 0xb7d40
     clearCgPage();
+}
+
+// --- CG scroll and crawl pages (CGSCROLL.md section 3) ---
+
+// Message 2 (0x13425e): the page is read, nothing goes on air; message 0x21: it plays.
+bool Switcher::loadCgScroll(std::shared_ptr<const CgScroll> page, bool play, std::string* whyNot) {
+    if (!page || page->width <= 0 || page->px.size() != size_t(page->width) * size_t(page->rows)) {
+        if (whyNot) *whyNot = "not a decoded CG scroll or crawl page";
+        return false;
+    }
+    // The page is the loaded crouton, as an effect click: the take module's default is the Fade.
+    setEffect(makeDissolve());  // drops a CG key page and the previous scroll
+    scroll_ = std::move(page);
+    if (play) {  // 0x101000
+        Source& main = sel_[busIndex(Bus::Main)];
+        if (main == Source::Bkg) main = Source::In1;  // $1b6 = 1, not restored
+        if (!frozen_) setFrozen(true);                // FREEZE forced ($20c = 3); never refused after setEffect
+        scrollPlaying_ = true;
+        scrollField_ = 0;
+    }
+    return true;
+}
+
+// The right button (0x24098): interrupt off and 0x101118 at once; the pause hold and fade do not poll it.
+void Switcher::stopCgScroll() {
+    if (!scrollPlaying_ || (scroll_->pause && scrollField_ >= scroll_->stopField)) return;
+    scrollPlaying_ = false;
+}
+
+void Switcher::clearCgScroll() {
+    scroll_.reset();
+    scrollPlaying_ = false;
+}
+
+// Field scrollField_ of the playing page over `out` (Main). Index 0 is transparent; the pause fade
+// mixes at level L (the HARDWARE GUESSES in HardwareGuesses::cgScrollX0's note).
+void Switcher::drawCgScroll(Frame& out) const {
+    const CgScroll& p = *scroll_;
+    const int j = scrollField_;
+    if (j >= p.endField) return;
+    const int level = p.pause && j >= p.stopField + p.hold ? 255 - 12 * (j - p.stopField - p.hold) : 255;
+    auto put = [&](Rgba8& o, uint8_t index) {
+        const Rgba8 c = p.palette[index & 7u];
+        auto mix = [level](int m, int f) { return uint8_t((m * (255 - level) + f * level + 127) / 255); };
+        o = {mix(o.r, c.r), mix(o.g, c.g), mix(o.b, c.b), 255};
+    };
+    if (p.kind == CgScroll::Kind::Scroll) {  // frame line Y (0..475) shows stream row top + Y - 480
+        const int n = int(p.tops.size());
+        const int top = j > 0 && n > 0 ? p.tops[size_t(std::min(j, n) - 1)] : 0;
+        const int x0 = guesses_.cgScrollX0;
+        for (int y = std::max(0, 480 - top); y < 476; ++y) {
+            const int m = top + y - 480;
+            if (m >= p.rows) break;
+            const uint8_t* row = p.px.data() + size_t(m) * size_t(p.width);
+            for (int c = std::max(0, -x0); c < p.width && x0 + c < kRasterW; ++c)
+                if (row[c]) put(out.at(x0 + c, y), row[c]);
+        }
+    } else {  // raster column x shows strip column x + v * j - 768, in the band
+        const int64_t u0 = int64_t(p.pxPerField) * j - 768;
+        for (int r = 0; r < p.rows && p.bandTop + r < kRasterH; ++r) {
+            const uint8_t* row = p.px.data() + size_t(r) * size_t(p.width);
+            for (int x = int(std::max<int64_t>(0, -u0)); x < kRasterW && u0 + x < p.width; ++x)
+                if (const uint8_t i = row[size_t(u0 + x)]) put(out.at(x, p.bandTop + r), i);
+        }
+    }
 }
 
 }  // namespace vt

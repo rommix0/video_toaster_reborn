@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "vt/background.h"
+#include "vt/cg_scroll.h"
 #include "vt/effect.h"
 #include "vt/framestore.h"
 #include "vt/key.h"
@@ -51,6 +52,13 @@ struct CgPageState {
     int level = 0;             // the dissolve level L, 0..255
     bool mark = false;         // the Superimpose bus's `dv` button shows the "CG" picture
     bool operator==(const CgPageState&) const = default;
+};
+
+// The loaded CG scroll or crawl page as the panel sees it (Switcher::cgScroll).
+struct CgScrollState {
+    bool loaded = false;   // a scroll or crawl page is the loaded crouton
+    bool playing = false;  // ... and it is on air: the Switcher takes no input but the right button
+    bool operator==(const CgScrollState&) const = default;
 };
 
 // The levels an Auto writes for a CG key page (CGKEY.md section 2, cgkey_ref.ramp, verified):
@@ -271,6 +279,24 @@ public:
     void clearCgPage();
     CgPageState cgPage() const;
 
+    // --- ToasterCG scroll and crawl pages (docs/2026-10-30-cg-scrolls-design.md, tools/re/CGSCROLL.md) ---
+    // A click loads the page (a double click: play): nothing goes on air and no bus changes; the page
+    // becomes the loaded crouton as setEffect does it, the effect the plain built-in dissolve (Auto, Take
+    // and the T-bar act as that; a take in progress is abandoned, a CG key page cleared). Refused only for
+    // a page that is not a decoded one.
+    // Play (msg 0x21): the page plays from field 0. Main = BKG becomes In1 (kept), the store freezes as
+    // FREEZE does (kept), and Program is Main with the page keyed over it (colour 0 transparent), whatever
+    // the keyer and Superimpose hold (hidden, not changed). Every tick() is one field; at the page's
+    // endField the play ends: Program is Main alone again (a cut), the page stays loaded.
+    bool loadCgScroll(std::shared_ptr<const CgScroll>, bool play = false, std::string* whyNot = nullptr);
+    // The right button: a playing page ends at once, as at its end. Ignored during a pause scroll's hold
+    // and fade (from its stopField on: the original does not poll the button there), or when not playing.
+    void stopCgScroll();
+    // Another crouton selected (setEffect, loadStill and loadCgPage do it themselves; a control crouton
+    // calls it): the page leaves, ending a play at once.
+    void clearCgScroll();
+    CgScrollState cgScroll() const { return {scroll_ != nullptr, scrollPlaying_}; }
+
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
     // Auto, (while engaged) the ChromaFX / overlay frame counter and a pending grab's wait.
     void tick();
@@ -346,6 +372,7 @@ private:
     void cgDrop();             // the keyer buttons, another Superimpose source: the page cuts off
     void cgShow();             // 0x123d62 when no page bitmap is shown: the page's DV on Superimpose
     void cgFinish();           // the Auto's last write was held: its end (CGKEY.md section 2)
+    void drawCgScroll(Frame& out) const;  // the playing scroll or crawl page's field over Main
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::None};  // Main, Preview, Superimpose
@@ -405,6 +432,10 @@ private:
     std::vector<int> cgRamp_;     // its levels (cgRamp)
     size_t cgStep_ = 0;           // the level shown
     int cgWait_ = 0;              // ticks until the next level
+    // The loaded CG scroll or crawl page; null: none.
+    std::shared_ptr<const CgScroll> scroll_;
+    bool scrollPlaying_ = false;
+    int scrollField_ = 0;  // the field render shows: 0 at play, +1 per tick
 };
 
 }  // namespace vt

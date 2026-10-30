@@ -58,6 +58,8 @@ CroutonType typeFrom(std::string_view s) {
     if (s == "CTRL") return CroutonType::Ctrl;
     if (s == "FRAM") return CroutonType::Fram;
     if (s == "KEYF") return CroutonType::Keyf;
+    if (s == "SCRO") return CroutonType::Scro;
+    if (s == "CRAW") return CroutonType::Craw;
     return CroutonType::Other;
 }
 

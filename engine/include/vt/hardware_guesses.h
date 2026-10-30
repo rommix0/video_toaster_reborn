@@ -74,6 +74,17 @@ struct HardwareGuesses {
     // HARDWARE GUESS: each step waits at least one field; 4 makes a dissolve last about $1f0 fields,
     // the ALGO meaning of the speed value (tools/re/CGKEY.md section 2 "Duration", unknown 2).
     int cgFieldsPerStep = 4;
+
+    // CG scroll and crawl pages (docs/2026-10-30-cg-scrolls-design.md 2 B, tools/re/CGSCROLL.md section 2
+    // "Mixer state" and section 6 unknowns 1-3). HARDWARE GUESSES, all three applied in Switcher::render:
+    //  * the key: the Amiga picture is keyed over Main where its colour index is not 0 (index 0 is
+    //    transparent), its 12-bit RGB as the fill (mixer mode 1 with the matte nibble 0xF: what the
+    //    hardware makes of it is not in the program);
+    //  * the pause fade: sprite level L (255, 243, ... 3) is opacity L / 255 over Main;
+    //  * the scroll's registration: its 640 columns start at raster column cgScrollX0, centred (the
+    //    trace puts them at Switcher-bitmap column 98, whose registration with video is unknown). A
+    //    crawl's columns are raster columns, frame line Y raster line Y for both.
+    int cgScrollX0 = 64;
 };
 
 }  // namespace vt

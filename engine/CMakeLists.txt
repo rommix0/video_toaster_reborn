@@ -2,6 +2,7 @@ add_library(vt_engine STATIC
     src/algo.cpp
     src/anim.cpp
     src/background.cpp
+    src/cg_scroll.cpp
     src/chromafx.cpp
     src/delta5.cpp
     src/delta7.cpp
