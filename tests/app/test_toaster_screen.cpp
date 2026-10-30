@@ -1,5 +1,7 @@
 #include "toaster_screen.h"
 
+#include <QCursor>
+#include <QScreen>
 #include <QVBoxLayout>
 #include <QtTest>
 #include <cmath>
@@ -75,6 +77,12 @@ void expectPopupWarnings() {
     QTest::ignoreMessage(QtWarningMsg, "This plugin does not support grabbing the keyboard");
 }
 
+// A move with no button held to global position g (QTest::mouseMove would warp the pointer instead).
+void hover(QWidget& w, QPoint g) {
+    QMouseEvent e(QEvent::MouseMove, w.mapFromGlobal(QPointF(g)), QPointF(g), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(&w, &e);
+}
+
 QList<QRgb> colourTable(const vt::assets::Palette& p) {
     QList<QRgb> t;
     for (const auto& c : p) t << qRgb(c.r, c.g, c.b);
@@ -109,6 +117,8 @@ private slots:
     void tbarImageFollowsTheSnapshot();
     void tbarDragFollowsTheSnapshotNotTheHand();
     void tbarDragDuringAutoFollowsTheSnapshot();
+    void rightButtonDragsTheTbarFromAnywhere();
+    void positioningFollowsTheSnapshot();
     void framestoreButtons();
     void stabilizeIsNotImplemented();
     void keyButtonsAndKeys();
@@ -206,7 +216,7 @@ void TestToasterScreen::tbarDragFollowsTheSnapshotNotTheHand() {
     w.setState(s);
     QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(200 / 6), &why), qPrintable(why));
     QTest::mouseRelease(&w, Qt::LeftButton, {}, bottom);
-    QCOMPARE(fake.calls, (QStringList{"tbar 0", "tbar 511"}));
+    QCOMPARE(fake.calls, (QStringList{"tbar 0", "tbar 511", "release"}));
     // After a hand-driven 511 the engine reads 0 again.
     w.setState(SwitcherSnapshot{});
     QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(0), &why), qPrintable(why));
@@ -231,7 +241,100 @@ void TestToasterScreen::tbarDragDuringAutoFollowsTheSnapshot() {
     w.setState(s);
     QVERIFY2(sameScreen(w.renderIndexedForTest(), withTbarImage(450 / 6), &why), qPrintable(why));
     QTest::mouseRelease(&w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 20));
-    QCOMPARE(fake.calls.size(), 2);
+    QCOMPARE(fake.calls.size(), 3);
+}
+
+// switcher.main 0x1123e: the right button drags the T-bar from anywhere on the screen, at the T-bar's
+// own scale from where it is; only the vertical move counts.
+void TestToasterScreen::rightButtonDragsTheTbarFromAnywhere() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    SwitcherSnapshot s;
+    s.tbar = 100;
+    w.setState(s);
+    const int h = layout().tbarRect.h;
+    const QPoint at = centre(node("main_3").hitRect);  // over a button: the right button does not press it
+    QTest::mousePress(&w, Qt::RightButton, {}, at);
+    QTest::mouseMove(&w, at + QPoint(30, 4));
+    QTest::mouseMove(&w, at + QPoint(0, 4));     // the same T-bar position: not sent again
+    QTest::mouseMove(&w, at + QPoint(0, -200));  // clamped
+    QTest::mouseRelease(&w, Qt::RightButton, {}, at + QPoint(0, -200));
+    QCOMPARE(fake.calls, (QStringList{QStringLiteral("tbar %1").arg(100 + std::lround(4.0 * 511 / (h - 1))), "tbar 0",
+                                      "release"}));
+}
+
+// tools/re/POSITION.md: while the snapshot says positioning the pointer is hidden and grabbed, its
+// moves go out as mouse counts (one per Toaster pixel), Space or Return keeps the position, the
+// left button finishes, the right one drags the T-bar again; the pointer comes back where it was.
+void TestToasterScreen::positioningFollowsTheSnapshot() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    const vt::Rect r = layout().tbarRect;
+    const QPoint mid(r.x + r.w / 2, r.y + r.h / 2);
+    QTest::mousePress(&w, Qt::LeftButton, {}, mid);
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, mid);
+    QCOMPARE(fake.calls.last(), QStringLiteral("release"));
+    fake.calls.clear();
+
+    const QPoint home = w.mapToGlobal(QPoint(5, 5));
+    QCursor::setPos(home);
+    SwitcherSnapshot s;
+    s.tbar = 256;
+    s.transition = s.positioning = true;
+    w.setState(s);
+    QCOMPARE(QWidget::mouseGrabber(), &w);
+    QVERIFY(QGuiApplication::overrideCursor() && QGuiApplication::overrideCursor()->shape() == Qt::BlankCursor);
+    const QPoint c = w.screen()->geometry().center();  // the pointer is held there
+    hover(w, c + QPoint(5, -3));
+    hover(w, c + QPoint(5, -3));  // no move: nothing sent
+    hover(w, c + QPoint(-2, 0));
+    QCOMPARE(fake.calls, (QStringList{"position 5 -3", "position -7 3"}));
+    fake.calls.clear();
+    QTest::keyClick(&w, Qt::Key_Space);
+    QCOMPARE(fake.calls, QStringList{"end KeepAndStop"});
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(QGuiApplication::overrideCursor(), nullptr);
+    QCOMPARE(QCursor::pos(), home);
+    w.setState(s);  // the engine has not caught up yet: no positioning here
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    hover(w, c);
+    QTest::keyClick(&w, Qt::Key_Return);  // Take again
+    QCOMPARE(fake.calls, (QStringList{"end KeepAndStop", "take"}));
+    fake.calls.clear();
+
+    auto again = [&] {
+        s.positioning = false;
+        w.setState(s);
+        s.positioning = true;
+        w.setState(s);
+        QCOMPARE(QWidget::mouseGrabber(), &w);
+    };
+    again();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, QPoint(10, 10));
+    QCOMPARE(fake.calls, QStringList{"end Finish"});
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(QCursor::pos(), home);
+    fake.calls.clear();
+
+    // The right button: a T-bar drag from where the pointer was put back.
+    again();
+    QTest::mousePress(&w, Qt::RightButton, {}, w.mapFromGlobal(c));
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(QCursor::pos(), home);
+    QTest::mouseMove(&w, w.mapFromGlobal(home) + QPoint(0, 10));
+    QTest::mouseRelease(&w, Qt::RightButton, {}, w.mapFromGlobal(home) + QPoint(0, 10));
+    QCOMPARE(fake.calls, (QStringList{"end BackToTBar", QStringLiteral("tbar %1").arg(256 + std::lround(10.0 * 511 / (r.h - 1))),
+                                      "release"}));
+    QCOMPARE(QWidget::mouseGrabber(), &w);  // let go mid-way: positioning again, as the snapshot says
+    s.positioning = false;
+    w.setState(s);
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
 }
 
 void TestToasterScreen::framestoreButtons() {
@@ -519,7 +622,7 @@ void TestToasterScreen::snapsToTheLargestZoomThatFits() {
     const vt::Rect t = layout().tbarRect;
     QTest::mousePress(&w, Qt::LeftButton, {}, offset + QPoint(t.x + t.w / 2, t.y + t.h - 1) * 2);
     QTest::mouseRelease(&w, Qt::LeftButton, {}, offset + QPoint(t.x + t.w / 2, t.y + t.h - 1) * 2);
-    QCOMPARE(fake.calls.last(), QStringLiteral("tbar 511"));
+    QCOMPARE(fake.calls, (QStringList{"select Main In3", "tbar 511", "release"}));
 
     // The list opens above the pop-up, left edges aligned, at the zoom and offset in effect.
     const vt::Rect r = node("bkg_popup").rect;

@@ -48,6 +48,12 @@ struct HardwareGuesses {
     // fill (vt/key.h lumaKey). 0 = a hard edge. HARDWARE GUESS: the manual calls an analog key
     // sharp; the keyer's edge is not measured (docs/2026-10-29-keys-design.md section 4).
     int keySoftness = 0;
+
+    // Positionable moves (tools/re/POSITION.md 4): the Amiga mouse counts, the delta the original's
+    // acceleration works on, per Toaster pixel the pointer moves on the Switcher screen (the
+    // screen's own Toaster-pixel scale, as the T-bar drag uses). HARDWARE GUESS: counts per mm
+    // depend on the mouse (about 200 dpi typical, POSITION.md 11.4).
+    double positionCountsPerPixel = 1.0;
 };
 
 }  // namespace vt

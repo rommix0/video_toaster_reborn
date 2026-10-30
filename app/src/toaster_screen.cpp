@@ -1,8 +1,10 @@
 #include "toaster_screen.h"
 
+#include <QCursor>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QScreen>
 #include <QToolTip>
 #include <QWheelEvent>
 #include <algorithm>
@@ -17,6 +19,7 @@ namespace {
 
 constexpr int kTbarMax = 511;
 constexpr int kTbarImages = kTbarMax / 6 + 1;  // 86
+constexpr int kRecentre = 100;  // capture: the pointer goes back to the centre once this far from it (logical px)
 
 QRect toQRect(const vt::Rect& r) { return {r.x, r.y, r.w, r.h}; }
 
@@ -210,7 +213,30 @@ void ToasterScreen::setPanelPalette(bool previewMode) {
 
 void ToasterScreen::setState(const vt::media::SwitcherSnapshot& s) {
     state_ = s;
+    if (!s.positioning) ended_ = false;
+    updateCapture();
     refresh();
+}
+
+// Positioning shows nothing but the program (POSITION.md 6): the pointer is hidden and held in the
+// middle of its display, so it never stops at an edge, and put back where it was afterwards.
+void ToasterScreen::updateCapture() {
+    const bool want = state_.positioning && !ended_ && dragTbar_ < 0 && !rightDrag_;
+    if (want == capture_) return;
+    capture_ = want;
+    if (want) {
+        savedPos_ = QCursor::pos();
+        centre_ = screen() ? screen()->geometry().center() : savedPos_;
+        QCursor::setPos(centre_);
+        lastGlobal_ = centre_;
+        counts_ = {};
+        setMouseTracking(true);  // moves with no button held
+        grabMouse(Qt::BlankCursor);
+    } else {
+        releaseMouse();
+        setMouseTracking(false);
+        QCursor::setPos(savedPos_);
+    }
 }
 
 QImage ToasterScreen::renderIndexedForTest() const {
@@ -433,8 +459,31 @@ int ToasterScreen::tbarFor(double screenY) const {
     return std::clamp(int(std::lround((std::floor(screenY) - r.y) * kTbarMax / (r.h - 1))), 0, kTbarMax);
 }
 
+void ToasterScreen::startRightDrag(double screenY) {
+    rightDrag_ = true;
+    dragTbar_ = tbarAtPress_ = state_.tbar;
+    pressY_ = screenY;
+}
+
+void ToasterScreen::endDrag() {
+    dragTbar_ = -1;
+    rightDrag_ = false;
+    ended_ = false;  // positioning may start (again): the snapshot says
+    actions_.releaseTBar();
+    updateCapture();
+}
+
 void ToasterScreen::mousePressEvent(QMouseEvent* e) {
-    if (e->button() != Qt::LeftButton) return QWidget::mousePressEvent(e);
+    const bool left = e->button() == Qt::LeftButton;
+    if (capture_ && (left || e->button() == Qt::RightButton)) {  // 0xb71dc
+        actions_.endPositioning(left ? vt::PositionEnd::Finish : vt::PositionEnd::BackToTBar);
+        ended_ = true;
+        updateCapture();  // the pointer is back where it was
+        if (!left) startRightDrag(toScreen(mapFromGlobal(QCursor::pos())).y());
+        return;
+    }
+    if (e->button() == Qt::RightButton && dragTbar_ < 0) return startRightDrag(toScreen(e->position()).y());
+    if (!left) return QWidget::mousePressEvent(e);
     const QPointF pos = toScreen(e->position());
     const QPoint px = toScreenPixel(e->position());
     if (ProjectGrid::area().contains(px)) {
@@ -470,6 +519,28 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
 }
 
 void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
+    if (capture_) {
+        // Toaster pixels as mouse counts, the fractions kept for the next move (the guesses are the
+        // defaults: the app sets none).
+        const QPointF g = e->globalPosition();
+        counts_ += (g - lastGlobal_) * (devicePixelRatioF() / zoom_ * vt::HardwareGuesses{}.positionCountsPerPixel);
+        lastGlobal_ = g;
+        const int dx = int(counts_.x()), dy = int(counts_.y());
+        counts_ -= QPointF(dx, dy);
+        if (dx || dy) actions_.movePosition(dx, dy);
+        if ((g - QPointF(centre_)).manhattanLength() > kRecentre) {
+            QCursor::setPos(centre_);
+            lastGlobal_ = centre_;
+        }
+        return;
+    }
+    if (rightDrag_) {  // the T-bar's own scale, from where the drag began
+        const int pos = std::clamp(tbarAtPress_ + int(std::lround((toScreen(e->position()).y() - pressY_) * kTbarMax /
+                                                                   (layout_.tbarRect.h - 1))),
+                                   0, kTbarMax);
+        if (pos != dragTbar_) actions_.setTBar(dragTbar_ = pos);
+        return;
+    }
     if (dragLevel_ >= 0) {  // C8: L moves by half the drag, right raises it
         const int level = std::clamp(levelAtPress_ + int((toScreen(e->position()).x() - pressX_) / 2), 0, vt::kKeyLevelMax);
         if (level != dragLevel_) actions_.setKeyLevel(dragLevel_ = level);
@@ -483,8 +554,10 @@ void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
 }
 
 void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
+    if (e->button() == Qt::RightButton && rightDrag_) return endDrag();
     if (e->button() != Qt::LeftButton) return QWidget::mouseReleaseEvent(e);
-    dragTbar_ = dragLevel_ = -1;
+    if (dragTbar_ >= 0 && !rightDrag_) endDrag();
+    dragLevel_ = -1;
     pressed_ = -1;
     refresh();
 }
@@ -532,7 +605,8 @@ void ToasterScreen::openBkgPopup() {
     bkgPopup_->open(mapToGlobal(at.toPoint()), zoom_, colours_);
 }
 
-// Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto, , . / = S M F,
+// Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto (while positioning, Space
+// and Return keep the position instead), , . / = S M F,
 // F1-F7 = Main, 1-7 = Preview, q-u = Superimpose, f = FREEZE, l = LIVE, o [ ] = key Off / Black / White.
 bool ToasterScreen::switcherKey(QKeyEvent* e) {
     static constexpr Qt::Key kOverlay[] = {Qt::Key_Q, Qt::Key_W, Qt::Key_E, Qt::Key_R, Qt::Key_T, Qt::Key_Y, Qt::Key_U};
@@ -541,7 +615,13 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
         e->accept();
         return !e->isAutoRepeat();
     };
-    if (k == Qt::Key_Return || k == Qt::Key_Enter) {
+    if (capture_ && (k == Qt::Key_Return || k == Qt::Key_Enter || k == Qt::Key_Space)) {  // 0xb71dc
+        if (handled()) {
+            actions_.endPositioning(vt::PositionEnd::KeepAndStop);
+            ended_ = true;
+            updateCapture();
+        }
+    } else if (k == Qt::Key_Return || k == Qt::Key_Enter) {
         if (handled()) actions_.take();
     } else if (k == Qt::Key_Space) {
         if (handled())

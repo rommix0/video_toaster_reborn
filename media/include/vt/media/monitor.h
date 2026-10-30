@@ -14,7 +14,7 @@ namespace vt::media {
 // The Switcher as it stood after tick `tick` (the one just finished; -1 before the first tick).
 // `transition` is Switcher::transitionActive(), `chroma` chromaEngaged(), `overlayEngaged`
 // overlayEngaged(), `frozen` frozen() (it also goes live by itself when a digital move starts, so it is
-// published every tick). `lastRefusal` is the reason of the most recent refused postChecked, kept until
+// published every tick), `positioning` positioning(). `lastRefusal` is the reason of the most recent refused postChecked, kept until
 // the next refusal or until a postChecked succeeds; empty = none. `refusalCount` counts every
 // refused postChecked since the loop was made, so a repeat of the same refusal is visible too.
 struct SwitcherSnapshot {
@@ -23,6 +23,7 @@ struct SwitcherSnapshot {
     int keyLevel = 128;                      // the clip level, 0..257
     int tbar = 0;
     bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;
+    bool positioning = false;  // a Positionable effect follows the mouse (Switcher::positioning)
     bool hasStill = false;  // a still was written into DV1 or DV2 (SAVE has something to save)
     vt::Speed speed = vt::Speed::Medium;
     std::string effectName;

@@ -4,6 +4,14 @@
 // T-bar and the framestore / superimpose / key panels, with the Project grid of crouton icons above
 // them. Mouse and keys go to SwitcherActions; what the panel shows comes only from the snapshots
 // given to setState().
+//
+// The T-bar is dragged with the left button on it or the right button anywhere on the screen
+// (switcher.main 0x1123e), by the same Toaster-pixel scale; letting go sends releaseTBar. While the
+// snapshot says `positioning` (a Positionable effect, tools/re/POSITION.md) and no drag is held, the
+// pointer is hidden and grabbed: its moves go to movePosition as mouse counts
+// (HardwareGuesses::positionCountsPerPixel per Toaster pixel), Space or Return keeps the position
+// (KeepAndStop), the left button finishes the take, the right button goes back to a T-bar drag.
+// The pointer then goes back to where it was.
 #include <QImage>
 #include <QList>
 #include <QRegion>
@@ -134,6 +142,9 @@ private:
     QPointF toScreen(const QPointF& logical) const;
     QPoint toScreenPixel(const QPointF& logical) const;
     int tbarFor(double screenY) const;
+    void startRightDrag(double screenY);
+    void endDrag();                        // a T-bar drag let go: releaseTBar
+    void updateCapture();                  // capture_ follows the snapshot, the drags and ended_
     void openBkgPopup();
 
     vt::assets::PanelLayout layout_;
@@ -149,6 +160,14 @@ private:
     int levelAtPress_ = 0;
     double pressX_ = 0;                              // the press, in Toaster pixels
     int dragTbar_ = -1;                              // last setTBar of a drag (only to skip repeats)
+    bool rightDrag_ = false;                         // the right button drags the T-bar
+    int tbarAtPress_ = 0;                            // right drag: the T-bar when it began
+    double pressY_ = 0;                              // right drag: where it began, in Toaster pixels
+    bool capture_ = false;                           // positioning: the pointer hidden and grabbed
+    bool ended_ = false;                             // positioning ended here, the snapshot not caught up
+    QPoint savedPos_, centre_;                       // capture: the pointer before it, where it is kept (global)
+    QPointF lastGlobal_;                             // capture: the pointer's last position (global)
+    QPointF counts_;                                 // capture: mouse counts not sent yet
     int pressed_ = -1;                               // node drawn pressed while the mouse holds it
     int preferredZoom_ = 1;                          // setZoom: sizeHint()
     int zoom_ = 1;                                   // in effect: the largest that fits the widget

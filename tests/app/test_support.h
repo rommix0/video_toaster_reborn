@@ -82,6 +82,13 @@ public:
     }
     void setSpeed(vt::Speed s) override { calls << QStringLiteral("speed %1").arg(int(s)); }
     void setTBar(int p) override { calls << QStringLiteral("tbar %1").arg(p); }
+    void releaseTBar() override { calls << QStringLiteral("release"); }
+    void movePosition(int dx, int dy) override { calls << QStringLiteral("position %1 %2").arg(dx).arg(dy); }
+    void endPositioning(vt::PositionEnd how) override {
+        calls << QStringLiteral("end %1").arg(how == vt::PositionEnd::KeepAndStop ? "KeepAndStop"
+                                              : how == vt::PositionEnd::Finish    ? "Finish"
+                                                                                  : "BackToTBar");
+    }
     void setBackground(vt::BkgColour c) override { calls << QStringLiteral("bkg %1").arg(int(c)); }
     void loadCrouton(int i, bool run) override { calls << QStringLiteral("crouton %1 %2").arg(i).arg(run); }
     void setFrozen(bool f) override { calls << QStringLiteral("frozen %1").arg(f); }

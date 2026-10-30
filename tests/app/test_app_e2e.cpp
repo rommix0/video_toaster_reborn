@@ -169,6 +169,7 @@ private slots:
     void grabPutsTheInputInDv1OnMain();
     void framestoreCroutonLoadsIntoDv2();
     void controlCroutonsSetPreview();
+    void positionableShrinkFollowsTheMouse();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
     void keyedDv2IsRefusedAndAKeyedInputShows();
@@ -366,6 +367,56 @@ void TestAppE2e::controlCroutonsSetPreview() {
     click("Stop");
     QCOMPARE(c.loop().switcherState().preview, vt::Source::Bkg);
     QVERIFY(c.window().statusBar()->currentMessage().contains(QStringLiteral("project control")));
+}
+
+// tools/re/POSITION.md: Positionable Shrink with the T-bar let go mid-way follows the mouse, Space
+// keeps the position and holds the take open, Auto finishes it.
+void TestAppE2e::positionableShrinkFollowsTheMouse() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    ToasterScreen& w = *c.screen();
+    const int i = showCrouton(c, "4000FX/Special", "Positionable Shrink");
+    QVERIFY(i >= 0);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, cellCentre(w, i));
+    c.runOffline(1);
+    auto position = [&] {
+        vt::EffectPosition p;
+        c.loop().post([&p](vt::Switcher& sw) { p = sw.position(); });
+        c.runOffline(1);
+        return p;
+    };
+    const vt::Rect r = apptest::layout().tbarRect;
+    const QPoint mid(r.x + r.w / 2, r.y + r.h / 2);
+    QTest::mousePress(&w, Qt::LeftButton, {}, mid);
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, mid);
+    c.runOffline(1);
+    QVERIFY(c.loop().switcherState().positioning);
+    QCOMPARE(QWidget::mouseGrabber(), &w);
+    const int tbar = c.loop().switcherState().tbar;
+
+    const QPoint to = w.screen()->geometry().center() + QPoint(40, 20) * w.zoom();  // 40, 20 Toaster pixels
+    QMouseEvent move(QEvent::MouseMove, w.mapFromGlobal(QPointF(to)), QPointF(to), Qt::NoButton, Qt::NoButton,
+                     Qt::NoModifier);
+    QApplication::sendEvent(&w, &move);
+    const vt::EffectPosition p = position();
+    QCOMPARE(p.h, 20);  // kind 3: half a control cell per count
+    QCOMPARE(p.v, 10);
+
+    QTest::keyClick(&w, Qt::Key_Space);
+    c.runOffline(1);
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QVERIFY(!s.positioning);
+    QVERIFY(s.transition);
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(position().bakedAt, tbar);
+    QCOMPARE(s.main, vt::Source::In1);
+    QTest::keyClick(&w, Qt::Key_Space);  // Auto from the stop finishes the take
+    c.runOffline(autoTicks(dataRoot().toStdString() + "/4.2/Effects/4000FX/Special/Positionable Shrink") + 2);
+    s = c.loop().switcherState();
+    QVERIFY(!s.transition);
+    QCOMPARE(s.main, vt::Source::In2);
 }
 
 // SAVE writes <path> and <path>.I from the still in DV1/DV2 and lists it in "Saved framestores".

@@ -397,6 +397,18 @@ void AppController::setTBar(int position) {
     loop_->post([position](vt::Switcher& sw) { sw.setTBar(position); });
 }
 
+void AppController::releaseTBar() {
+    loop_->post([](vt::Switcher& sw) { sw.releaseTBar(); });
+}
+
+void AppController::movePosition(int dx, int dy) {
+    loop_->post([dx, dy](vt::Switcher& sw) { sw.movePosition(dx, dy); });
+}
+
+void AppController::endPositioning(vt::PositionEnd how) {
+    loop_->post([how](vt::Switcher& sw) { sw.endPositioning(how); });
+}
+
 void AppController::setKeyMode(vt::KeyMode m) {
     loop_->post([m](vt::Switcher& sw) { sw.setKeyMode(m); });
 }

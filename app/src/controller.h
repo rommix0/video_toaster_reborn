@@ -27,6 +27,9 @@ public:
     virtual void autoTransition(vt::Direction) = 0;
     virtual void setSpeed(vt::Speed) = 0;
     virtual void setTBar(int position) = 0;              // 0..511
+    virtual void releaseTBar() = 0;                      // a T-bar drag ends (a Positionable effect may start positioning)
+    virtual void movePosition(int dx, int dy) = 0;       // positioning: mouse counts, right / down +
+    virtual void endPositioning(vt::PositionEnd) = 0;    // positioning: Space / Return, left click, right button
     virtual void setBackground(vt::BkgColour) = 0;
     virtual void loadCrouton(int index, bool run) = 0;   // run = also start Auto (double click)
     virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons, keys f / l
@@ -145,6 +148,9 @@ public:
     void autoTransition(vt::Direction) override;
     void setSpeed(vt::Speed) override;
     void setTBar(int position) override;
+    void releaseTBar() override;
+    void movePosition(int dx, int dy) override;
+    void endPositioning(vt::PositionEnd) override;
     void setBackground(vt::BkgColour) override;
     void loadCrouton(int index, bool run) override;
     void setFrozen(bool frozen) override;
