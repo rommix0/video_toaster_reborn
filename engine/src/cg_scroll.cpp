@@ -27,6 +27,10 @@ struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
+void checkSize(const std::vector<uint8_t>& px) {
+    if (px.size() > kCgScrollMaxBytes) throw Refusal("the page is too large (its rows pass 64 MB)");
+}
+
 constexpr int kDx[8] = {0, -1, -1, -1, 0, 1, 1, 1};  // 0x10ce1c, by attribute bits 5-7
 constexpr int kDy[8] = {1, 1, 0, -1, -1, -1, 0, 1};  // 0x10ce2c
 struct Outline {
@@ -262,6 +266,7 @@ void runScroll(const Page& p, CgScroll& out) {
             else out.px.resize(out.px.size() + kLineW);  // past the line buffer (an empty line taller than it)
         }
         out.px.resize(out.px.size() + size_t(inc - n) * kLineW);
+        checkSize(out.px);
         feed -= n;
         T += inc;
         out.tops.push_back(T);
@@ -341,7 +346,8 @@ void runCrawl(const Page& p, CgScroll& out) {
     out.rows = (std::min(p.maxh + 0x1e, kCrawlRows) >> 1) * 2;
     out.bandTop = 2 * (p.lines[0].second >> 1) + 44;
     const size_t nplace = p.placements.size();
-    std::vector<std::vector<uint8_t>> windows;  // per window: band rows x 768, strip columns 768n..
+    const size_t window = size_t(out.rows) * 768;  // one window's band rows x columns 768n..
+    int n = 0;
     Plane cov(kCrawlW, kCrawlRows), sh(kCrawlW, kCrawlRows);
     size_t k = 0;
     int64_t X = 0;
@@ -365,19 +371,16 @@ void runCrawl(const Page& p, CgScroll& out) {
         }
         if (k) --k;  // the glyph that crosses 1509 is drawn again in the next window
         X = d5 > kLimit ? d5 - d3 - kLimit + 0x2e6 : d5 - d3;
-        std::vector<uint8_t>& w = windows.emplace_back(size_t(out.rows) * 768);
+        out.px.resize(out.px.size() + window);
+        checkSize(out.px);
+        uint8_t* w = out.px.data() + size_t(n++) * window;
         for (int r = 0; r < out.rows; ++r)
             for (int c = 0; c < 768; ++c) w[size_t(r) * 768 + size_t(c)] = uint8_t(cov.at(742 + c, r) | sh.at(742 + c, r) << 2);
         if (!drew && !cd) cd = 4;
         if (cd && --cd == 1) break;
-        if (windows.size() > kMaxWindows) throw Refusal("the crawl does not end");
+        if (n > kMaxWindows) throw Refusal("the crawl does not end");
     }
-    const int n = int(windows.size());
     out.width = 768 * n;
-    out.px.assign(size_t(out.rows) * size_t(out.width), 0);
-    for (int i = 0; i < n; ++i)
-        for (int r = 0; r < out.rows; ++r)
-            std::copy_n(windows[size_t(i)].begin() + r * 768, 768, out.px.begin() + size_t(r) * size_t(out.width) + size_t(i) * 768);
     out.pxPerField = 2 << std::min(out.speed, 3);
     out.endField = 768 * (n - 1) / out.pxPerField;  // the display swaps to the last window
 }

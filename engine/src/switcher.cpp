@@ -42,6 +42,7 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
         if (whyNot) *whyNot = why;
         return false;
     };
+    keyHidden_ = false;  // a bus update
     Source& cur = sel_[busIndex(b)];
     if (b == Bus::Superimpose && cgPage_) {  // 0x123a1e: the page's own DV cuts it on, any other drops it
         if (s == cgDv_) cgCutOn();
@@ -63,6 +64,7 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
 
 void Switcher::setKeyMode(KeyMode m) {
+    keyHidden_ = false;
     if (cgPage_) return cgDrop();  // 0x123a50: OFF, Black and White cut the page off, the keyer OFF
     if (effect_->isArtCardKey()) {
         Source& sup = sel_[busIndex(Bus::Superimpose)];
@@ -83,6 +85,7 @@ void Switcher::setKeyMode(KeyMode m) {
 }
 
 void Switcher::setKeyLevel(int l) {
+    keyHidden_ = false;
     if (cgPage_) {  // 0x123a50: only the keyer bit is cleared; the page is unaffected
         keyOn_ = false;
         keyLevel_ = std::clamp(l, 0, kKeyLevelMax);
@@ -145,6 +148,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
     }
     clearCgPage();  // another crouton selected
     clearCgScroll();
+    keyHidden_ = false;  // the new crouton's registers are sent
     // Abandon whatever was in progress, without a swap: the buses as at a return to 0 (C7), decided
     // by the old effect. Not under Art Card Key: the card holds the T-bar with no take.
     if (transitionActive() && !effect_->isArtCardKey()) arriveAt0();
@@ -171,6 +175,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
 
 void Switcher::beginTransitionIfIdle() {
     if (transitionActive()) return;
+    keyHidden_ = false;  // the take sends the buses
     soundPending_ = effect_->sound() != nullptr;
     ++take_;
     grabSelects_ = false;  // a pending grab must not switch Main or freeze mid-transition
@@ -372,6 +377,7 @@ void Switcher::take() {
     disengage();
     soundPending_ = false;
     grabSelects_ = false;  // a pending grab must not undo the cut
+    keyHidden_ = false;
     if (cgPage_) {  // 0x123a76
         cgAuto_ = false;
         cgMark_ = false;  // 0x150b0
@@ -417,7 +423,7 @@ void Switcher::tick() {
         sel_[busIndex(Bus::Main)] = Source::DV1;
         frozen_ = true;
     }
-    if (scrollPlaying_ && ++scrollField_ >= scroll_->endField) scrollPlaying_ = false;  // its end: Main alone
+    if (scrollPlaying_ && ++scrollField_ >= scroll_->endField) endCgScroll();  // its end: Main alone
     if (cgAuto_ && --cgWait_ <= 0) {  // the next level of a page dissolve, or its end
         if (++cgStep_ < cgRamp_.size()) {
             cgLevel_ = cgRamp_[cgStep_];
@@ -549,7 +555,7 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         out.px = a.px;
         // The key: a Superimpose source that is not Main, over Main (design 2 A).
         const Source sup = sel_[busIndex(Bus::Superimpose)];
-        if (keyOn_ && sup != Source::None && sup != sel_[busIndex(Bus::Main)] && keyLevel_ < kKeyLevelMax) {
+        if (keyOn_ && !keyHidden_ && sup != Source::None && sup != sel_[busIndex(Bus::Main)] && keyLevel_ < kKeyLevelMax) {
             const Frame& s = pick(sup);
             if (keyLevel_ == 0) out.px = s.px;  // L 0: the Superimpose source alone
             else lumaKey(s, a, s, keyClip(keyBlack_, keyLevel_), keyBlack_, guesses_.keySoftness, out);
@@ -734,6 +740,7 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
     }
     clearCgPage();  // another crouton selected
     clearCgScroll();
+    keyHidden_ = false;
     // Step 1: ChromaFX off, live digital stripped from the buses.
     if (chromaEngaged()) {
         auto_ = false;
@@ -931,8 +938,11 @@ bool Switcher::loadCgScroll(std::shared_ptr<const CgScroll> page, bool play, std
         if (whyNot) *whyNot = "not a decoded CG scroll or crawl page";
         return false;
     }
-    // The page is the loaded crouton, as an effect click: the take module's default is the Fade.
+    // The page is the loaded crouton, as an effect click: the take module's default is the Fade. Message 2
+    // sends no registers, so a key hidden by an earlier play (or the one this load ends) stays hidden.
+    const bool hidden = keyHidden_ || scrollPlaying_;
     setEffect(makeDissolve());  // drops a CG key page and the previous scroll
+    keyHidden_ = hidden;
     scroll_ = std::move(page);
     if (play) {  // 0x101000
         Source& main = sel_[busIndex(Bus::Main)];
@@ -947,12 +957,18 @@ bool Switcher::loadCgScroll(std::shared_ptr<const CgScroll> page, bool play, std
 // The right button (0x24098): interrupt off and 0x101118 at once; the pause hold and fade do not poll it.
 void Switcher::stopCgScroll() {
     if (!scrollPlaying_ || (scroll_->pause && scrollField_ >= scroll_->stopField)) return;
-    scrollPlaying_ = false;
+    endCgScroll();
 }
 
 void Switcher::clearCgScroll() {
+    if (scrollPlaying_) endCgScroll();
     scroll_.reset();
+}
+
+// 0x101118: Main alone, mixer mode 7: a key that was up is not shown until the next bus update.
+void Switcher::endCgScroll() {
     scrollPlaying_ = false;
+    keyHidden_ = true;
 }
 
 // Field scrollField_ of the playing page over `out` (Main). Index 0 is transparent; the pause fade
@@ -980,11 +996,12 @@ void Switcher::drawCgScroll(Frame& out) const {
         }
     } else {  // raster column x shows strip column x + v * j - 768, in the band
         const int64_t u0 = int64_t(p.pxPerField) * j - 768;
-        for (int r = 0; r < p.rows && p.bandTop + r < kRasterH; ++r) {
-            const uint8_t* row = p.px.data() + size_t(r) * size_t(p.width);
-            for (int x = int(std::max<int64_t>(0, -u0)); x < kRasterW && u0 + x < p.width; ++x)
-                if (const uint8_t i = row[size_t(u0 + x)]) put(out.at(x, p.bandTop + r), i);
-        }
+        const size_t window = size_t(p.rows) * 768;  // stored window by window (CgScroll::px)
+        for (int r = 0; r < p.rows && p.bandTop + r < kRasterH; ++r)
+            for (int x = int(std::max<int64_t>(0, -u0)); x < kRasterW && u0 + x < p.width; ++x) {
+                const size_t u = size_t(u0 + x);
+                if (const uint8_t i = p.px[u / 768 * window + size_t(r) * 768 + u % 768]) put(out.at(x, p.bandTop + r), i);
+            }
     }
 }
 

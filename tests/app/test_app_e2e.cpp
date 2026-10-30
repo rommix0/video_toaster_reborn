@@ -475,10 +475,14 @@ void TestAppE2e::cgCrawlPlaysOverMainAndTheRightButtonStopsIt() {
     c.loop().addMonitor(&last);
     const int i = showCrouton(c, "CG/Crawls", "Novel.Crawl");
     QVERIFY(i >= 0);
+    QStatusBar* bar = c.window().statusBar();
     QTest::mouseDClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), i));
+    QTest::keyClick(c.screen(), Qt::Key_Return);  // before any snapshot shows the play: ignored all the same
+    QVERIFY2(bar->currentMessage().contains(QStringLiteral("right-click stops it")), qPrintable(bar->currentMessage()));
     c.runOffline(1);
     vt::media::SwitcherSnapshot s = c.loop().switcherState();
     QCOMPARE(s.cgScroll, (vt::CgScrollState{true, true}));
+    QCOMPARE(s.main, vt::Source::In1);
     QCOMPARE(s.effectName, vt::makeDissolve()->name());
     QVERIFY(s.frozen);
     QCOMPARE(c.screen()->project().loaded(), i);
@@ -497,7 +501,6 @@ void TestAppE2e::cgCrawlPlaysOverMainAndTheRightButtonStopsIt() {
         }
     QVERIFY2(changed > 5000, qPrintable(QString::number(changed)));
 
-    QStatusBar* bar = c.window().statusBar();
     bar->clearMessage();
     QTest::keyClick(c.screen(), Qt::Key_Return);  // Take: ignored
     c.runOffline(1);

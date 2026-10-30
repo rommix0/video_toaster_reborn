@@ -28,9 +28,10 @@ struct CgScroll {
     // The 8 Amiga colours as RGB (12-bit, nibble * 17): 0 background (transparent), 1-3 face, 4 edge,
     // 5 / 6 edge-to-face blends, 7 face (cgscroll_ref.palette).
     std::array<Rgba8, 8> palette{};
-    // Amiga colour indices, `width` per row, `rows` rows. Scroll: width 640, every row the scroll feeds,
-    // in order (row m of the stream; rows past the end are 0). Crawl: the continuous strip
-    // (width 768 x windows), its rows 0.. the crawl band's.
+    // Amiga colour indices. Scroll: width 640, `rows` rows, every row the scroll feeds, in order (row m of
+    // the stream; rows past the end are 0). Crawl: the continuous strip, `width` = 768 x windows wide and
+    // `rows` tall (the crawl band's rows), stored window by window: strip column U, row r is
+    // px[(U / 768 * rows + r) * 768 + U % 768].
     int width = 0, rows = 0;
     std::vector<uint8_t> px;
     // Scroll: tops[f] = rows fed after field f (f = 0 the first); field j shows tops[j - 1] (0 for j = 0),
@@ -41,12 +42,16 @@ struct CgScroll {
     int pxPerField = 0, bandTop = 0;
 };
 
+// The pre-rendered page's largest size: a corrupt page is refused once its rows pass it (the shipped
+// pages need 0.2 to 6.2 MB).
+inline constexpr size_t kCgScrollMaxBytes = size_t(64) << 20;
+
 // TYPE SCRO or CRAW in the file's own CrUD. False for a missing or unreadable file.
 bool isCgScroll(const std::filesystem::path&);
 
 // The page, played at `speed` (-1: its own, tag 0x8000006a). nullopt and *whyNot for anything that is
 // not such a page or does not decode (a record past the end of the strip, a placement past the records,
-// a motion that never ends).
+// a motion that never ends, a pre-render over kCgScrollMaxBytes).
 std::optional<CgScroll> loadCgScroll(const std::filesystem::path&, std::string* whyNot = nullptr, int speed = -1);
 
 }  // namespace vt

@@ -287,13 +287,16 @@ public:
     // Play (msg 0x21): the page plays from field 0. Main = BKG becomes In1 (kept), the store freezes as
     // FREEZE does (kept), and Program is Main with the page keyed over it (colour 0 transparent), whatever
     // the keyer and Superimpose hold (hidden, not changed). Every tick() is one field; at the page's
-    // endField the play ends: Program is Main alone again (a cut), the page stays loaded.
+    // endField the play ends: Program is Main alone again (a cut), the page stays loaded. A key that was
+    // up is not changed but stays hidden (CGSCROLL.md 3: 0x101118 leaves mixer mode 7) until the next bus
+    // update: select, setKeyMode, setKeyLevel, setEffect, loadStill, take or a transition starting. A
+    // click on a scroll page (message 2) sends nothing, so it leaves the key hidden.
     bool loadCgScroll(std::shared_ptr<const CgScroll>, bool play = false, std::string* whyNot = nullptr);
-    // The right button: a playing page ends at once, as at its end. Ignored during a pause scroll's hold
+    // The right button: a playing page ends at once, as at its end (the key hidden as there). Ignored during a pause scroll's hold
     // and fade (from its stopField on: the original does not poll the button there), or when not playing.
     void stopCgScroll();
     // Another crouton selected (setEffect, loadStill and loadCgPage do it themselves; a control crouton
-    // calls it): the page leaves, ending a play at once.
+    // calls it): the page leaves, ending a play at once (the key hidden as at the end).
     void clearCgScroll();
     CgScrollState cgScroll() const { return {scroll_ != nullptr, scrollPlaying_}; }
 
@@ -372,7 +375,8 @@ private:
     void cgDrop();             // the keyer buttons, another Superimpose source: the page cuts off
     void cgShow();             // 0x123d62 when no page bitmap is shown: the page's DV on Superimpose
     void cgFinish();           // the Auto's last write was held: its end (CGKEY.md section 2)
-    void drawCgScroll(Frame& out) const;  // the playing scroll or crawl page's field over Main
+    void drawCgScroll(Frame& out) const;
+    void endCgScroll();  // the play ends (its end, the right button, another crouton)  // the playing scroll or crawl page's field over Main
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::None};  // Main, Preview, Superimpose
@@ -436,6 +440,7 @@ private:
     std::shared_ptr<const CgScroll> scroll_;
     bool scrollPlaying_ = false;
     int scrollField_ = 0;  // the field render shows: 0 at play, +1 per tick
+    bool keyHidden_ = false;  // a play ended: the idle key is not shown until the next bus update (mode 7)
 };
 
 }  // namespace vt

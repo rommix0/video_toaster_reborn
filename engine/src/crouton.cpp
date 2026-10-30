@@ -1,6 +1,7 @@
 #include "vt/crouton.h"
 
 #include <algorithm>
+#include <exception>
 #include <fstream>
 #include <iterator>
 #include <string_view>
@@ -126,6 +127,23 @@ std::optional<Crouton> loadCrouton(const std::filesystem::path& p) {
         break;  // first CrUD only, as crud_info
     }
     return c;
+}
+
+std::optional<CroutonType> croutonType(const std::filesystem::path& path) {
+    try {
+        const auto c = loadCrouton(path);
+        if (!c) return std::nullopt;
+        if (c->type != CroutonType::None) return c->type;
+        for (const char* ext : {".i", ".I"}) {
+            auto sib = path;
+            sib += ext;
+            if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)  // a broken one has none
+                return icon->type;
+        }
+        return CroutonType::None;
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
 }
 
 }  // namespace vt

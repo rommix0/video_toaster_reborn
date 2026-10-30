@@ -124,6 +124,7 @@ private slots:
     void keyButtonLooksFollowTheSnapshot();
     void cgMarkFollowsTheSnapshot();
     void inputIsIgnoredWhileAScrollPlays();
+    void aScrollPlayPostedCountsAsPlayingUntilASnapshotShowsIt();
     void levelBoxDragAndText();
     void displayFollowsTheSnapshotNotTheClick();
     void bkgPopupInTheToasterLook();
@@ -476,6 +477,33 @@ void TestToasterScreen::inputIsIgnoredWhileAScrollPlays() {
     QTest::mouseRelease(&w, Qt::RightButton, {}, any + QPoint(0, 40));
     QCOMPARE(fake.calls.mid(0, 2), (QStringList{"select Main In3", "take"}));
     QVERIFY(fake.calls.size() == 4 && fake.calls[2].startsWith("tbar ") && fake.calls[3] == "release");
+}
+
+// A play just posted (holdScrollPlaying) counts as playing until a snapshot of that tick or later comes
+// in; from then on the snapshot alone decides.
+void TestToasterScreen::aScrollPlayPostedCountsAsPlayingUntilASnapshotShowsIt() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    SwitcherSnapshot s;
+    s.tick = 3;
+    w.setState(s);
+    w.holdScrollPlaying(5);
+    const QPoint any = centre(node("main_3").hitRect);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, any);
+    QTest::keyClick(&w, Qt::Key_Return);
+    QTest::mouseClick(&w, Qt::RightButton, {}, any);
+    s.tick = 4;
+    w.setState(s);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, any);
+    QCOMPARE(fake.calls, (QStringList{"scroll ignored", "scroll ignored", "stop scroll", "scroll ignored"}));
+    fake.calls.clear();
+    s.tick = 5;  // the play was refused: the snapshot says nothing plays
+    w.setState(s);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, any);
+    QCOMPARE(fake.calls, QStringList{"select Main In3"});
 }
 
 void TestToasterScreen::levelBoxDragAndText() {

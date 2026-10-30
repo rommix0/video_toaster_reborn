@@ -2,7 +2,10 @@
 // the page renderer and the per-field motion against tests/golden/cgscrolls.jsonl
 // (tools/make_cgscrolls_golden.py from tools/re/cgscroll_ref.py), and the Switcher's behaviour.
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -196,16 +199,17 @@ TEST_CASE("playing a CG scroll freezes, makes Main = BKG input 1 and keys the pa
     }
     CHECK(showsPage(r.render()));
 
-    // The end: the page leaves at once, FREEZE on, Main still input 1, the page still loaded. The key
-    // was never changed, so it shows again (builder's reading; CGSCROLL.md 3 infers it stays hidden until
-    // the next bus update).
+    // The end: Main alone (a cut), FREEZE on, Main still input 1, the page still loaded. The key is not
+    // changed but stays hidden until the next bus update (CGSCROLL.md 3: mixer mode 7).
     r.ticks(p->endField - 1 - at);
     CHECK(r.sw.cgScroll().playing);
     r.sw.tick();
     CHECK(r.sw.cgScroll() == vt::CgScrollState{true, false});
     CHECK(r.sw.frozen());
     CHECK(r.sw.selected(Bus::Main) == Source::In1);
-    CHECK(r.render().px == r.in3.px);
+    CHECK(r.render().px == r.in1.px);
+    CHECK(r.sw.keyMode() == vt::KeyMode::White);
+    CHECK(r.sw.selected(Bus::Superimpose) == Source::In3);
     r.sw.setKeyMode(vt::KeyMode::Off);
     CHECK(r.render().px == r.in1.px);
 
@@ -300,4 +304,86 @@ TEST_CASE("playing a CG scroll while a CG key page is loaded clears the key page
     CHECK(r.sw.selected(Bus::Superimpose) == Source::None);
     CHECK(r.sw.cgScroll() == vt::CgScrollState{true, true});
     CHECK(r.render().px == r.in1.px);  // field 0: nothing of the crawl yet
+}
+
+TEST_CASE("a key up before a CG scroll stays hidden after its end or stop until the next bus update", "[cgscrolls][switcher]") {
+    const auto p = page(kNovel);
+    // The key alone shows (level 0: the Superimpose source, red) once it is back.
+    auto played = [&](Rig& r, bool toTheEnd) {
+        REQUIRE(r.sw.select(Bus::Superimpose, Source::In3));
+        r.sw.setKeyLevel(0);
+        REQUIRE(r.render().px == r.in3.px);
+        REQUIRE(r.sw.loadCgScroll(p, true));
+        if (toTheEnd) {
+            r.ticks(p->endField);
+        } else {
+            r.ticks(300);
+            r.sw.stopCgScroll();
+        }
+        REQUIRE_FALSE(r.sw.cgScroll().playing);
+        CHECK(r.render().px == r.in1.px);  // Main alone
+        r.ticks(20);
+        CHECK(r.render().px == r.in1.px);
+        r.sw.stopCgScroll();      // not playing: changes nothing
+        REQUIRE(r.sw.loadCgScroll(p));  // clicking the page again (message 2) sends nothing either
+        CHECK(r.render().px == r.in1.px);
+    };
+    const std::vector<std::pair<const char*, std::function<void(Rig&)>>> updates{
+        {"select", [](Rig& r) { REQUIRE(r.sw.select(Bus::Preview, Source::In4)); }},
+        {"setKeyMode", [](Rig& r) { r.sw.setKeyMode(vt::KeyMode::White); }},
+        {"setKeyLevel", [](Rig& r) { r.sw.setKeyLevel(0); }},
+        {"setEffect", [](Rig& r) { REQUIRE(r.sw.setEffect(std::shared_ptr<const vt::Effect>(vt::makeDissolve()))); }},
+        {"loadStill", [](Rig& r) { REQUIRE(r.sw.loadStill(r.in2)); }},
+    };
+    for (bool end : {true, false})
+        for (const auto& [name, update] : updates) {
+            INFO((end ? "end, then " : "stop, then ") << name);
+            Rig r;
+            played(r, end);
+            update(r);
+            CHECK(r.render().px == r.in3.px);
+        }
+    // A Take empties Superimpose (KEY.md 4); a key chosen again shows.
+    Rig t;
+    played(t, false);
+    t.sw.take();
+    REQUIRE(t.sw.select(Bus::Superimpose, Source::In4));
+    CHECK(t.render().px == t.in4.px);
+}
+
+TEST_CASE("a corrupt CG scroll or crawl page is refused before its pre-render grows past 64 MB", "[cgscrolls]") {
+    // A copy of a shipped page with its MVPG header or placements patched, in a temporary file.
+    auto patched = [](const char* rel, const char* name, const std::function<void(std::vector<uint8_t>&, size_t)>& patch) {
+        std::vector<uint8_t> d = readFile(dataRoot() / "4.2/CG" / rel);
+        const std::string tag = "MVPG";
+        const auto at = std::search(d.begin(), d.end(), tag.begin(), tag.end());
+        REQUIRE(at != d.end());
+        patch(d, size_t(at - d.begin()) + 4);  // the MVPG header
+        const auto path = std::filesystem::temp_directory_path() / name;
+        std::ofstream(path, std::ios::binary).write(reinterpret_cast<const char*>(d.data()), std::streamsize(d.size()));
+        return path;
+    };
+    auto put16 = [](std::vector<uint8_t>& d, size_t o, unsigned v) {
+        d[o] = uint8_t(v >> 8);
+        d[o + 1] = uint8_t(v);
+    };
+    auto get32 = [](const std::vector<uint8_t>& d, size_t o) {
+        return uint32_t(d[o]) << 24 | uint32_t(d[o + 1]) << 16 | uint32_t(d[o + 2]) << 8 | d[o + 3];
+    };
+    // NightOfTerror's blank lines feed max height + 4 rows: 0xFFFF makes each one 42 MB.
+    const auto tall = patched(kNight, "vt_cgscroll_tall", [&](std::vector<uint8_t>& d, size_t h) { put16(d, h + 0x0e, 0xffff); });
+    // Every crawl glyph followed by a gap of 800 columns: one glyph per window, drawn again in the next.
+    const auto wide = patched(kNovel, "vt_cgcrawl_wide", [&](std::vector<uint8_t>& d, size_t h) {
+        const uint32_t nplace = get32(d, h), nglyph = get32(d, h + 4);
+        for (uint32_t i = 0; i < nplace; ++i) put16(d, h + 0x34 + 12 * nglyph + 8 * i + 2, 800);
+    });
+    for (const auto& path : {tall, wide}) {
+        INFO(path.filename().string());
+        const auto t0 = std::chrono::steady_clock::now();
+        std::string why;
+        CHECK_FALSE(vt::loadCgScroll(path, &why));
+        CHECK(why.find("too large") != std::string::npos);
+        CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(2));
+        std::filesystem::remove(path);
+    }
 }

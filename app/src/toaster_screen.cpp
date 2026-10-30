@@ -461,13 +461,13 @@ void ToasterScreen::endDrag() {
 // The one choke point for input while a CG scroll or crawl plays (the original never returns to its
 // input loop then).
 bool ToasterScreen::scrollPlaying() {
-    if (!state_.cgScroll.playing) return false;
+    if (!playing()) return false;
     actions_.cgScrollIgnored();
     return true;
 }
 
 void ToasterScreen::mousePressEvent(QMouseEvent* e) {
-    if (state_.cgScroll.playing && e->button() == Qt::RightButton) return actions_.stopCgScroll();
+    if (playing() && e->button() == Qt::RightButton) return actions_.stopCgScroll();
     if (e->button() == Qt::LeftButton && scrollPlaying()) return;
     if (e->button() == Qt::RightButton && dragTbar_ < 0) {
         grabTbar();

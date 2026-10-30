@@ -107,21 +107,6 @@ Picture readPicture(const Crouton& c, SizeOk sizeOk) {
     return p;
 }
 
-// The crouton TYPE of `path` from its own CrUD, or with none its sibling icon's (Ruling 9); nullopt
-// when the file does not read.
-std::optional<CroutonType> croutonType(const std::filesystem::path& path) {
-    const auto c = loadCrouton(path);
-    if (!c) return std::nullopt;
-    if (c->type != CroutonType::None) return c->type;
-    for (const char* ext : {".i", ".I"}) {
-        auto sib = path;
-        sib += ext;
-        if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)  // a broken one has none
-            return icon->type;
-    }
-    return CroutonType::None;
-}
-
 // ---- saving: the layout of 4.2/Framestore/ColorBars (FREEZE.md §4) ----
 
 using Bytes = std::vector<uint8_t>;

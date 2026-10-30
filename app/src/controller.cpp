@@ -457,13 +457,20 @@ void AppController::loadCrouton(int index, bool run) {
             });
             return;
         }
-        if (vt::isCgScroll(c.effect)) {
-            std::string why;
-            auto page = vt::loadCgScroll(c.effect, &why);
-            if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
+        const vt::CroutonType type = vt::croutonType(c.effect).value_or(vt::CroutonType::None);
+        if (type == vt::CroutonType::Scro || type == vt::CroutonType::Craw) {
+            std::error_code ec;
+            const auto time = fs::last_write_time(c.effect, ec);
+            if (!scrollCache_ || scrollCache_->path != c.effect || scrollCacheTime_ != time) {
+                std::string why;
+                auto page = vt::loadCgScroll(c.effect, &why);
+                if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
+                scrollCache_ = std::make_shared<const vt::CgScroll>(std::move(*page));
+                scrollCacheTime_ = time;
+            }
             pageHoldUntil_ = loop_->switcherState().tick + 2;  // as for a CG key page below
-            loop_->postChecked([this, p = std::make_shared<const vt::CgScroll>(std::move(*page)), run](vt::Switcher& sw,
-                                                                                                  std::string& why) {
+            if (run) screen_->holdScrollPlaying(pageHoldUntil_);
+            loop_->postChecked([this, p = scrollCache_, run](vt::Switcher& sw, std::string& why) {
                 if (!sw.loadCgScroll(p, run, &why)) return false;
                 const std::lock_guard l(effectMu_);
                 currentEffect_ = p->path;
@@ -472,7 +479,7 @@ void AppController::loadCrouton(int index, bool run) {
             });
             return;
         }
-        if (vt::isCgKeyPage(c.effect)) {
+        if (type == vt::CroutonType::Keyf) {
             std::string why;
             auto page = vt::loadCgKeyPage(c.effect, &why);
             if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));

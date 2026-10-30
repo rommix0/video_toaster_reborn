@@ -26,4 +26,9 @@ struct Crouton {
 
 std::optional<Crouton> loadCrouton(const std::filesystem::path& p);
 
+// The crouton TYPE of `path` from its own CrUD, or with none its sibling icon's (<name>.i / .I; Ruling 9:
+// the original reads a crouton's CrUD from its icon); None when neither has one, nullopt when the file
+// does not read or does not parse.
+std::optional<CroutonType> croutonType(const std::filesystem::path& path);
+
 }  // namespace vt

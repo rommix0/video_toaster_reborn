@@ -87,6 +87,9 @@ public:
     void setLoaded(int index);                           // -1: none
     void setNext(int index);                             // -1: none
     const ProjectGrid& project() const { return project_; }
+    // A play of a scroll or crawl page was just posted: the screen counts it as playing until a snapshot of
+    // tick `untilTick` or later comes in (one that would show it), so input in between is ignored too.
+    void holdScrollPlaying(int64_t untilTick) { scrollHoldUntil_ = untilTick; }
 
     // The Switcher's key map (Global Constraints) for a key press, also for presses AppController
     // forwards from its other windows: true (and accepted) if the key is mapped. Auto-repeats of a
@@ -149,7 +152,8 @@ private:
     void startRightDrag(double screenY);
     void endDrag();                        // a T-bar drag let go: releaseTBar
     void openBkgPopup();
-    bool scrollPlaying();                  // a CG scroll or crawl plays: other input is ignored (cgScrollIgnored)
+    bool playing() const { return state_.cgScroll.playing || state_.tick < scrollHoldUntil_; }  // a page plays
+    bool scrollPlaying();                  // playing(): other input is ignored (cgScrollIgnored)
 
     vt::assets::PanelLayout layout_;
     vt::assets::ColorFont font_;
@@ -161,6 +165,7 @@ private:
     std::vector<Control> controls_;
     int tbarNode_ = -1, bkgNode_ = -1, bkgText_ = -1, levelNode_ = -1, levelText_ = -1;
     vt::media::SwitcherSnapshot state_;
+    int64_t scrollHoldUntil_ = -1;                   // holdScrollPlaying
     int dragLevel_ = -1;                             // level box drag: the last level sent, -1 = none
     int levelAtPress_ = 0;
     double pressX_ = 0;                              // the press, in Toaster pixels

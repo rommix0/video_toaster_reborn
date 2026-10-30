@@ -80,9 +80,11 @@ namespace vt::media { class Recorder; }
 //   crouton until the engine clears it (its off-dissolve ends, or another crouton is loaded; a
 //   control crouton clears it first). The keys f / l go to freezeKey, which a loaded page refuses.
 // - A CG scroll or crawl page (SCRO / CRAW, the CG/Scrolls and CG/Crawls drawers) is decoded and
-//   pre-rendered on every click (vt::loadCgScroll, on this thread) and loaded with a postChecked
-//   loadCgScroll; a double click also plays it. While it plays the screen sends only stopCgScroll (the
-//   right button); any other input calls cgScrollIgnored, a status note.
+//   pre-rendered on this thread (vt::loadCgScroll; the last one is kept while its file is unchanged, so a
+//   double click decodes once) and loaded with a postChecked loadCgScroll; a double click also plays it,
+//   and the screen counts it as playing from then on (holdScrollPlaying). While it plays the screen sends
+//   only stopCgScroll (the right button); any other input calls cgScrollIgnored, a status note.
+// - An uncached crouton's TYPE is read once (vt::croutonType) to pick a page loader.
 //   SAVE asks for a file in settings.framestorePath and posts the write of the still saveSource picks;
 //   the status bar says "Saved <name>" and the "Saved framestores" drawer is re-read.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
@@ -226,6 +228,8 @@ private:
     std::filesystem::path currentEffect_;  // the crouton the loop last made current (set on the loop thread)
     bool currentIsPage_ = false;           // ... a CG key page: marked only while the engine has it loaded
     int64_t pageHoldUntil_ = -1;           // a page load posted: its mark holds until a snapshot this new (UI thread)
+    std::shared_ptr<const vt::CgScroll> scrollCache_;  // the last scroll or crawl page decoded (UI thread)
+    std::filesystem::file_time_type scrollCacheTime_;  // ... its file's time then
     uint64_t refusalsShown_ = 0;
 
     bool recording_ = false;
