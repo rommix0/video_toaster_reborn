@@ -61,6 +61,7 @@ private slots:
     void loadedBoxAndNextBracket();
     void drawerPicker();
     void framestoreDrawers();
+    void cgKeysDrawer();
     void fitZoomChoice();
     void windowedZoomChoice();
 };
@@ -229,6 +230,35 @@ void TestProjectGrid::framestoreDrawers() {
     QCOMPARE(screen->project().croutons()[0].name, std::string("Bars"));
     view.setSavedFolder(data42() / "Framestore");
     QVERIFY(screen->project().croutons().size() > 1);
+}
+
+// The CG/Keys drawer, after CG/Frames, lists the six key pages; KeyPage1 has no .i file, so its
+// icon is the 80x50 one inside the page file. A click loads, a double click also runs.
+void TestProjectGrid::cgKeysDrawer() {
+    FakeActions fake;
+    auto* screen = new ToasterScreen(layout(), font(), fake);
+    ProjectView view(data42(), std::filesystem::path("no/such/folder"), screen);
+    QComboBox* picker = view.drawerPicker();
+    const int frames = picker->findText(QStringLiteral("CG/Frames")), keys = picker->findText(QStringLiteral("CG/Keys"));
+    QVERIFY(frames >= 0 && keys > frames && keys < picker->count() - 1);
+    picker->setCurrentIndex(keys);
+    QStringList names;
+    for (const auto& c : screen->project().croutons()) names << QString::fromStdString(c.name);
+    QCOMPARE(names, (QStringList{"4StarCinema", "Feature", "KeyPage1", "KeyPage2", "LowerThird1", "LowerThird2"}));
+    const Crouton& kp1 = screen->project().croutons()[2];
+    QCOMPARE(kp1.icon, kp1.effect);
+    QCOMPARE(kp1.image.w, 80);
+
+    ToasterScreen w(layout(), font(), fake);
+    w.setCroutons(screen->project().croutons());
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    const QPoint at = cell(4, 0).center();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, at);
+    QTest::mouseDClick(&w, Qt::LeftButton, {}, at);
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, at);
+    QCOMPARE(fake.calls, (QStringList{"crouton 4 0", "crouton 4 1"}));
 }
 
 // Review Focus 1: the largest whole-number zoom whose screen plus 40 px of window chrome fits, and

@@ -6,7 +6,9 @@
 #include <fstream>
 #include <iterator>
 #include <optional>
+#include <string_view>
 
+#include "vt/framestore.h"
 #include "vt/ilbm.h"
 #include "vt/log.h"
 
@@ -75,7 +77,17 @@ std::optional<Crouton> crouton(const fs::path& effect, const fs::path& icon) {
     }
     try {
         const auto forms = iffForms(d);
-        const auto [bm, img] = readIlbm(d, forms.front());
+        auto form = forms.begin();
+        // A CG key page without an icon file (CG/Keys/KeyPage1): its icons follow the page.
+        if (c.icon == c.effect && isCgKeyPage(effect))
+            if (const auto it = std::find_if(forms.begin(), forms.end(), [&](const Form& f) {
+                    if (std::string_view(f.type.data(), 4) != "ILBM") return false;
+                    const Bitmap h = readBitmapHeader(d, f);
+                    return h.w == kCroutonW && h.h == kCroutonH;
+                });
+                it != forms.end())
+                form = it;
+        const auto [bm, img] = readIlbm(d, *form);
         if (bm.w != kCroutonW || bm.h != kCroutonH) {
             refuse(effect, "icon is " + std::to_string(bm.w) + "x" + std::to_string(bm.h) + ", not 80x50");
             return std::nullopt;

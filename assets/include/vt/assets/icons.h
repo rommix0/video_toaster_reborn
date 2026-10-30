@@ -24,7 +24,8 @@ struct Crouton {
 //   both are lower-cased, stripped of trailing spaces and underscores and of the spaces before a
 //   trailing "!" (the drawers hold "Border Fractal_" with "Border Fractal .i", "Spin Explode__" with
 //   "Spin Explode.I", "Wipe Soft Circle Out!" with "Wipe Soft Circle Out !.I", "Wedding Bells !"
-//   with "Wedding Bells!.I"); else the file's own leading FORM ILBM;
+//   with "Wedding Bells!.I"); else the file's own leading FORM ILBM, or for a CG key page (TYPE KEYF;
+//   CG/Keys/KeyPage1 has no icon file) its first 80x50 FORM ILBM, after the page;
 // - a file with neither is not a crouton and is skipped (IFF files that are skipped get a logged
 //   reason, other files are skipped silently);
 // - an icon that is not 80x50, has no CMAP or does not decode is refused with a logged reason;

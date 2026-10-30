@@ -31,6 +31,7 @@
 #include "test_support.h"
 #include "toaster_screen.h"
 #include "vt/effect.h"
+#include "vt/framestore.h"
 #include "vt/log.h"
 #include "vt/media/devices.h"
 #include "vt/media/ffmpeg.h"
@@ -170,6 +171,8 @@ private slots:
     void grabPutsTheInputInDv1OnMain();
     void framestoreCroutonLoadsIntoDv2();
     void controlCroutonsSetPreview();
+    void cgKeyPageDissolvesOverMain();
+    void cgKeyPageDoubleClickAndRefusals();
     void positionableShrinkRollsOnTheTrackball();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
@@ -368,6 +371,94 @@ void TestAppE2e::controlCroutonsSetPreview() {
     click("Stop");
     QCOMPARE(c.loop().switcherState().preview, vt::Source::Bkg);
     QVERIFY(c.window().statusBar()->currentMessage().contains(QStringLiteral("project control")));
+}
+
+// docs/2026-10-30-cg-keys-design.md: CG/Keys/LowerThird1 loads into DV2 with nothing on air and is
+// marked loaded; AUTO dissolves it on: Program shows its text area over Main, every pixel outside its
+// alpha still Main; the next AUTO dissolves it off and the plain Fade is left (no crouton marked).
+void TestAppE2e::cgKeyPageDissolvesOverMain() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    LastPicture last;
+    c.loop().addMonitor(&last);
+    const int i = showCrouton(c, "CG/Keys", "LowerThird1");
+    QVERIFY(i >= 0);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), i));
+    c.runOffline(1);
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.cgPage, (vt::CgPageState{vt::Source::DV2, false, 0, true}));
+    QCOMPARE(s.superimpose, vt::Source::None);
+    QCOMPARE(c.screen()->project().loaded(), i);
+
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("auto").hitRect));
+    c.runOffline(64);  // 60 >> 2 = 15 steps + 1, 4 fields each
+    s = c.loop().switcherState();
+    QVERIFY(!s.autoRunning);
+    QCOMPARE(s.cgPage, (vt::CgPageState{vt::Source::DV2, true, 255, true}));
+    QCOMPARE(s.keyMode, vt::KeyMode::Off);
+
+    const vt::Frame main = referencePicture(settings.inputs[0], 65);
+    const auto page = vt::loadCgKeyPage(c.screen()->project().croutons()[size_t(i)].effect);
+    QVERIFY(page);
+    int changed = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const bool same = last.program.at(x, y) == main.at(x, y);
+            if (page->alpha[size_t(y) * vt::kRasterW + size_t(x)] == 0) {
+                if (!same) QFAIL(qPrintable(QStringLiteral("Program is not Main at (%1,%2)").arg(x).arg(y)));
+            } else {
+                QVERIFY2(y >= 44 + 337 && y <= 44 + 398, qPrintable(QStringLiteral("alpha at row %1").arg(y)));
+                changed += !same;
+            }
+        }
+    QVERIFY2(changed > 20000, qPrintable(QString::number(changed)));  // the bar and the text
+
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("auto").hitRect));
+    c.runOffline(64);
+    s = c.loop().switcherState();
+    QCOMPARE(s.cgPage, vt::CgPageState{});
+    QCOMPARE(s.superimpose, vt::Source::None);
+    QCOMPARE(s.effectName, vt::makeDissolve()->name());
+    QCOMPARE(c.screen()->project().loaded(), -1);
+    c.loop().removeMonitor(&last);
+}
+
+// A double click loads the page and cuts it on; f and l are refused while it is loaded (the status
+// bar says so) while the LIVE button works; a control crouton clears it.
+void TestAppE2e::cgKeyPageDoubleClickAndRefusals() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    const int i = showCrouton(c, "CG/Keys", "KeyPage2");
+    QVERIFY(i >= 0);
+    QTest::mouseDClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), i));
+    c.runOffline(1);
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.cgPage, (vt::CgPageState{vt::Source::DV2, true, 255, true}));
+    QCOMPARE(s.preview, vt::Source::In2);
+
+    QStatusBar* bar = c.window().statusBar();
+    bar->clearMessage();
+    QTest::keyClick(c.screen(), Qt::Key_L);
+    c.runOffline(1);
+    c.poll();
+    QVERIFY2(bar->currentMessage().contains(QStringLiteral("CG key page")), qPrintable(bar->currentMessage()));
+    QVERIFY(c.loop().switcherState().frozen);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, centre(node("fs_live").hitRect));
+    c.runOffline(1);
+    QVERIFY(!c.loop().switcherState().frozen);
+
+    const int ctl = showCrouton(c, "4000FX/Control", "Video Source 3");
+    QVERIFY(ctl >= 0);
+    QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), ctl));
+    c.runOffline(1);
+    s = c.loop().switcherState();
+    QCOMPARE(s.cgPage, vt::CgPageState{});
+    QCOMPARE(s.superimpose, vt::Source::None);
+    QCOMPARE(s.preview, vt::Source::In3);
 }
 
 // tools/re/POSITION.md: Positionable Shrink with the T-bar let go mid-way is positioned with the

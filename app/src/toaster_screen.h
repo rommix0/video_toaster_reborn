@@ -15,6 +15,7 @@
 #include <QList>
 #include <QRegion>
 #include <QWidget>
+#include <array>
 #include <functional>
 #include <string>
 #include <vector>
@@ -123,7 +124,7 @@ private:
     };
 
     int nodeIndex(const char* id) const;
-    int lookOf(int node) const;            // T-bar: image index; others: 1 = selected look, 0 = normal
+    int lookOf(int node) const;            // T-bar: image index; others: 1 = selected look, 0 = normal, + 2 = CG picture
     const vt::assets::IndexedImage& imageOf(int node) const;
     std::string bkgText() const;
     std::string levelText() const;         // the clip level as three digits
@@ -152,6 +153,7 @@ private:
     std::vector<int> drawn_;                         // visible nodes, in draw order
     std::vector<int> look_;                          // per node, as last drawn (-1 = not drawn)
     std::vector<vt::assets::IndexedImage> selected_; // per node, its selected look (empty if none)
+    std::vector<std::array<vt::assets::IndexedImage, 2>> cg_;  // per node, the CG picture: normal, selected
     std::vector<Control> controls_;
     int tbarNode_ = -1, bkgNode_ = -1, bkgText_ = -1, levelNode_ = -1, levelText_ = -1;
     vt::media::SwitcherSnapshot state_;

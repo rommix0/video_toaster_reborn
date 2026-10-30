@@ -25,6 +25,7 @@ struct SwitcherSnapshot {
     bool autoRunning = false, transition = false, chroma = false, overlayEngaged = false, frozen = false;
     bool positioning = false;  // a Positionable effect follows the mouse (Switcher::positioning)
     bool hasStill = false;  // a still was written into DV1 or DV2 (SAVE has something to save)
+    vt::CgPageState cgPage;  // the loaded CG key page (Switcher::cgPage)
     vt::Speed speed = vt::Speed::Medium;
     std::string effectName;
     vt::EffectColour effectColour, background;

@@ -122,6 +122,7 @@ private slots:
     void stabilizeIsNotImplemented();
     void keyButtonsAndKeys();
     void keyButtonLooksFollowTheSnapshot();
+    void cgMarkFollowsTheSnapshot();
     void levelBoxDragAndText();
     void displayFollowsTheSnapshotNotTheClick();
     void bkgPopupInTheToasterLook();
@@ -181,7 +182,7 @@ void TestToasterScreen::keyboardMap() {
     QTest::keyClick(&w, Qt::Key_BracketRight);
     QCOMPARE(fake.calls, (QStringList{"auto Forward", "speed 0", "speed 1", "speed 2", "select Main Bkg",
                                       "select Preview In1", "select Preview Bkg", "select Superimpose In1",
-                                      "select Superimpose Bkg", "frozen 1", "frozen 0", "key Off", "key Black",
+                                      "select Superimpose Bkg", "freeze key 1", "freeze key 0", "key Off", "key Black",
                                       "key White"}));
 }
 
@@ -395,6 +396,32 @@ void TestToasterScreen::keyButtonLooksFollowTheSnapshot() {
         return region(scr, node(id).rect).px == (selected ? vt::assets::selectedLook(node(id), 0).px : node(id).image.px);
     };
     QVERIFY(shows("key_black", true) && shows("key_off", false) && shows("key_white", false));
+}
+
+// CGKEY.md section 1: while a CG key page is loaded and marked, the Superimpose button of its DV shows
+// the node's state image 1 (0x35dcc, the small "CG" picture), lit when Superimpose shows it.
+void TestToasterScreen::cgMarkFollowsTheSnapshot() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    QVERIFY(node("sup_dv2").states.size() > 1);
+    auto shows = [&](const char* id, const IndexedImage& img) { return region(w.renderIndexedForTest(), node(id).rect).px == img.px; };
+    SwitcherSnapshot s;
+    s.cgPage = {vt::Source::DV2, false, 0, true};
+    w.setState(s);
+    QVERIFY(shows("sup_dv2", node("sup_dv2").states[1]));
+    QVERIFY(shows("sup_dv1", node("sup_dv1").image));
+    s.superimpose = vt::Source::DV2;
+    s.cgPage.up = true;
+    w.setState(s);
+    QVERIFY(shows("sup_dv2", vt::assets::selectedLook(node("sup_dv2"), 1)));
+    s.cgPage.mark = false;  // a Take reset it
+    w.setState(s);
+    QVERIFY(shows("sup_dv2", vt::assets::selectedLook(node("sup_dv2"), 0)));
+    s = {};
+    s.cgPage = {vt::Source::DV1, false, 0, true};
+    w.setState(s);
+    QVERIFY(shows("sup_dv1", node("sup_dv1").states[1]));
+    QVERIFY(shows("sup_dv2", node("sup_dv2").image));
 }
 
 // C8: L moves by half the horizontal drag from L at the press; the text is three digits.

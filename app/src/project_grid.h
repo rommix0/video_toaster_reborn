@@ -68,9 +68,9 @@ private:
 // Stand-in for the original drawer browsing (not recreated in v1): a plain combo above the screen
 // listing the drawers that hold croutons; choosing one fills the screen's Project grid. In order:
 // those under <data42>/Effects ("4000FX/Wipes"), then <data42>/Framestore and its subfolders
-// ("Framestore", "Framestore/CGDemo"), <data42>/CG/Frames ("CG/Frames") and the folder SAVE writes
-// to ("Saved framestores": listed even when it is empty or missing). The first drawer is shown at
-// the start.
+// ("Framestore", "Framestore/CGDemo"), <data42>/CG/Frames ("CG/Frames"), the ToasterCG key pages
+// <data42>/CG/Keys ("CG/Keys") and the folder SAVE writes to ("Saved framestores": listed even when it
+// is empty or missing). The first drawer is shown at the start.
 class ProjectView : public QWidget {
     Q_OBJECT
 public:

@@ -120,6 +120,7 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     const auto& nodes = layout_.nodes;
     look_.assign(nodes.size(), -1);
     selected_.resize(nodes.size());
+    cg_.resize(nodes.size());
     for (size_t i = 0; i < nodes.size(); ++i)
         if (!nodes[i].hiddenByDefault && !nodes[i].image.px.empty()) drawn_.push_back(int(i));
     auto visible = [&](int i) { return i >= 0 && std::find(drawn_.begin(), drawn_.end(), i) != drawn_.end(); };
@@ -128,6 +129,9 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
         if (!visible(c.node)) return;
         if (c.kind != Control::Bkg && !nodes[size_t(c.node)].states.empty())
             selected_[size_t(c.node)] = vt::assets::selectedLook(nodes[size_t(c.node)], 0);
+        // The Superimpose DV buttons' state image 1 is the CG picture 0x35dcc (CGKEY.md section 1).
+        if (c.kind == Control::Bus && c.bus == vt::Bus::Superimpose && nodes[size_t(c.node)].states.size() > 1)
+            cg_[size_t(c.node)] = {nodes[size_t(c.node)].states[1], vt::assets::selectedLook(nodes[size_t(c.node)], 1)};
         controls_.push_back(c);
     };
     for (const auto& row : kBusRows)
@@ -170,6 +174,8 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
         check(fits(n.image, n.rect), "node " + n.id + ": image does not match its rect");
         check(selected_[size_t(i)].px.empty() || fits(selected_[size_t(i)], n.rect),
               "node " + n.id + ": selected look does not match its rect");
+        for (const auto& img : cg_[size_t(i)])
+            check(img.px.empty() || fits(img, n.rect), "node " + n.id + ": CG picture does not match its rect");
     }
     if (tbarNode_ >= 0) {
         check(layout_.tbarImages.size() >= size_t(kTbarImages), "the T-bar has fewer than 86 images");
@@ -274,7 +280,8 @@ int ToasterScreen::lookOf(int node) const {
             if (c.kind == Control::Bus) {
                 const vt::Source on = c.bus == vt::Bus::Main ? state_.main
                                       : c.bus == vt::Bus::Preview ? state_.preview : state_.superimpose;
-                return c.source == on;
+                const bool cg = state_.cgPage.mark && c.source == state_.cgPage.dv && !cg_[size_t(node)][0].px.empty();
+                return (c.source == on) | (cg ? 2 : 0);
             }
             if (c.kind == Control::Speed) return c.speed == state_.speed;  // Variable: none of S/M/F
             if (c.kind == Control::Freeze) return state_.frozen;   // grab and SAVE are momentary
@@ -288,6 +295,7 @@ int ToasterScreen::lookOf(int node) const {
 const vt::assets::IndexedImage& ToasterScreen::imageOf(int node) const {
     const int look = look_[size_t(node)];
     if (node == tbarNode_) return layout_.tbarImages[size_t(look)];
+    if (look & 2) return cg_[size_t(node)][size_t(look & 1)];
     if (look == 1 && !selected_[size_t(node)].px.empty()) return selected_[size_t(node)];
     return layout_.nodes[size_t(node)].image;
 }
@@ -585,7 +593,7 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
         if (handled())
             actions_.setSpeed(k == Qt::Key_Comma ? vt::Speed::Slow : k == Qt::Key_Period ? vt::Speed::Medium : vt::Speed::Fast);
     } else if (k == Qt::Key_F || k == Qt::Key_L) {
-        if (handled()) actions_.setFrozen(k == Qt::Key_F);
+        if (handled()) actions_.freezeKey(k == Qt::Key_F);
     } else if (k == Qt::Key_O || k == Qt::Key_BracketLeft || k == Qt::Key_BracketRight) {
         if (handled())
             actions_.setKeyMode(k == Qt::Key_O ? vt::KeyMode::Off : k == Qt::Key_BracketLeft ? vt::KeyMode::Black : vt::KeyMode::White);

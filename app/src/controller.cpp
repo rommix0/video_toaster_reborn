@@ -444,8 +444,23 @@ void AppController::loadCrouton(int index, bool run) {
         if (const auto ctl = vt::loadControl(c.effect)) {
             if (!ctl->preview) return message(tr("%1: a project control, for the sequencer").arg(QString::fromStdString(c.name)));
             loop_->postChecked([m = *ctl](vt::Switcher& sw, std::string& why) {
+                sw.clearCgPage();  // another crouton selected
                 if (m.background) sw.setBackground(*m.background);
                 return sw.select(vt::Bus::Preview, *m.preview, &why);
+            });
+            return;
+        }
+        if (vt::isCgKeyPage(c.effect)) {
+            std::string why;
+            auto page = vt::loadCgKeyPage(c.effect, &why);
+            if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
+            loop_->postChecked([this, p = std::make_shared<const vt::CgKeyPage>(std::move(*page)), run](vt::Switcher& sw,
+                                                                                                    std::string& why) {
+                if (!sw.loadCgPage(p, run, &why)) return false;
+                const std::lock_guard l(effectMu_);
+                currentEffect_ = p->path;
+                currentIsPage_ = true;
+                return true;
             });
             return;
         }
@@ -472,6 +487,7 @@ void AppController::loadCrouton(int index, bool run) {
         {
             const std::lock_guard l(effectMu_);
             currentEffect_ = path;
+            currentIsPage_ = false;
         }
         if (run) sw.autoTransition(sw.speed());
         return true;
@@ -480,6 +496,10 @@ void AppController::loadCrouton(int index, bool run) {
 
 void AppController::setFrozen(bool frozen) {
     loop_->postChecked([frozen](vt::Switcher& sw, std::string& why) { return sw.setFrozen(frozen, &why); });
+}
+
+void AppController::freezeKey(bool frozen) {
+    loop_->postChecked([frozen](vt::Switcher& sw, std::string& why) { return sw.freezeKey(frozen, &why); });
 }
 
 void AppController::grab(int input) {
@@ -566,6 +586,7 @@ void AppController::poll() {
         {
             const std::lock_guard l(effectMu_);
             current = currentEffect_;
+            if (currentIsPage_ && s.cgPage.dv == vt::Source::None) current.clear();  // the page has gone: the Fade is left
         }
         int loaded = -1;
         const auto& croutons = screen_->project().croutons();

@@ -822,7 +822,8 @@ bool Switcher::loadCgPage(std::shared_ptr<const CgKeyPage> page, bool cutOn, std
         if (whyNot) *whyNot = why;
         return false;
     };
-    if (!page) return refuse("no page given");
+    if (!page || page->alpha.size() != size_t(kRasterW) * kRasterH || page->fill.px.size() != page->alpha.size())
+        return refuse("not a decoded CG key page");  // render indexes the alpha by raster pixel
     if ((auto_ || tbar_ > 0) && !engaged_) return refuse("a transition is running: finish it first");
     if (cgPage_ && cgPage_->path == page->path) {  // the loaded page again
         if (cutOn) cgCutOn();                       // a double click's second half

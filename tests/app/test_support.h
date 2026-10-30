@@ -92,6 +92,7 @@ public:
     void setBackground(vt::BkgColour c) override { calls << QStringLiteral("bkg %1").arg(int(c)); }
     void loadCrouton(int i, bool run) override { calls << QStringLiteral("crouton %1 %2").arg(i).arg(run); }
     void setFrozen(bool f) override { calls << QStringLiteral("frozen %1").arg(f); }
+    void freezeKey(bool f) override { calls << QStringLiteral("freeze key %1").arg(f); }
     void grab(int input) override { calls << QStringLiteral("grab %1").arg(input); }
     void saveFramestore() override { calls << QStringLiteral("save"); }
     void setKeyMode(vt::KeyMode m) override {

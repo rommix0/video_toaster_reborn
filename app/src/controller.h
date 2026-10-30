@@ -32,7 +32,8 @@ public:
     virtual void endPositioning(vt::PositionEnd) = 0;    // positioning: Space / Return, left click, right button
     virtual void setBackground(vt::BkgColour) = 0;
     virtual void loadCrouton(int index, bool run) = 0;   // run = also start Auto (double click)
-    virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons, keys f / l
+    virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons
+    virtual void freezeKey(bool frozen) = 0;             // keys f / l (refused while a CG key page is loaded)
     virtual void grab(int input) = 0;                    // grab buttons 1-4: 0..3
     virtual void saveFramestore() = 0;                   // SAVE
     virtual void setKeyMode(vt::KeyMode) = 0;            // OFF / Black key / White key, keys o [ ]
@@ -72,6 +73,10 @@ namespace vt::media { class Recorder; }
 //   postChecked too: the engine refuses them during a transition or an engaged ChromaFX.
 // - A FRAM crouton (the Framestore, CG/Frames and "Saved framestores" drawers) loads as a still into
 //   DV1/DV2 (vt::loadFramestore, then a postChecked loadStill); a double click does not run Auto.
+// - A CG key page (KEYF, the CG/Keys drawer) is decoded on every click (vt::loadCgKeyPage, never
+//   cached) and loaded with a postChecked loadCgPage; a double click also cuts it on. It is the loaded
+//   crouton until the engine clears it (its off-dissolve ends, or another crouton is loaded; a
+//   control crouton clears it first). The keys f / l go to freezeKey, which a loaded page refuses.
 //   SAVE asks for a file in settings.framestorePath and posts the write of the still saveSource picks;
 //   the status bar says "Saved <name>" and the "Saved framestores" drawer is re-read.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
@@ -156,6 +161,7 @@ public:
     void setBackground(vt::BkgColour) override;
     void loadCrouton(int index, bool run) override;
     void setFrozen(bool frozen) override;
+    void freezeKey(bool frozen) override;
     void grab(int input) override;
     void saveFramestore() override;               // asks for a file
     void setKeyMode(vt::KeyMode) override;
@@ -210,6 +216,7 @@ private:
     std::deque<std::pair<std::filesystem::path, std::shared_ptr<const vt::Effect>>> effects_;
     std::mutex effectMu_;
     std::filesystem::path currentEffect_;  // the crouton the loop last made current (set on the loop thread)
+    bool currentIsPage_ = false;           // ... a CG key page: marked only while the engine has it loaded
     uint64_t refusalsShown_ = 0;
 
     bool recording_ = false;

@@ -141,7 +141,7 @@ ProjectView::ProjectView(const fs::path& data42, const fs::path& savedFolder, To
     const fs::path root = data42.lexically_normal();
     for (const auto& d : croutonDrawers(root / "Effects"))
         picker_->addItem(toQString(d.lexically_relative(root / "Effects")), toQString(d));
-    for (const fs::path& still : {root / "Framestore", root / "CG" / "Frames"})
+    for (const fs::path& still : {root / "Framestore", root / "CG" / "Frames", root / "CG" / "Keys"})
         for (const auto& d : croutonDrawers(still, true)) picker_->addItem(toQString(d.lexically_relative(root)), toQString(d));
     picker_->addItem(tr("Saved framestores"), toQString(savedFolder));
     savedAt_ = picker_->count() - 1;
