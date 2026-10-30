@@ -5,6 +5,7 @@
 
 #include "effect_detail.h"
 #include "log_detail.h"
+#include "vt/control.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/framestore.h"
@@ -33,6 +34,7 @@ constexpr uint32_t kTagColour = 0x80000023;        // Effect Color preset (vt/ba
 constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
 constexpr uint32_t kTagSourceWords = 0x1000001B;   // per palette index hardware words (vt/mix.h)
 constexpr uint32_t kTagDescriptor = 0x80000007;    // routing descriptor (ALGO.md 7)
+constexpr uint32_t kTagBusMask = 0x80000076;       // MAIN croutons: the source for Preview
 
 // Rulings 27, 32: the crouton's own folder is an Overlays drawer (4.2/Effects/2000FX/OverLays,
 // 4.2/Effects/4000FX/Overlays), any case. No crouton tag separates these effects from the rest:
@@ -94,8 +96,8 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
 
         switch (c->type) {
             case CroutonType::Algo: return detail::makeAlgoEffect(basics(algoTiming(*c)), *c, why);
-            case CroutonType::Main: return fail(why, "Switcher move (MAIN) not reverse-engineered yet");
-            case CroutonType::Ctrl: return fail(why, "Switcher move (CTRL) not reverse-engineered yet");
+            case CroutonType::Main: return fail(why, "a control crouton (puts its source on Preview), not an effect");
+            case CroutonType::Ctrl: return fail(why, "a project control (Blank, Stop), not an effect");
             case CroutonType::Crfx: return detail::makeChromaEffect(basics(fixedTiming(*c)), *c, why);
             case CroutonType::Fram: return fail(why, kFramestoreRefusal);
             default: break;
@@ -131,6 +133,28 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
     } catch (const std::exception& ex) {
         return fail(why, std::string("cannot read effect: ") + ex.what());
     }
+}
+
+std::optional<ControlMove> loadControl(const std::filesystem::path& path) {
+    const auto c = loadCrouton(path);
+    if (!c || (c->type != CroutonType::Main && c->type != CroutonType::Ctrl)) return std::nullopt;
+    ControlMove m;
+    if (c->type == CroutonType::Ctrl) return m;
+    // Bus mask bits (FREEZE.md 0); bit 15 on inputs 3/4 toggles an input routing vtoast has no
+    // counterpart for. A zero mask leaves Preview alone, as the handler does.
+    switch (c->tag(kTagBusMask).value_or(0) & 0x7f) {
+        case 0x01: m.preview = Source::In1; break;
+        case 0x02: m.preview = Source::In2; break;
+        case 0x04: m.preview = Source::In3; break;
+        case 0x08: m.preview = Source::In4; break;
+        case 0x10: m.preview = Source::DV1; break;
+        case 0x20: m.preview = Source::DV2; break;
+        case 0x40: m.preview = Source::Bkg; break;
+        default: break;
+    }
+    if (const auto colour = c->tag(kTagColour); colour && *colour >= 1 && *colour <= 9)
+        m.background = BkgColour(*colour);  // the Effect Color presets, in tag order
+    return m;
 }
 
 }  // namespace vt

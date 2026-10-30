@@ -16,6 +16,7 @@
 #include "vt/anim.h"
 #include "vt/background.h"
 #include "vt/chromafx.h"
+#include "vt/control.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/effect.h"
@@ -868,13 +869,17 @@ std::vector<std::filesystem::path> croutonsOfType(vt::CroutonType type, const ch
 
 TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
     int seen = 0;
-    for (auto [type, name] : {std::pair{vt::CroutonType::Main, "MAIN"}, std::pair{vt::CroutonType::Ctrl, "CTRL"}})
+    for (auto [type, refusal] : {std::pair{vt::CroutonType::Main, "a control crouton (puts its source on Preview), not an effect"},
+                                 std::pair{vt::CroutonType::Ctrl, "a project control (Blank, Stop), not an effect"}})
         for (const auto& p : croutonsOfType(type)) {
             ++seen;
             std::string why;
             INFO(p.string());
             REQUIRE(vt::loadEffect(p, &why) == nullptr);
-            REQUIRE(why == std::string("Switcher move (") + name + ") not reverse-engineered yet");
+            REQUIRE(why == refusal);
+            const auto m = vt::loadControl(p);
+            REQUIRE(m);
+            CHECK(m->preview.has_value() == (type == vt::CroutonType::Main));  // every MAIN names a source
         }
     REQUIRE(seen > 0);
 }
@@ -1043,6 +1048,47 @@ TEST_CASE("ChromaFX settings read from the icon file", "[chromafx]") {
         CHECK(e->isChromaFx());
         CHECK(e->name() == name);
     }
+}
+
+// FREEZE.md 4: MAIN croutons put their bus mask (tag 0x80000076) on Preview, the colour ones after
+// setting the BKG colour (tag 0x80000023); CTRL croutons drive the sequencer.
+TEST_CASE("control croutons are Switcher moves, not effects", "[control]") {
+    const auto ctl = [](const char* name) { return vt::loadControl(dataRoot() / "4.2/Effects/4000FX/Control" / name); };
+    const struct { const char* name; vt::Source src; } inputs[] = {
+        {"Video Source 1", vt::Source::In1}, {"Video Source 2", vt::Source::In2},
+        {"Video Source 3", vt::Source::In3}, {"Video Source 4", vt::Source::In4}};
+    for (const auto& [name, src] : inputs) {
+        INFO(name);
+        const auto m = ctl(name);
+        REQUIRE(m);
+        CHECK(m->preview == src);
+        CHECK(!m->background);
+    }
+    const struct { const char* name; vt::BkgColour colour; } colours[] = {
+        {"Video Source Black", vt::BkgColour::Black}, {"Video Source Cyan", vt::BkgColour::Cyan},
+        {"Video Source Snow", vt::BkgColour::Snow}};
+    for (const auto& [name, colour] : colours) {
+        INFO(name);
+        const auto m = ctl(name);
+        REQUIRE(m);
+        CHECK(m->preview == vt::Source::Bkg);
+        CHECK(m->background == colour);
+    }
+    for (const char* name : {"Blank", "Stop"}) {
+        INFO(name);
+        const auto m = ctl(name);
+        REQUIRE(m);
+        CHECK(!m->preview);
+        CHECK(!m->background);
+    }
+    CHECK(!ctl("ART CARD KEY"));
+    CHECK(!vt::loadControl(dataRoot() / "4.2/Effects/2000FX/Smooth Fade"));
+
+    std::string why;
+    CHECK(!vt::loadEffect(dataRoot() / "4.2/Effects/2000FX/Control/Video Source 2", &why));
+    CHECK(why == "a control crouton (puts its source on Preview), not an effect");
+    CHECK(!vt::loadEffect(dataRoot() / "4.2/Effects/2000FX/Control/Stop", &why));
+    CHECK(why == "a project control (Blank, Stop), not an effect");
 }
 
 TEST_CASE("algo take resets", "[algo]") {

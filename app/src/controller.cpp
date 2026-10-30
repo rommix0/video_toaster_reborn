@@ -35,6 +35,7 @@
 #include "vt/assets/font.h"
 #include "vt/assets/hunk.h"
 #include "vt/assets/panel.h"
+#include "vt/control.h"
 #include "vt/effect.h"
 #include "vt/framestore.h"
 #include "vt/log.h"
@@ -422,6 +423,15 @@ void AppController::loadCrouton(int index, bool run) {
         // A framestore is a still for DV1/DV2 (FREEZE.md 4), not an effect: no Auto, nothing cached.
         // vt::isFramestore decides (FRAM in the file's CrUD or its icon's, or a bare DV picture).
         // Only a cache miss asks: an effect file is read twice then, but it can be large.
+        // A control crouton is a Switcher move (FREEZE.md 4): the BKG colour, then Preview.
+        if (const auto ctl = vt::loadControl(c.effect)) {
+            if (!ctl->preview) return message(tr("%1: a project control, for the sequencer").arg(QString::fromStdString(c.name)));
+            loop_->postChecked([m = *ctl](vt::Switcher& sw, std::string& why) {
+                if (m.background) sw.setBackground(*m.background);
+                return sw.select(vt::Bus::Preview, *m.preview, &why);
+            });
+            return;
+        }
         if (std::optional<vt::Frame> still; vt::isFramestore(c.effect, &still)) {
             std::string why;
             if (!still) still = vt::loadFramestore(c.effect, &why);

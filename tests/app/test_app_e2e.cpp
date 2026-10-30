@@ -168,6 +168,7 @@ private slots:
     void freezeButtonFreezesTheStore();
     void grabPutsTheInputInDv1OnMain();
     void framestoreCroutonLoadsIntoDv2();
+    void controlCroutonsSetPreview();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
     void keyedDv2IsRefusedAndAKeyedInputShows();
@@ -340,6 +341,31 @@ void TestAppE2e::framestoreCroutonLoadsIntoDv2() {
     const vt::Rgba8 white = last.preview.at(61, 121), yellow = last.preview.at(61 + 107, 121);
     QVERIFY2(near(white, 191, 191, 191), qPrintable(QStringLiteral("%1 %2 %3").arg(white.r).arg(white.g).arg(white.b)));
     QVERIFY2(near(yellow, 191, 191, 0), qPrintable(QStringLiteral("%1 %2 %3").arg(yellow.r).arg(yellow.g).arg(yellow.b)));
+}
+
+// Control croutons (FREEZE.md 4): Video Source 3 puts In3 on Preview; Video Source Cyan sets the
+// BKG colour and puts BKG on Preview; Stop only says it is a sequencer control. The effect stays.
+void TestAppE2e::controlCroutonsSetPreview() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    auto click = [&](const char* name) {
+        const int i = showCrouton(c, "4000FX/Control", name);
+        QVERIFY(i >= 0);
+        QTest::mouseClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), i));
+        c.runOffline(1);
+    };
+    click("Video Source 3");
+    QCOMPARE(c.loop().switcherState().preview, vt::Source::In3);
+    click("Video Source Cyan");
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.preview, vt::Source::Bkg);
+    QVERIFY(s.background == vt::EffectColour::of(vt::BkgColour::Cyan));
+    QCOMPARE(s.main, vt::Source::In1);
+    click("Stop");
+    QCOMPARE(c.loop().switcherState().preview, vt::Source::Bkg);
+    QVERIFY(c.window().statusBar()->currentMessage().contains(QStringLiteral("project control")));
 }
 
 // SAVE writes <path> and <path>.I from the still in DV1/DV2 and lists it in "Saved framestores".
