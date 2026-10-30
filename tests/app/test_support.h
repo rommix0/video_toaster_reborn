@@ -99,6 +99,8 @@ public:
         calls << QStringLiteral("key %1").arg(m == vt::KeyMode::Off ? "Off" : m == vt::KeyMode::Black ? "Black" : "White");
     }
     void setKeyLevel(int l) override { calls << QStringLiteral("key level %1").arg(l); }
+    void stopCgScroll() override { calls << QStringLiteral("stop scroll"); }
+    void cgScrollIgnored() override { calls << QStringLiteral("scroll ignored"); }
     void notImplemented(const QString& what) override { calls << QStringLiteral("notImplemented ") + what; }
 };
 

@@ -458,7 +458,17 @@ void ToasterScreen::endDrag() {
     actions_.releaseTBar();
 }
 
+// The one choke point for input while a CG scroll or crawl plays (the original never returns to its
+// input loop then).
+bool ToasterScreen::scrollPlaying() {
+    if (!state_.cgScroll.playing) return false;
+    actions_.cgScrollIgnored();
+    return true;
+}
+
 void ToasterScreen::mousePressEvent(QMouseEvent* e) {
+    if (state_.cgScroll.playing && e->button() == Qt::RightButton) return actions_.stopCgScroll();
+    if (e->button() == Qt::LeftButton && scrollPlaying()) return;
     if (e->button() == Qt::RightButton && dragTbar_ < 0) {
         grabTbar();
         return startRightDrag(toScreen(e->position()).y());
@@ -532,12 +542,15 @@ void ToasterScreen::mouseReleaseEvent(QMouseEvent* e) {
 void ToasterScreen::mouseDoubleClickEvent(QMouseEvent* e) {
     const QPoint px = toScreenPixel(e->position());
     if (e->button() != Qt::LeftButton || !ProjectGrid::area().contains(px)) return QWidget::mouseDoubleClickEvent(e);
+    if (scrollPlaying()) return;
     if (const int i = project_.indexAt(px); i >= 0) actions_.loadCrouton(i, true);
 }
 
 // One notch (120 eighths of a degree) over the grid scrolls one row; wheel down shows later rows.
 void ToasterScreen::wheelEvent(QWheelEvent* e) {
     if (!ProjectGrid::area().contains(toScreenPixel(e->position()))) return QWidget::wheelEvent(e);
+    e->accept();
+    if (scrollPlaying()) return;
     wheelAngle_ += e->angleDelta().y();
     const int rows = wheelAngle_ / 120;
     wheelAngle_ -= rows * 120;
@@ -580,7 +593,7 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
     const int k = e->key();
     auto handled = [&] {
         e->accept();
-        return !e->isAutoRepeat();
+        return !e->isAutoRepeat() && !scrollPlaying();
     };
     if (state_.positioning && (k == Qt::Key_Return || k == Qt::Key_Enter || k == Qt::Key_Space)) {  // 0xb71dc
         if (handled()) actions_.endPositioning(vt::PositionEnd::KeepAndStop);

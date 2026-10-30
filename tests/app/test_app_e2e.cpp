@@ -173,6 +173,7 @@ private slots:
     void controlCroutonsSetPreview();
     void cgKeyPageDissolvesOverMain();
     void cgKeyPageDoubleClickAndRefusals();
+    void cgCrawlPlaysOverMainAndTheRightButtonStopsIt();
     void positionableShrinkRollsOnTheTrackball();
     void saveWritesTheStillAndListsIt();
     void freezeDuringATransitionIsRefused();
@@ -459,6 +460,60 @@ void TestAppE2e::cgKeyPageDoubleClickAndRefusals() {
     QCOMPARE(s.cgPage, vt::CgPageState{});
     QCOMPARE(s.superimpose, vt::Source::None);
     QCOMPARE(s.preview, vt::Source::In3);
+}
+
+// docs/2026-10-30-cg-scrolls-design.md: a double click on CG/Crawls/Novel.Crawl plays it at once. After
+// some fields its band (frame lines 104..403) shows text over Main while every row outside it is still
+// Main; Take is ignored with the status note while it plays; the right button stops it, the page stays
+// loaded.
+void TestAppE2e::cgCrawlPlaysOverMainAndTheRightButtonStopsIt() {
+    QTemporaryDir dir;
+    AppSettings settings = testSettings(dir);
+    AppController c(settings, Mode::Offline);
+    QVERIFY(c.screen());
+    LastPicture last;
+    c.loop().addMonitor(&last);
+    const int i = showCrouton(c, "CG/Crawls", "Novel.Crawl");
+    QVERIFY(i >= 0);
+    QTest::mouseDClick(c.screen(), Qt::LeftButton, {}, cellCentre(*c.screen(), i));
+    c.runOffline(1);
+    vt::media::SwitcherSnapshot s = c.loop().switcherState();
+    QCOMPARE(s.cgScroll, (vt::CgScrollState{true, true}));
+    QCOMPARE(s.effectName, vt::makeDissolve()->name());
+    QVERIFY(s.frozen);
+    QCOMPARE(c.screen()->project().loaded(), i);
+
+    c.runOffline(59);  // fields 0..59: 16 px per field
+    const vt::Frame main = referencePicture(settings.inputs[0], 60);
+    int changed = 0;
+    for (int y = 0; y < vt::kRasterH; ++y)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const bool same = last.program.at(x, y) == main.at(x, y);
+            if (y < 104 || y >= 404) {
+                if (!same) QFAIL(qPrintable(QStringLiteral("Program is not Main at (%1,%2)").arg(x).arg(y)));
+            } else {
+                changed += !same;
+            }
+        }
+    QVERIFY2(changed > 5000, qPrintable(QString::number(changed)));
+
+    QStatusBar* bar = c.window().statusBar();
+    bar->clearMessage();
+    QTest::keyClick(c.screen(), Qt::Key_Return);  // Take: ignored
+    c.runOffline(1);
+    s = c.loop().switcherState();
+    QVERIFY2(bar->currentMessage().contains(QStringLiteral("right-click stops it")), qPrintable(bar->currentMessage()));
+    QCOMPARE(s.main, vt::Source::In1);
+    QVERIFY(s.cgScroll.playing);
+
+    QTest::mouseClick(c.screen(), Qt::RightButton, {}, centre(node("main_3").hitRect));
+    c.runOffline(1);
+    s = c.loop().switcherState();
+    QCOMPARE(s.cgScroll, (vt::CgScrollState{true, false}));
+    QCOMPARE(s.tbar, 0);
+    QCOMPARE(last.program.px, referencePicture(settings.inputs[0], 62).px);
+    QCOMPARE(c.screen()->project().loaded(), i);
+    c.loop().removeMonitor(&last);
 }
 
 // tools/re/POSITION.md: Positionable Shrink with the T-bar let go mid-way is positioned with the

@@ -38,6 +38,8 @@ public:
     virtual void saveFramestore() = 0;                   // SAVE
     virtual void setKeyMode(vt::KeyMode) = 0;            // OFF / Black key / White key, keys o [ ]
     virtual void setKeyLevel(int level) = 0;             // the level box drag: 0..257
+    virtual void stopCgScroll() = 0;                     // the right button while a CG scroll or crawl plays
+    virtual void cgScrollIgnored() = 0;                  // any other input then: the status note
     virtual void notImplemented(const QString& what) = 0;  // a control that does nothing in v1
 };
 
@@ -77,6 +79,10 @@ namespace vt::media { class Recorder; }
 //   cached) and loaded with a postChecked loadCgPage; a double click also cuts it on. It is the loaded
 //   crouton until the engine clears it (its off-dissolve ends, or another crouton is loaded; a
 //   control crouton clears it first). The keys f / l go to freezeKey, which a loaded page refuses.
+// - A CG scroll or crawl page (SCRO / CRAW, the CG/Scrolls and CG/Crawls drawers) is decoded and
+//   pre-rendered on every click (vt::loadCgScroll, on this thread) and loaded with a postChecked
+//   loadCgScroll; a double click also plays it. While it plays the screen sends only stopCgScroll (the
+//   right button); any other input calls cgScrollIgnored, a status note.
 //   SAVE asks for a file in settings.framestorePath and posts the write of the still saveSource picks;
 //   the status bar says "Saved <name>" and the "Saved framestores" drawer is re-read.
 // - poll(), on a 30 Hz timer, gives switcherState() to the screen, marks the loaded crouton, drains
@@ -166,6 +172,8 @@ public:
     void saveFramestore() override;               // asks for a file
     void setKeyMode(vt::KeyMode) override;
     void setKeyLevel(int level) override;
+    void stopCgScroll() override;
+    void cgScrollIgnored() override;
     bool saveFramestore(const QString& path);     // posts the save to `path`; false: no path
     void notImplemented(const QString& what) override;
 

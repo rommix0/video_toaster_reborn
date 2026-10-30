@@ -62,6 +62,7 @@ private slots:
     void drawerPicker();
     void framestoreDrawers();
     void cgKeysDrawer();
+    void cgScrollAndCrawlDrawers();
     void fitZoomChoice();
     void windowedZoomChoice();
 };
@@ -259,6 +260,26 @@ void TestProjectGrid::cgKeysDrawer() {
     QTest::mouseDClick(&w, Qt::LeftButton, {}, at);
     QTest::mouseRelease(&w, Qt::LeftButton, {}, at);
     QCOMPARE(fake.calls, (QStringList{"crouton 4 0", "crouton 4 1"}));
+}
+
+// docs/2026-10-30-cg-scrolls-design.md 2 B: the CG/Scrolls and CG/Crawls drawers follow CG/Keys and list
+// the two scroll and the two crawl pages.
+void TestProjectGrid::cgScrollAndCrawlDrawers() {
+    FakeActions fake;
+    auto* screen = new ToasterScreen(layout(), font(), fake);
+    ProjectView view(data42(), std::filesystem::path("no/such/folder"), screen);
+    QComboBox* picker = view.drawerPicker();
+    const int keys = picker->findText(QStringLiteral("CG/Keys")), scrolls = picker->findText(QStringLiteral("CG/Scrolls")),
+              crawls = picker->findText(QStringLiteral("CG/Crawls"));
+    QVERIFY(keys >= 0 && scrolls == keys + 1 && crawls == scrolls + 1 && crawls < picker->count() - 1);
+    auto names = [&](int drawer) {
+        picker->setCurrentIndex(drawer);
+        QStringList out;
+        for (const auto& c : screen->project().croutons()) out << QString::fromStdString(c.name);
+        return out;
+    };
+    QCOMPARE(names(scrolls), (QStringList{"MojoWorld.Scroll", "NightOfTerror"}));
+    QCOMPARE(names(crawls), (QStringList{"EBS.Crawl", "Novel.Crawl"}));
 }
 
 // Review Focus 1: the largest whole-number zoom whose screen plus 40 px of window chrome fits, and

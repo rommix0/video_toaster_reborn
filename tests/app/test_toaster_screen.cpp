@@ -123,6 +123,7 @@ private slots:
     void keyButtonsAndKeys();
     void keyButtonLooksFollowTheSnapshot();
     void cgMarkFollowsTheSnapshot();
+    void inputIsIgnoredWhileAScrollPlays();
     void levelBoxDragAndText();
     void displayFollowsTheSnapshotNotTheClick();
     void bkgPopupInTheToasterLook();
@@ -425,6 +426,58 @@ void TestToasterScreen::cgMarkFollowsTheSnapshot() {
 }
 
 // C8: L moves by half the horizontal drag from L at the press; the text is three digits.
+// docs/2026-10-30-cg-scrolls-design.md 2 C: while the snapshot says a scroll or crawl plays, the right
+// button anywhere stops it (and starts no T-bar drag); every other button, key and crouton click is
+// ignored with the note (cgScrollIgnored). Once it has stopped, input works again.
+void TestToasterScreen::inputIsIgnoredWhileAScrollPlays() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.setCroutons(vt::assets::scanCroutons(std::filesystem::path(VT_DATA_ROOT) / "4.2/CG/Crawls"));
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    SwitcherSnapshot s;
+    s.cgScroll = {true, true};
+    w.setState(s);
+    const QPoint any = centre(node("main_3").hitRect);
+    QTest::mousePress(&w, Qt::RightButton, {}, any);
+    QTest::mouseMove(&w, any + QPoint(0, 40));
+    QTest::mouseRelease(&w, Qt::RightButton, {}, any + QPoint(0, 40));
+    QCOMPARE(fake.calls, QStringList{"stop scroll"});
+    fake.calls.clear();
+
+    QTest::mouseClick(&w, Qt::LeftButton, {}, any);                               // a bus button
+    QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("auto").hitRect));      // AUTO
+    const vt::Rect r = layout().tbarRect;
+    QTest::mousePress(&w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 10));   // the T-bar
+    QTest::mouseMove(&w, QPoint(r.x + r.w / 2, r.y + 60));
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 60));
+    QTest::mouseClick(&w, Qt::LeftButton, {}, QPoint(64 + 40, 44 + 25));           // a crouton
+    QTest::mouseDClick(&w, Qt::LeftButton, {}, QPoint(64 + 40, 44 + 25));         // (the double click alone)
+    QTest::mouseRelease(&w, Qt::LeftButton, {}, QPoint(64 + 40, 44 + 25));
+    QWheelEvent turn(QPointF(64 + 40, 44 + 25), QPointF(w.mapToGlobal(QPoint(64 + 40, 44 + 25))), QPoint(), QPoint(0, -120),
+                     Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QApplication::sendEvent(&w, &turn);
+    QTest::keyClick(&w, Qt::Key_Return);
+    QTest::keyClick(&w, Qt::Key_Space);
+    QTest::keyClick(&w, Qt::Key_F1);
+    QCOMPARE(fake.calls, QStringList(9, QStringLiteral("scroll ignored")));
+    fake.calls.clear();
+    QKeyEvent other(QEvent::KeyPress, Qt::Key_Z, Qt::NoModifier);
+    QVERIFY(!w.switcherKey(&other));  // not a Switcher key: left to the window
+    QVERIFY(fake.calls.isEmpty());
+
+    s.cgScroll.playing = false;
+    w.setState(s);
+    QTest::mouseClick(&w, Qt::LeftButton, {}, any);
+    QTest::keyClick(&w, Qt::Key_Return);
+    QTest::mousePress(&w, Qt::RightButton, {}, any);  // the right-drag T-bar shortcut again
+    QTest::mouseMove(&w, any + QPoint(0, 40));
+    QTest::mouseRelease(&w, Qt::RightButton, {}, any + QPoint(0, 40));
+    QCOMPARE(fake.calls.mid(0, 2), (QStringList{"select Main In3", "take"}));
+    QVERIFY(fake.calls.size() == 4 && fake.calls[2].startsWith("tbar ") && fake.calls[3] == "release");
+}
+
 void TestToasterScreen::levelBoxDragAndText() {
     FakeActions fake;
     ToasterScreen w(layout(), font(), fake);

@@ -422,6 +422,12 @@ void AppController::setKeyLevel(int level) {
     loop_->post([level](vt::Switcher& sw) { sw.setKeyLevel(level); });
 }
 
+void AppController::stopCgScroll() {
+    loop_->post([](vt::Switcher& sw) { sw.stopCgScroll(); });
+}
+
+void AppController::cgScrollIgnored() { message(tr("A scroll or crawl is playing: right-click stops it"), 3000); }
+
 void AppController::setBackground(vt::BkgColour c) {
     loop_->post([c](vt::Switcher& sw) { sw.setBackground(c); });
 }
@@ -445,8 +451,24 @@ void AppController::loadCrouton(int index, bool run) {
             if (!ctl->preview) return message(tr("%1: a project control, for the sequencer").arg(QString::fromStdString(c.name)));
             loop_->postChecked([m = *ctl](vt::Switcher& sw, std::string& why) {
                 sw.clearCgPage();  // another crouton selected
+                sw.clearCgScroll();
                 if (m.background) sw.setBackground(*m.background);
                 return sw.select(vt::Bus::Preview, *m.preview, &why);
+            });
+            return;
+        }
+        if (vt::isCgScroll(c.effect)) {
+            std::string why;
+            auto page = vt::loadCgScroll(c.effect, &why);
+            if (!page) return message(tr("Cannot load %1: %2").arg(QString::fromStdString(c.name), QString::fromStdString(why)));
+            pageHoldUntil_ = loop_->switcherState().tick + 2;  // as for a CG key page below
+            loop_->postChecked([this, p = std::make_shared<const vt::CgScroll>(std::move(*page)), run](vt::Switcher& sw,
+                                                                                                  std::string& why) {
+                if (!sw.loadCgScroll(p, run, &why)) return false;
+                const std::lock_guard l(effectMu_);
+                currentEffect_ = p->path;
+                currentIsPage_ = true;
+                return true;
             });
             return;
         }
@@ -590,7 +612,8 @@ void AppController::poll() {
             const std::lock_guard l(effectMu_);
             current = currentEffect_;
             // The page has gone (the Fade is left), judged only from a snapshot taken after its load.
-            if (currentIsPage_ && s.cgPage.dv == vt::Source::None && s.tick >= pageHoldUntil_) current.clear();
+            if (currentIsPage_ && s.cgPage.dv == vt::Source::None && !s.cgScroll.loaded && s.tick >= pageHoldUntil_)
+                current.clear();
         }
         int loaded = -1;
         const auto& croutons = screen_->project().croutons();

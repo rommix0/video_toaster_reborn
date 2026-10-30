@@ -168,6 +168,7 @@ void ProgramLoop::publish() {
     w.positioning = sw_.positioning();
     w.hasStill = sw_.hasStill();
     w.cgPage = sw_.cgPage();
+    w.cgScroll = sw_.cgScroll();
     w.speed = sw_.speed();
     if (nameStale_) {
         nameStale_ = false;

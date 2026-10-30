@@ -11,6 +11,9 @@
 // `positioning` (a Positionable effect, tools/re/POSITION.md; the Position dock's trackball moves
 // it) Space and Return keep the position (KeepAndStop), and a T-bar press first goes back to the
 // T-bar with the position kept (BackToTBar). The pointer is never captured.
+// While the snapshot says a CG scroll or crawl plays (cgScroll.playing) the right button stops it, and
+// every other button, Switcher key, crouton click and wheel turn is ignored with a status note
+// (docs/2026-10-30-cg-scrolls-design.md 2 C); the right-drag T-bar shortcut does not start.
 #include <QImage>
 #include <QList>
 #include <QRegion>
@@ -146,6 +149,7 @@ private:
     void startRightDrag(double screenY);
     void endDrag();                        // a T-bar drag let go: releaseTBar
     void openBkgPopup();
+    bool scrollPlaying();                  // a CG scroll or crawl plays: other input is ignored (cgScrollIgnored)
 
     vt::assets::PanelLayout layout_;
     vt::assets::ColorFont font_;
