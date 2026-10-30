@@ -88,9 +88,10 @@ private:
 }  // namespace
 
 const char* gradientRefusal(const Bitmap& bm) {
-    // Bar pictures are taller than the raster; the Switcher code moves them (Ruling 11).
-    if (bm.h > kRasterH) return "bar picture moved by Switcher code (not reverse-engineered yet)";
-    if (bm.planes > 8) return "deep-colour bar picture moved by Switcher code (like ALGO)";
+    // Bar pictures are taller than the raster or deeper than 8 planes (Ruling 11); with their
+    // program they never get here (makeBarEffect).
+    if (bm.h > kRasterH) return "bar picture taller than the raster without a move program (tag 0x1000001C)";
+    if (bm.planes > 8) return "deep-colour bar picture without a move program (tag 0x1000001C)";
     if (bm.camg & 0x800) return "not a grayscale matte (HAM image)";
     return nullptr;
 }

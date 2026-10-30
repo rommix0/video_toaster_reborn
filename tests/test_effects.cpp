@@ -17,6 +17,7 @@
 #include "vt/background.h"
 #include "vt/chromafx.h"
 #include "vt/control.h"
+#include "vt/crc32.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
 #include "vt/effect.h"
@@ -831,17 +832,26 @@ TEST_CASE("tag 0x1B routes the palette indices of 2-plane wipes to A, B or the c
 
 TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {
     std::string why;
-    // Bar pictures taller than the raster (Ruling 11)
-    int bars = 0;
-    for (const auto& r : golden::readLines("ilbm.jsonl")) {
-        if (num(r, "h") <= 482) continue;
-        why.clear();
-        INFO(str(r, "source"));
-        REQUIRE(load(str(r, "source"), &why) == nullptr);
-        REQUIRE(why == "bar picture moved by Switcher code (not reverse-engineered yet)");
-        ++bars;
+    // a picture taller than the raster without a move program (a Bar crouton with its tag
+    // 0x1000001C renamed): no gradient, no Bar
+    {
+        auto bytes = readFile(golden::sourcePath("4.2/Effects/4000FX/Border/Bar Sword BR-TL !"));
+        const std::array<uint8_t, 4> id{0x10, 0x00, 0x00, 0x1C};
+        const auto at = std::search(bytes.begin(), bytes.end(), id.begin(), id.end());
+        REQUIRE(at != bytes.end());
+        at[3] = 0x7C;
+        const auto path = std::filesystem::temp_directory_path() / "vtoast_bar_without_program";
+        {
+            std::ofstream out(path, std::ios::binary | std::ios::trunc);
+            out.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+        }
+        const auto c = vt::loadCrouton(path);
+        REQUIRE(c);
+        REQUIRE(c->blobs.count(0x1000001C) == 0);
+        REQUIRE(vt::loadEffect(path, &why) == nullptr);
+        REQUIRE(why == "bar picture taller than the raster without a move program (tag 0x1000001C)");
+        std::filesystem::remove(path);
     }
-    REQUIRE(bars == 4);
     // a missing file and a non-crouton
     why.clear();
     REQUIRE(vt::loadEffect(dataRoot() / "no such effect", &why) == nullptr);
@@ -866,6 +876,53 @@ std::vector<std::filesystem::path> croutonsOfType(vt::CroutonType type, const ch
 }
 
 }  // namespace
+
+TEST_CASE("the 14 Bar ILBM croutons load as Variable-speed descriptor-22 moves", "[effect][bar]") {
+    const auto recs = golden::readLines("bars.jsonl");
+    REQUIRE(recs.size() == 14);
+    for (const auto& r : recs) {
+        INFO(str(r, "source"));
+        std::string why;
+        const auto e = load(str(r, "source"), &why);
+        INFO(why);
+        REQUIRE(e);
+        REQUIRE(e->routingDescriptor() == 22);
+        REQUIRE(e->frameCount() == 1);
+        const vt::Timing t = e->timing();
+        REQUIRE(t.defaultSpeed == vt::Speed::Variable);
+        // BARS.md 7: the speed tags are Auto steps of one field; length (N + 1) / 2 frames
+        const bool tall = arr(r, "y").front() != 0;
+        const std::array<int, 4> steps = tall ? std::array{180, 100, 70, 60} : std::array{100, 60, 40, 60};
+        for (size_t s = 0; s < 4; ++s) {
+            REQUIRE(t.durationTicks[s] == steps[s]);
+            REQUIRE(t.durationFrames[s] == (steps[s] + 1) / 2);
+        }
+    }
+}
+
+TEST_CASE("Bar croutons match bars_ref.py's frames (bars.jsonl)", "[effect][bar][golden]") {
+    const vt::Frame a = solid({0x1B, 0x2A, 0x80, 255}), b = solid({0xB5, 0x12, 0x2E, 255});
+    auto crc = [](const vt::Frame& f) {
+        return vt::crc32({reinterpret_cast<const uint8_t*>(f.px.data()), f.px.size() * sizeof(vt::Rgba8)});
+    };
+    for (const auto& r : golden::readLines("bars.jsonl")) {
+        INFO(str(r, "source"));
+        const auto e = load(str(r, "source"));
+        REQUIRE(e);
+        const auto& tbars = arr(r, "tbar");
+        const auto& crcs = arr(r, "crc");
+        for (size_t i = 0; i < tbars.size(); ++i) {
+            INFO("T-bar " << tbars[i]);
+            REQUIRE(crc(renderAt(*e, int(tbars[i]), a, b)) == uint32_t(crcs[i]));
+            // BARS.md 5.1: Auto step k of N is t = min(k * floor(65536 / N), 0xffff). With N = 512
+            // that is k << 7, the T-bar's own t; step 512 is clamped to 0xffff, the T-bar at 511.
+            vt::RenderCtx c = ctxWith();
+            c.autoStep = tbars[i] == 511 ? 512 : int(tbars[i]);
+            c.autoSteps = 512;
+            if (tbars[i] > 0) REQUIRE(crc(renderAt(*e, 0, a, b, c)) == uint32_t(crcs[i]));
+        }
+    }
+}
 
 TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
     int seen = 0;
@@ -1159,13 +1216,10 @@ TEST_CASE("every corpus animated and gradient wipe loads and renders", "[effect]
     for (const auto& r : golden::readLines("ilbm.jsonl")) {
         const std::string& src = str(r, "source");
         INFO(src);
-        std::string why;
-        auto e = load(src, &why);
-        if (!e) {
-            REQUIRE(num(r, "h") > 482);
-            continue;
-        }
+        auto e = load(src);
+        REQUIRE(e);
         ++loaded;
+        if (num(r, "h") > 482) continue;  // a tall Bar crouton: tested with bars.jsonl
         auto c = vt::loadCrouton(golden::sourcePath(src));
         REQUIRE(c);
         const auto g = openGradient(src);

@@ -13,6 +13,8 @@
 // Kinds 3 / 4 play as 0 / 1 (interactive positioning is out of scope).
 #include <array>
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -69,6 +71,13 @@ private:
     std::array<std::vector<Slot>, 26> anim_;
     AlgoStep step_;  // h / v are the persistent H and V buffers
 };
+
+// ALGO.md 11 / BARS.md 2: the Bar ILBM croutons' tag 0x1000001C is a program without the header
+// (channel blocks only, channels 26..29, installed as above), evaluated by the ILBM player every
+// field (0xe7b2e) instead of by AlgoVm. The signed words of `channel` at t (16.16; slots the
+// program leaves alone are 0), nullopt when the program has no such channel. Throws
+// std::runtime_error for a malformed program or an opcode AlgoVm refuses. Does not allocate.
+std::optional<std::array<int, 6>> algoChannelWords(std::span<const uint8_t> program, int channel, uint32_t t);
 
 uint32_t algoTBarT(int pos, uint32_t flags);       // tbar_t; pos clamped to 0..511
 uint32_t algoAutoT(int k, int n, uint32_t flags);  // auto_ts(n, flags)[k - 1]; k clamped to 1..n

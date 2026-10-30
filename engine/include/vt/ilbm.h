@@ -55,5 +55,7 @@ Bitmap readBitmapHeader(std::span<const uint8_t> d, const Form& form);
 
 // Decode one FORM ILBM (BMHD and BODY required).
 std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form);
+// The same, stopping at the bit planes (any depth).
+std::pair<Bitmap, Planes> readIlbmPlanes(std::span<const uint8_t> d, const Form& form);
 
 }  // namespace vt

@@ -118,6 +118,28 @@ TEST_CASE("algo VM refuses what it cannot play", "[algo]") {
     REQUIRE_THROWS_AS(vt::AlgoVm(op15, 0, 0), std::runtime_error);
 }
 
+TEST_CASE("Bar programs: channel 29 words give bars_ref.py's picture offsets", "[algo][bar][golden]") {
+    for (const auto& r : golden::readLines("bars.jsonl")) {
+        INFO(str(r, "source"));
+        const auto c = vt::loadCrouton(golden::sourcePath(str(r, "source")));
+        REQUIRE(c);
+        const auto& prog = c->blobs.at(0x1000001C);
+        const auto& tbars = std::get<std::vector<int64_t>>(r.at("tbar").v);
+        for (size_t i = 0; i < tbars.size(); ++i) {
+            const int pos = int(tbars[i]);
+            const uint32_t t = pos >= 511 ? 0xffff : pos == 0 ? 1 : uint32_t(pos) << 7;  // BARS.md 5.1
+            const auto w = vt::algoChannelWords(prog, 29, t);
+            REQUIRE(w);
+            REQUIRE(int16_t((0x17e - (*w)[0]) * 2 + (*w)[2]) == std::get<std::vector<int64_t>>(r.at("x").v)[i]);
+            REQUIRE(int16_t(0xf1 - (*w)[1] + (*w)[3]) == std::get<std::vector<int64_t>>(r.at("y").v)[i]);
+        }
+        REQUIRE_FALSE(vt::algoChannelWords(prog, 28, 0));
+    }
+    const std::vector<uint8_t> op15{0, 29, 0, 15, 0, 0, 0, 0};
+    REQUIRE_THROWS_AS(vt::algoChannelWords(op15, 29, 0), std::runtime_error);
+    REQUIRE_THROWS_AS(vt::algoChannelWords(std::vector<uint8_t>{0, 29, 0, 17}, 29, 0), std::runtime_error);
+}
+
 namespace {
 vt::Frame solidFrame(vt::Rgba8 c) {
     vt::Frame f;

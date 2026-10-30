@@ -45,6 +45,9 @@ enum class PaletteRoute : uint8_t { Palette, A, B, Generator };
 // ("!") effects keep their palette art and get none. Empty when there are none or the bytes
 // are short; otherwise one entry per palette index (1 << planes).
 std::vector<PaletteRoute> paletteRoutes(const std::vector<uint8_t>& tag1b, int planes);
+// The same reading for a palette of n indices whatever the depth (the Bar ILBMs, effect_bar.cpp):
+// their art words carry a level too (0x9003), so they read as Palette.
+std::vector<PaletteRoute> sourceRoutes(const std::vector<uint8_t>& tag1b, int n);
 
 enum class AnimKind { Soft, Roles, Overlay, Unsupported };
 

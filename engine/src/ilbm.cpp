@@ -153,12 +153,17 @@ Bitmap readBitmapHeader(std::span<const uint8_t> d, const Form& form) {
     return bm;
 }
 
-std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form) {
+std::pair<Bitmap, Planes> readIlbmPlanes(std::span<const uint8_t> d, const Form& form) {
     Bitmap bm = readBitmapHeader(d, form);
     const auto chunks = formChunks(d, form);
     const Chunk* bo = find(chunks, kBody);
     if (!bo) throw std::runtime_error("ILBM: no BODY");
     Planes planes = bodyToPlanes(bm, payload(d, *bo));
+    return {std::move(bm), std::move(planes)};
+}
+
+std::pair<Bitmap, IndexImage> readIlbm(std::span<const uint8_t> d, const Form& form) {
+    auto [bm, planes] = readIlbmPlanes(d, form);
     IndexImage img = planesToIndex(planes, bm.w);
     return {std::move(bm), std::move(img)};
 }

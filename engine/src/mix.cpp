@@ -96,12 +96,15 @@ uint16_t be16(const std::vector<uint8_t>& b, size_t o) { return uint16_t(b[o] <<
 }  // namespace
 
 std::vector<PaletteRoute> paletteRoutes(const std::vector<uint8_t>& tag1b, int planes) {
+    return planes == 2 ? sourceRoutes(tag1b, 1 << planes) : std::vector<PaletteRoute>{};
+}
+
+std::vector<PaletteRoute> sourceRoutes(const std::vector<uint8_t>& tag1b, int n) {
     // 0xe80e4: word rows, word step, word first index, word count, 8 mask longs, then rows x
-    // count longs. Every shipped 2-plane table has one row; more rows (picked by the T-bar)
-    // are not modelled.
-    if (planes != 2 || tag1b.size() < 40) return {};
+    // count longs. Every shipped table has one row; more rows (picked by the T-bar) are not
+    // modelled.
+    if (tag1b.size() < 40) return {};
     const int rows = be16(tag1b, 0), first = be16(tag1b, 4), count = be16(tag1b, 6);
-    const int n = 1 << planes;
     if (rows != 1 || first + count > n || tag1b.size() < 40 + size_t(count) * 4) return {};
     std::vector<PaletteRoute> r(size_t(n), PaletteRoute::Palette);
     for (int k = 0; k < count; ++k) {

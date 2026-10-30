@@ -35,6 +35,7 @@ constexpr uint32_t kTagCustomColour = 0x80000024;  // custom generator word
 constexpr uint32_t kTagSourceWords = 0x1000001B;   // per palette index hardware words (vt/mix.h)
 constexpr uint32_t kTagDescriptor = 0x80000007;    // routing descriptor (ALGO.md 7)
 constexpr uint32_t kTagBusMask = 0x80000076;       // MAIN croutons: the source for Preview
+constexpr uint32_t kTagProgram = 0x1000001C;       // ALGO program; header-less in the Bar ILBMs
 
 // Rulings 27, 32: the crouton's own folder is an Overlays drawer (4.2/Effects/2000FX/OverLays,
 // 4.2/Effects/4000FX/Overlays), any case. No crouton tag separates these effects from the rest:
@@ -125,6 +126,9 @@ std::unique_ptr<Effect> loadEffect(const std::filesystem::path& path, std::strin
             if (f.type != kIlbmForm) continue;
             const Bitmap head = readBitmapHeader(c->bytes, f);
             if (head.w == 80 && head.h == 50) continue;  // the icon
+            // BARS.md 7: the speed tags count Auto steps of one field each, as ALGO's do
+            if (detail::isBarPicture(head) && c->blobs.count(kTagProgram))
+                return detail::makeBarEffect(basics(algoTiming(*c)), *c, f, why);
             if (const char* refusal = detail::gradientRefusal(head)) return fail(why, refusal);
             auto [bm, img] = readIlbm(c->bytes, f);
             return detail::makeGradient(basics(fixedTiming(*c)), std::move(bm), std::move(img), why);

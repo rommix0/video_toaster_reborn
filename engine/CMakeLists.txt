@@ -11,6 +11,7 @@ add_library(vt_engine STATIC
     src/crc32.cpp
     src/effect_algo.cpp
     src/effect_anim.cpp
+    src/effect_bar.cpp
     src/effect_basic.cpp
     src/effect_chromafx.cpp
     src/effect_dve.cpp

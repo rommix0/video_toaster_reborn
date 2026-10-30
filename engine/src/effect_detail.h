@@ -88,6 +88,9 @@ private:
 
 // nullptr if a gradient ILBM can be played, else the reason it cannot (bar pictures, deep colour, HAM).
 const char* gradientRefusal(const Bitmap&);
+// A picture taller than the raster or deeper than 8 planes: with a tag 0x1000001C program it is a
+// Bar crouton (makeBarEffect), else gradientRefusal says why it cannot play.
+inline bool isBarPicture(const Bitmap& bm) { return bm.h > kRasterH || bm.planes > 8; }
 
 // `why` may be null. Return nullptr and set *why when the effect cannot be built.
 std::unique_ptr<Effect> makeGradient(CroutonBasics, Bitmap, IndexImage, std::string* why);
@@ -101,5 +104,8 @@ std::unique_ptr<Effect> makeChromaEffect(CroutonBasics, const Crouton&, std::str
 // ALGO crouton: its program (tag 0x1000001C) run by vt::AlgoVm, kind 0x80000063, routing
 // descriptor 0x80000007 (vt/algo.h).
 std::unique_ptr<Effect> makeAlgoEffect(CroutonBasics, const Crouton&, std::string* why);
+// Bar ILBM crouton (isBarPicture with a tag 0x1000001C program): the still `form` moved by
+// channel 29, coloured by tag 0x1000001B (tools/re/BARS.md).
+std::unique_ptr<Effect> makeBarEffect(CroutonBasics, const Crouton&, const Form& form, std::string* why);
 
 }  // namespace vt::detail

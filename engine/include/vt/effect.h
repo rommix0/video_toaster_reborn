@@ -120,10 +120,11 @@ std::unique_ptr<Effect> makeDissolve();
 // Reads a crouton file. A CRFX crouton -> ChromaFX (vt/chromafx.h: recolours B at every T-bar
 // position, uses the DV memory). An ALGO crouton -> Switcher move (vt/algo.h: digital moves, which
 // use the DV memory, wipes and fades). Otherwise the kind is decided by its content: an ANIM form
-// -> DVE move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> gradient
-// wipe. Returns nullptr and sets *whyNot (if given) for files that cannot be played yet: MAIN/CTRL
-// (Switcher code) and unsupported ALGO programs, bar pictures, unsupported control
-// image sizes, undecodable files.
+// -> DVE move (vt::isDve, see vt/dve.h) or animated wipe, else the first non-icon ILBM -> a Bar
+// move when it is taller than the raster or deeper than 8 planes and has a tag 0x1000001C program
+// (the 14 Bar croutons, tools/re/BARS.md), else a gradient wipe. Returns nullptr and sets *whyNot
+// (if given) for files that cannot be played yet: MAIN/CTRL (Switcher code) and unsupported ALGO
+// programs, bar pictures without a program, unsupported control image sizes, undecodable files.
 // An existing, readable file with no CrUD whose sibling icon (<name>.i or .I) is an ALGO crouton plays that crouton's
 // program (the original reads the CrUD from the icon file; the two Smooth Fade files); the
 // effect keeps the original file name.

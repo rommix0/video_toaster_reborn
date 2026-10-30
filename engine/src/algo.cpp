@@ -237,7 +237,7 @@ Value evaluate(int n, const Bytes& p, uint32_t t) {
             for (int i = 0; i < 4; ++i) blk[16 + i] = uint8_t(words[i / 2] >> (8 - 8 * (i % 2)));
             return {opWindow(Bytes{blk, sizeof blk}, t), -1};
         }
-        // 9..17: not used by ALGO croutons (9 and 17 by the four deep-colour bar ILBM/ANIM croutons)
+        // 9..17: not used by ALGO croutons (9 and 17 by the 14 Bar ILBMs, algoChannelWords)
         case 9: return {mulT(p.L(0), t), -1};                     // 0x789b6: L * t
         case 10: return {mulT(mulT(p.L(0), t), t), -1};           // 0x789c8: L * t^2
         case 13: return {mulT(mulT(mulT(p.L(0), t), t), t), -1};  // 0x789de: L * t^3
@@ -795,6 +795,37 @@ void AlgoVm::wipe(uint32_t t) {
     step_.bandLo = cv[0x14];
     step_.bandHi = cv[0x16];
     step_.bandInk = cv[0xc];
+}
+
+// The block walk of _install 0x76044 from offset 0, each slot evaluated at once (0xe7b2e).
+std::optional<std::array<int, 6>> algoChannelWords(std::span<const uint8_t> program, int channel, uint32_t t) {
+    const Bytes p{program.data(), program.size()};
+    std::optional<std::array<int, 6>> out;
+    int64_t o = 0;
+    for (;;) {
+        const int n = int(p.W(o));
+        o += 2;
+        if (!n) return out;
+        if (n < 26 || n > 29) fail("channel out of range");
+        std::array<int, 6> w{};  // chanSize(26..29) = 0x0c
+        for (int k = 0;; ++k) {
+            const int op = int(p.W(o));
+            o += 2;
+            if (!op) break;
+            if (op >= int(std::size(kFixed)) || op == 15 || op == 16) fail("opcode not supported");
+            const int ln = op == 7 || op == 8 ? int(p.W(o)) : kFixed[op];
+            if (uint64_t(o) + uint64_t(ln) > program.size()) fail("malformed program");
+            if (op != 1 && k >= int(w.size())) fail("slot past the channel block");
+            if (op == 2) {
+                w[size_t(k)] = s16(p.W(o));
+            } else if (op != 1) {
+                const Value r = evaluate(op, Bytes{program.data() + o, size_t(ln)}, t);
+                w[size_t(k)] = s16(r.word >= 0 ? r.word : store(r.v));
+            }
+            o += ln;
+        }
+        if (n == channel) out = w;
+    }
 }
 
 // tbar_t 0x7510e / 0x75882: T-bar 0..511 -> t (16.16); flags bit 3 = there and back.
