@@ -32,13 +32,15 @@ struct Refusal : std::runtime_error {
 
 // The picture of a plane set as `lanes` 8-bit samples per pixel: PLTP entry n is the byte pair
 // (lane, bit) of plane n, lane value = sum of plane bit << bit. Every lane in
-// [firstLane, firstLane + lanes) must come out with all eight bits set.
+// [firstLane, firstLane + lanes) must come out with the bits of `need` set. A plane for another lane
+// is refused, or with skipOthers left out (a CG key page's alpha lane beside its composite).
 std::vector<uint8_t> gatherLanes(const Planes& pl, int w, const std::vector<std::pair<int, int>>& table,
-                                 int firstLane, int lanes) {
+                                 int firstLane, int lanes, int need = 0xff, bool skipOthers = false) {
     std::vector<uint8_t> out(size_t(lanes) * pl.h * w);
     std::vector<int> seen(static_cast<size_t>(lanes), 0);
     for (int n = 0; n < pl.count; ++n) {
         const auto [lane, bit] = table[size_t(n)];
+        if (skipOthers && (lane < firstLane || lane >= firstLane + lanes)) continue;
         if (lane < firstLane || lane >= firstLane + lanes || bit > 7)
             throw Refusal("plane " + std::to_string(n) + " goes to lane " + std::to_string(lane) + " bit " +
                           std::to_string(bit) + ", outside lanes " + std::to_string(firstLane) + "-" +
@@ -50,19 +52,21 @@ std::vector<uint8_t> gatherLanes(const Planes& pl, int w, const std::vector<std:
             for (int x = 0; x < w; ++x) dst[size_t(y) * w + x] |= uint8_t((row[x >> 3] >> (7 - (x & 7)) & 1) << bit);
         }
     }
-    if (std::ranges::any_of(seen, [](int m) { return m != 0xff; })) throw Refusal("PLTP does not fill the lanes");
+    if (std::ranges::any_of(seen, [&](int m) { return (m & need) != need; })) throw Refusal("PLTP does not fill the lanes");
     return out;
 }
 
 // FREEZE.md §4: lanes 6 and 7 are NTSC composite samples at 4 fsc, the DvQuad samples. Every
 // 4th row pair trades the lanes; a pixel pair x, x^1 supplies the four samples of one quad.
-void decodeComposite(const std::vector<uint8_t>& lanes, int w, int h, Frame& out, Rect r) {
+// The phase follows the DV line, file row + line0 (CGKEY.md §4): 0 for a framestore, BMHD y for a
+// CG key page.
+void decodeComposite(const std::vector<uint8_t>& lanes, int w, int h, Frame& out, Rect r, int line0 = 0) {
     const uint8_t* l6 = lanes.data();
     const uint8_t* l7 = lanes.data() + size_t(h) * w;
     for (int y = 0; y < h; ++y) {
         const uint8_t* a = l6 + size_t(y) * w;
         const uint8_t* b = l7 + size_t(y) * w;
-        if (((y + 1) >> 1) & 1) std::swap(a, b);
+        if (((y + line0 + 1) >> 1) & 1) std::swap(a, b);
         for (int x = 0; x < w; ++x) {
             DvQuad q{};
             for (int px : {x, x ^ 1}) {
@@ -72,6 +76,50 @@ void decodeComposite(const std::vector<uint8_t>& lanes, int w, int h, Frame& out
             out.at(r.x + x, r.y + y) = dvQuadToRgb(q);
         }
     }
+}
+
+// The picture of a crouton: its first FORM ILBM (later ones are the 80x50 icons), its header (passed
+// to sizeOk, which throws a Refusal for a size it does not take), PLTP table and BODY.
+struct Picture {
+    Bitmap bm;
+    std::vector<std::pair<int, int>> table;
+    std::span<const uint8_t> body;
+};
+template <class SizeOk>
+Picture readPicture(const Crouton& c, SizeOk sizeOk) {
+    const auto form = std::ranges::find(c.forms, kIlbmForm, &Form::type);
+    if (form == c.forms.end()) throw Refusal("no picture (FORM ILBM)");
+    Picture p{readBitmapHeader(c.bytes, *form), {}, {}};
+    const Bitmap& bm = p.bm;
+    sizeOk(bm);
+    const auto chunks = formChunks(c.bytes, *form);
+    const auto body = std::ranges::find(chunks, kBody, &Chunk::id);
+    if (body == chunks.end()) throw Refusal("no BODY");
+    if (body->data > c.bytes.size()) throw Refusal("BODY cut off");
+    if (const auto pltp = std::ranges::find(chunks, kPltp, &Chunk::id); pltp != chunks.end()) {
+        for (size_t i = 0; i + 1 < std::min(pltp->size, c.bytes.size() - pltp->data); i += 2)
+            p.table.emplace_back(c.bytes[pltp->data + i], c.bytes[pltp->data + i + 1]);
+    } else if (bm.planes == 24) {
+        for (int n = 0; n < 24; ++n) p.table.emplace_back(8 + n / 8, n % 8);  // plain 24-bit ILBM
+    }
+    if (int(p.table.size()) < bm.planes) throw Refusal(std::to_string(bm.planes) + " planes without a PLTP entry for each");
+    p.body = std::span<const uint8_t>(c.bytes).subspan(body->data, std::min(body->size, c.bytes.size() - body->data));
+    return p;
+}
+
+// The crouton TYPE of `path` from its own CrUD, or with none its sibling icon's (Ruling 9); nullopt
+// when the file does not read.
+std::optional<CroutonType> croutonType(const std::filesystem::path& path) {
+    const auto c = loadCrouton(path);
+    if (!c) return std::nullopt;
+    if (c->type != CroutonType::None) return c->type;
+    for (const char* ext : {".i", ".I"}) {
+        auto sib = path;
+        sib += ext;
+        if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)  // a broken one has none
+            return icon->type;
+    }
+    return CroutonType::None;
 }
 
 // ---- saving: the layout of 4.2/Framestore/ColorBars (FREEZE.md §4) ----
@@ -231,15 +279,9 @@ Rect framestoreRect(int w, int h) { return {(kRasterW - w) / 2, kFramestoreY0, w
 
 bool isFramestore(const std::filesystem::path& path, std::optional<Frame>* picture) {
     try {
-        const auto c = loadCrouton(path);
-        if (!c) return false;
-        if (c->type != CroutonType::None) return c->type == CroutonType::Fram;
-        for (const char* ext : {".i", ".I"}) {
-            auto sib = path;
-            sib += ext;
-            if (const auto icon = loadCrouton(sib); icon && icon->type != CroutonType::None)  // a broken one has none
-                return icon->type == CroutonType::Fram;
-        }
+        const auto type = croutonType(path);
+        if (!type) return false;
+        if (*type != CroutonType::None) return *type == CroutonType::Fram;
         auto still = loadFramestore(path);  // Theater (LightWaveDemo): no CrUD anywhere
         const bool ok = still.has_value();
         if (picture) *picture = std::move(still);
@@ -257,32 +299,17 @@ std::optional<Frame> loadFramestore(const std::filesystem::path& path, std::stri
     try {
         auto c = loadCrouton(path);
         if (!c) return fail("cannot read " + detail::utf8(path));
-        // The first FORM ILBM is the picture; later ones are the 80x50 icons.
-        const auto form = std::ranges::find(c->forms, kIlbmForm, &Form::type);
-        if (form == c->forms.end()) return fail("no picture (FORM ILBM)");
-        const Bitmap bm = readBitmapHeader(c->bytes, *form);
-        if (bm.w > kMaxW || bm.h > kMaxH || bm.w < 2 || bm.h < 1 || (bm.w | bm.h) & 1)
-            return fail("picture size " + std::to_string(bm.w) + "x" + std::to_string(bm.h) +
-                        " (want even, at most 768x480)");
-
-        const auto chunks = formChunks(c->bytes, *form);
-        const auto body = std::ranges::find(chunks, kBody, &Chunk::id);
-        if (body == chunks.end()) return fail("no BODY");
-        if (body->data > c->bytes.size()) return fail("BODY cut off");
-        std::vector<std::pair<int, int>> table;
-        if (const auto pltp = std::ranges::find(chunks, kPltp, &Chunk::id); pltp != chunks.end()) {
-            for (size_t i = 0; i + 1 < std::min(pltp->size, c->bytes.size() - pltp->data); i += 2)
-                table.emplace_back(c->bytes[pltp->data + i], c->bytes[pltp->data + i + 1]);
-        } else if (bm.planes == 24) {
-            for (int n = 0; n < 24; ++n) table.emplace_back(8 + n / 8, n % 8);  // plain 24-bit ILBM
-        }
-        if (int(table.size()) < bm.planes)
-            return fail(std::to_string(bm.planes) + " planes without a PLTP entry for each");
+        const Picture pic = readPicture(*c, [](const Bitmap& bm) {
+            if (bm.w > kMaxW || bm.h > kMaxH || bm.w < 2 || bm.h < 1 || (bm.w | bm.h) & 1)
+                throw Refusal("picture size " + std::to_string(bm.w) + "x" + std::to_string(bm.h) +
+                              " (want even, at most 768x480)");
+        });
+        const Bitmap& bm = pic.bm;
+        const auto& table = pic.table;
         if (bm.planes != 16 && bm.planes != 24)
             return fail(std::to_string(bm.planes) + " planes (want 16 composite or 24 RGB)");
 
-        const Planes pl = bodyToPlanes(bm, std::span<const uint8_t>(c->bytes).subspan(
-                                               body->data, std::min(body->size, c->bytes.size() - body->data)));
+        const Planes pl = bodyToPlanes(bm, pic.body);
         Frame f;
         std::fill(f.px.begin(), f.px.end(), Rgba8{0, 0, 0, 255});
         const Rect r = framestoreRect(bm.w, bm.h);
@@ -325,6 +352,41 @@ bool saveFramestore(const std::filesystem::path& path, const Frame& still, std::
         fs::remove(tmpIcons, ec);
         if (whyNot) *whyNot = ex.what();
         return false;
+    }
+}
+
+bool isCgKeyPage(const std::filesystem::path& path) {
+    try {
+        return croutonType(path) == CroutonType::Keyf;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+std::optional<CgKeyPage> loadCgKeyPage(const std::filesystem::path& path, std::string* whyNot) {
+    try {
+        auto c = loadCrouton(path);
+        if (!c) throw Refusal("cannot read " + detail::utf8(path));
+        const Picture pic = readPicture(*c, [](const Bitmap& bm) {
+            if (bm.w > kMaxW || bm.w < 2 || bm.w & 1 || bm.h < 1 || bm.y < 0 || bm.y + bm.h > kMaxH)
+                throw Refusal("page " + std::to_string(bm.w) + "x" + std::to_string(bm.h) + " at y " +
+                              std::to_string(bm.y) + " (want an even width up to 768, lines 0..480)");
+        });
+        const Bitmap& bm = pic.bm;
+        const Planes pl = bodyToPlanes(bm, pic.body);
+        CgKeyPage page{path, {}, std::vector<uint8_t>(size_t(kRasterW) * kRasterH), algoTiming(*c)};
+        std::fill(page.fill.px.begin(), page.fill.px.end(), Rgba8{0, 0, 0, 255});
+        // CGKEY.md §4: DV lines y + 1 .., x 0; the phase from the DV line.
+        const Rect r{0, kFramestoreY0 + bm.y, bm.w, bm.h};
+        decodeComposite(gatherLanes(pl, bm.w, pic.table, 6, 2, 0xff, true), bm.w, bm.h, page.fill, r, bm.y);
+        const auto alpha = gatherLanes(pl, bm.w, pic.table, 0x0b, 1, 0x03, true);  // lane 0x0b bits 1-0
+        for (int y = 0; y < bm.h; ++y)
+            for (int x = 0; x < bm.w; ++x)
+                page.alpha[size_t(r.y + y) * kRasterW + size_t(x)] = alpha[size_t(y) * bm.w + x] & 3;
+        return page;
+    } catch (const std::exception& ex) {
+        if (whyNot) *whyNot = ex.what();
+        return std::nullopt;
     }
 }
 

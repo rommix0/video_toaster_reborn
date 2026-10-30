@@ -17,6 +17,7 @@ struct Rgb {
 
 struct Bitmap {
     int w = 0, h = 0, planes = 0, compression = 0, masking = 0;
+    int y = 0;  // BMHD y (signed): a CG key page's first DV line
     uint32_t camg = 0;
     std::vector<Rgb> cmap;  // empty when the ILBM has no CMAP
     int rowbytes() const { return ((w + 15) / 16) * 2; }

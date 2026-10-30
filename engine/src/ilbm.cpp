@@ -137,6 +137,7 @@ Bitmap readBitmapHeader(std::span<const uint8_t> d, const Form& form) {
     if (h.size() < 20) throw std::runtime_error("ILBM: BMHD too short");
     bm.w = (h[0] << 8) | h[1];
     bm.h = (h[2] << 8) | h[3];
+    bm.y = int16_t((h[6] << 8) | h[7]);
     bm.planes = h[8];
     bm.masking = h[9];
     bm.compression = h[10];

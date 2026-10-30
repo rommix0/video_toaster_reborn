@@ -21,6 +21,7 @@
 
 #include "vt/background.h"
 #include "vt/effect.h"
+#include "vt/framestore.h"
 #include "vt/key.h"
 #include "vt/raster.h"
 #include "vt/sound.h"
@@ -42,6 +43,24 @@ enum class PositionEnd { KeepAndStop, Finish, BackToTBar };
 struct SourceFrames {
     std::array<const Frame*, 4> inputs{};
 };
+
+// The loaded CG key page as the panel shows it (Switcher::cgPage).
+struct CgPageState {
+    Source dv = Source::None;  // the DV holding the loaded page; None: no page loaded
+    bool up = false;           // Superimpose shows it: on Program at `level`
+    int level = 0;             // the dissolve level L, 0..255
+    bool mark = false;         // the Superimpose bus's `dv` button shows the "CG" picture
+    bool operator==(const CgPageState&) const = default;
+};
+
+// The levels an Auto writes for a CG key page (CGKEY.md section 2, cgkey_ref.ramp, verified):
+// speed = the value $1f0, on = the page is up (the off-dissolve), tbar = the T-bar 0..511 it starts
+// from. N = speed >> 2 steps of (k * floor(0xff80 / N)) >> 8, then the final write (255, or 0 off);
+// a part-way T-bar scales the step count as the original does. Where the original divides by zero
+// (N = 0, or a part-way start that rounds to no steps) only the final write is left (design 2 D).
+std::vector<int> cgRamp(int speed, bool on, int tbar);
+// The page's share 0..255 over Main of a pixel of alpha 0..3 at level L 0..255 (HARDWARE GUESS).
+int cgMix(int alpha, int level, CgMixLaw law);
 
 class Switcher {
 public:
@@ -141,7 +160,7 @@ public:
     // The first move of a drag (the first since releaseTBar) grabs the T-bar: a Positionable
     // effect's position goes back to its centred defaults, without a stop, and positioning ends.
     void setTBar(int pos);
-    int tbar() const { return tbar_; }
+    int tbar() const { return cgPage_ ? cgTBar_ : tbar_; }  // a loaded CG key page's own T-bar
     // The hand lets go of the T-bar (the drag ends). For a Positionable effect (positionRange()) whose
     // T-bar this drag moved (tools/re/POSITION.md 3): let go off 0 and 511 with the take open and no
     // Auto, positioning starts; let go at 0 or 511 (the take has ended), a kept offset is baked
@@ -182,7 +201,7 @@ public:
     // at 511); Reverse ends as a return to 0 does: no swap, an overlay ends, a Transition-mode
     // ChromaFX disengages (a Filter-mode one stays engaged).
     void autoTransition(Speed speed, Direction dir = Direction::Forward);
-    bool autoRunning() const { return auto_; }
+    bool autoRunning() const { return auto_ || cgAuto_; }  // also a CG key page's dissolve
     // True from the moment the T-bar leaves 0 or Auto starts until the transition finishes (or,
     // for ChromaFX and overlays, until it is disengaged).
     bool transitionActive() const { return auto_ || tbar_ > 0 || engaged_; }
@@ -229,6 +248,26 @@ public:
     // DV1/DV2") if neither still was ever written.
     std::optional<Source> saveSource(std::string* whyNot = nullptr) const;
     bool hasStill() const { return written_[0] || written_[1]; }  // saveSource has a still
+    // The f / l keys: refused ("f / l: a CG key page is loaded") while a CG key page is loaded (the
+    // page's handler refuses message 0xf, CGKEY.md section 3); otherwise setFrozen. The FREEZE and
+    // LIVE buttons call setFrozen, which a page does not intercept.
+    bool freezeKey(bool frozen, std::string* whyNot = nullptr);
+
+    // --- ToasterCG key pages (docs/2026-10-30-cg-keys-design.md, tools/re/CGKEY.md) ---
+    // While a page is loaded it is the loaded crouton: Auto, the T-bar, Take, the keyer buttons and
+    // the Superimpose bus act on it as section 2 C-E say, and tbar() / autoRunning() are its own.
+    // Loading: refused as loadStill while a transition runs. Clicking the page that is loaded
+    // again (same path) puts its DV on Preview; with cutOn (a double click) it is loaded if it is not
+    // already, then cut on. Otherwise the previous page is cleared, the effect becomes the plain
+    // built-in dissolve (the page replaces the loaded crouton), an engaged ChromaFX disengages,
+    // live DV on a bus goes back to its input, and the fill goes into DV1/DV2 by loadStill's rule,
+    // the store frozen; no bus or keyer changes. The speed button goes to the page's default.
+    bool loadCgPage(std::shared_ptr<const CgKeyPage>, bool cutOn = false, std::string* whyNot = nullptr);
+    // Another crouton selected (setEffect and loadStill do it themselves; a control crouton calls
+    // it): as the end of an off-dissolve, a cut that empties Superimpose (Main kept, Preview gets the
+    // page's DV if it was Main), the alpha and the mark gone; the picture stays in the DV.
+    void clearCgPage();
+    CgPageState cgPage() const;
 
     // One 59.94 fps frame (call it after that frame's render). Advances the clock, a running
     // Auto, (while engaged) the ChromaFX / overlay frame counter and a pending grab's wait.
@@ -299,6 +338,12 @@ private:
     // the oldest recorded one; null (black) if none.
     const Frame* delayed(int input) const;
     void writeStill(int dv, const Frame* f) const;  // dv 0 = DV1, 1 = DV2; null = black
+    Source dvTarget() const;  // where a framestore or CG key page loads (FREEZE.md 4)
+    bool cgUp() const { return cgPage_ && sel_[2] == cgDv_; }  // the page is on Superimpose
+    void cgCutOn();            // 0x123ad6: the page on Superimpose at full level
+    void cgDrop();             // the keyer buttons, another Superimpose source: the page cuts off
+    void cgShow();             // 0x123d62 when no page bitmap is shown: the page's DV on Superimpose
+    void cgFinish();           // the Auto's last write was held: its end (CGKEY.md section 2)
     bool staysEngaged() const { return effect_->isChromaFx() || effect_->isOverlay(); }
 
     std::array<Source, 3> sel_{Source::In1, Source::In2, Source::None};  // Main, Preview, Superimpose
@@ -345,6 +390,19 @@ private:
     // to "render reads only" (with the due grab above): the lag needs the past frames.
     mutable std::array<std::vector<Frame>, 4> hist_;
     mutable std::array<std::vector<int64_t>, 4> histTicks_;
+    // The loaded CG key page (CGKEY.md names: on flag 0x124434, $3e6, $1ec). Null: none.
+    std::shared_ptr<const CgKeyPage> cgPage_;
+    Source cgDv_ = Source::None;  // the DV holding it
+    bool cgOn_ = false;           // the page is up: the next Auto dissolves it off
+    bool cgShown_ = false;        // its alpha is on the Amiga display ($3e6 != 0)
+    bool cgMark_ = false;         // the CG picture on the Superimpose DV button
+    int cgLevel_ = 0;             // the dissolve level L last written
+    int cgTBar_ = 0;              // the T-bar while a page is loaded
+    bool cgAuto_ = false;         // a page dissolve runs
+    bool cgAutoOff_ = false;      // ... and it is the off-dissolve
+    std::vector<int> cgRamp_;     // its levels (cgRamp)
+    size_t cgStep_ = 0;           // the level shown
+    int cgWait_ = 0;              // ticks until the next level
 };
 
 }  // namespace vt

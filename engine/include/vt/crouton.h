@@ -10,7 +10,7 @@
 
 namespace vt {
 
-enum class CroutonType { Algo, Ilbm, Anim, Crfx, Main, Ctrl, Fram, Other, None };
+enum class CroutonType { Algo, Ilbm, Anim, Crfx, Main, Ctrl, Fram, Keyf, Other, None };
 
 struct Crouton {
     CroutonType type = CroutonType::None;

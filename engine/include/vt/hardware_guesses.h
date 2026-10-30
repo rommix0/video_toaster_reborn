@@ -6,6 +6,16 @@
 
 namespace vt {
 
+// How a CG key page pixel of alpha a (0..3) mixes over Main at dissolve level L (0..255), see
+// HardwareGuesses::cgMixLaw and vt::cgMix.
+enum class CgMixLaw {
+    // 64 * code + (L & 63) with code = a + (L >> 6) - 3, clamped to 0..255; a = 0 is 0
+    // (tools/re/CGKEY.md section 4 "Mix law", cgkey_ref.mix_guess). A solid pixel shows L exactly.
+    CodeAndFraction,
+    // round(a * L / 3): CGKEY.md's fallback, the simplest law.
+    Linear,
+};
+
 struct HardwareGuesses {
     // Gradient wipes: the number of gray levels over which the wipe edge ramps from A to B.
     // 0 = a hard edge (a pixel is wholly A or wholly B). HARDWARE GUESS: the original's edge
@@ -53,6 +63,17 @@ struct HardwareGuesses {
     // acceleration works on, per logical pixel the Position dock's trackball is rolled. HARDWARE
     // GUESS: counts per mm depend on the mouse (about 200 dpi typical, POSITION.md 11.4).
     double positionCountsPerPixel = 1.0;
+
+    // CG key pages: how the page's 2-bit alpha and the dissolve level mix the page over Main in the
+    // mixer's mode 4. HARDWARE GUESS: the program forces bits 6-7 of the mix byte and picks the
+    // palette (pixel code) from L >> 6; what the hardware makes of them is not in the code
+    // (tools/re/CGKEY.md section 4 and section 7 unknown 1).
+    CgMixLaw cgMixLaw = CgMixLaw::CodeAndFraction;
+
+    // CG key pages: the fields (ticks) each dissolve step is held, clamped to 1 or more where used.
+    // HARDWARE GUESS: each step waits at least one field; 4 makes a dissolve last about $1f0 fields,
+    // the ALGO meaning of the speed value (tools/re/CGKEY.md section 2 "Duration", unknown 2).
+    int cgFieldsPerStep = 4;
 };
 
 }  // namespace vt

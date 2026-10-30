@@ -24,6 +24,7 @@ TEST_CASE("golden files have the expected record counts") {
     REQUIRE(golden::readLines("chromafx.jsonl").size() == 96 + 396);
     REQUIRE(golden::readLines("algo.jsonl").size() == 114);
     REQUIRE(golden::readLines("bars.jsonl").size() == 14);
+    REQUIRE(golden::readLines("cgkeys.jsonl").size() == 6 + 16);
 }
 
 TEST_CASE("golden records parse into all value kinds") {

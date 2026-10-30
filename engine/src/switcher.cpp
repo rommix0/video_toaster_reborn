@@ -43,6 +43,11 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
         return false;
     };
     Source& cur = sel_[busIndex(b)];
+    if (b == Bus::Superimpose && cgPage_) {  // 0x123a1e: the page's own DV cuts it on, any other drops it
+        if (s == cgDv_) cgCutOn();
+        else cgDrop();
+        return true;
+    }
     if (b == Bus::Superimpose) {
         if (s == cur) return true;  // the lit source again: nothing
         // DV2 alone is the plain still unless the store is live and the bus has an input (or live DV) to show.
@@ -58,6 +63,7 @@ bool Switcher::select(Bus b, Source s, std::string* whyNot) {
 Source Switcher::selected(Bus b) const { return sel_[busIndex(b)]; }
 
 void Switcher::setKeyMode(KeyMode m) {
+    if (cgPage_) return cgDrop();  // 0x123a50: OFF, Black and White cut the page off, the keyer OFF
     if (effect_->isArtCardKey()) {
         Source& sup = sel_[busIndex(Bus::Superimpose)];
         keyOn_ = m != KeyMode::Off;
@@ -77,6 +83,11 @@ void Switcher::setKeyMode(KeyMode m) {
 }
 
 void Switcher::setKeyLevel(int l) {
+    if (cgPage_) {  // 0x123a50: only the keyer bit is cleared; the page is unaffected
+        keyOn_ = false;
+        keyLevel_ = std::clamp(l, 0, kKeyLevelMax);
+        return;
+    }
     if (effect_->isArtCardKey()) {
         keyLevel_ = std::clamp(l, 0, kCardLevelMax);
         applyCard();
@@ -132,6 +143,7 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
         if (effect_->usesDvMemory() && transitionActive())
             return refuse("a DVE move is running: finish it before choosing another DV-memory effect");
     }
+    clearCgPage();  // another crouton selected
     // Abandon whatever was in progress, without a swap: the buses as at a return to 0 (C7), decided
     // by the old effect. Not under Art Card Key: the card holds the T-bar with no take.
     if (transitionActive() && !effect_->isArtCardKey()) arriveAt0();
@@ -230,6 +242,16 @@ void Switcher::arriveAt0() {
 
 void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
+    if (cgPage_) {  // 0x1240aa: L = T-bar / 2 whichever way the page was going; 511 makes it up
+        if (pos == cgTBar_) return;
+        cgAuto_ = false;
+        cgShow();
+        cgTBar_ = pos;
+        cgLevel_ = pos >> 1;
+        keyOn_ = false;
+        if (pos == kTBarEnd) cgOn_ = true;
+        return;
+    }
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
     auto_ = false;             // the hand takes over
     // A grab: 0xb6eac resets the program. A grab while positioning is the back-to-T-bar exit,
@@ -296,6 +318,21 @@ void Switcher::endPositioning(PositionEnd how) {
 }
 
 void Switcher::autoTransition(Speed speed, Direction dir) {
+    if (cgPage_) {  // msg 4 / 0x19: dissolve the page on, or off when it is up
+        if (cgAuto_) return;  // the original's ramp loop reads no buttons
+        speed_ = speed;
+        if (dir == Direction::Reverse && cgTBar_ > 0 && cgTBar_ < kTBarEnd) cgOn_ = !cgOn_;
+        cgAutoOff_ = cgOn_;
+        if (!cgOn_) cgShow();  // 0x123b24
+        const Timing& t = cgPage_->timing;
+        cgRamp_ = cgRamp(t.durationTicks[size_t(t.resolve(speed))], cgOn_, cgTBar_);
+        cgStep_ = 0;
+        cgLevel_ = cgRamp_.front();
+        cgWait_ = std::max(1, guesses_.cgFieldsPerStep);
+        cgAuto_ = true;
+        keyOn_ = false;  // $1d2 bit 15 cleared at every step
+        return;
+    }
     if (effect_->isArtCardKey()) return;  // the card is held: Auto does nothing
     positioning_ = false;
     speed_ = speed;
@@ -334,6 +371,25 @@ void Switcher::take() {
     disengage();
     soundPending_ = false;
     grabSelects_ = false;  // a pending grab must not undo the cut
+    if (cgPage_) {  // 0x123a76
+        cgAuto_ = false;
+        cgMark_ = false;  // 0x150b0
+        Source& main = sel_[busIndex(Bus::Main)];
+        Source& prev = sel_[busIndex(Bus::Preview)];
+        Source& sup = sel_[busIndex(Bus::Superimpose)];
+        if (sup != Source::None) {  // up: the normal cut, which drops it
+            cgOn_ = false;
+            cgTBar_ = 0;
+            const bool same = main == prev;
+            std::swap(main, prev);
+            if (same) prev = sup;
+            sup = Source::None;
+        } else {  // Preview to Main, and the page cuts on
+            std::swap(main, prev);
+            cgCutOn();
+        }
+        return;
+    }
     if (overlay) {  // Ruling 27: an overlay only ends; it cuts nothing
         sel_[busIndex(Bus::Superimpose)] = Source::None;  // C7: the key dropped at take start
         return;
@@ -359,6 +415,14 @@ void Switcher::tick() {
     if (grabPending_ && grabWait_ > 0 && --grabWait_ == 0 && grabSelects_) {
         sel_[busIndex(Bus::Main)] = Source::DV1;
         frozen_ = true;
+    }
+    if (cgAuto_ && --cgWait_ <= 0) {  // the next level of a page dissolve, or its end
+        if (++cgStep_ < cgRamp_.size()) {
+            cgLevel_ = cgRamp_[cgStep_];
+            cgWait_ = std::max(1, guesses_.cgFieldsPerStep);
+        } else {
+            cgFinish();
+        }
     }
     if (!auto_) return;
     // ALGO.md 15.3: a forward Auto from 0 that has rendered a Positionable move's stop (t clamped
@@ -454,7 +518,19 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
     // swapped in and out, so a steady stream of renders allocates nothing.
     Frame& out = outScratch_;
     out.px.resize(size_t(kRasterW) * kRasterH);  // program's buffer may have come back empty
-    if (effect_->isArtCardKey()) {
+    if (cgUp()) {
+        // Design 2 C: the page's DV (fill) over Main by its alpha at level L (the mix law is a guess).
+        const Frame& fill = pick(cgDv_);
+        std::array<int, 4> k{};
+        for (int al = 0; al < 4; ++al) k[size_t(al)] = cgMix(al, cgLevel_, guesses_.cgMixLaw);
+        const std::vector<uint8_t>& alpha = cgPage_->alpha;
+        for (size_t i = 0; i < out.px.size(); ++i) {
+            const int m = k[alpha[i] & 3u];
+            const Rgba8 bg = a.px[i], fg = fill.px[i];
+            auto mix = [m](int x, int y) { return uint8_t((x * (255 - m) + y * m + 127) / 255); };
+            out.px[i] = {mix(bg.r, fg.r), mix(bg.g, fg.g), mix(bg.b, fg.b), 255};
+        }
+    } else if (effect_->isArtCardKey()) {
         // Design 2 C: the card on Superimpose cuts the hole through which Main shows over Preview.
         const Source sup = sel_[busIndex(Bus::Superimpose)];
         if (keyOn_ && sup != Source::None) {
@@ -636,12 +712,22 @@ bool Switcher::grab(int input, std::string* whyNot) {
     return true;
 }
 
+// FREEZE.md 4 step 2 (the FRAM handler 0x122364; the KEYF loader 0x123c2e picks the same way).
+Source Switcher::dvTarget() const {
+    auto shows = [&](Bus b, Source s) { return sel_[busIndex(b)] == s; };
+    if (shows(Bus::Main, Source::DV1) || shows(Bus::Superimpose, Source::DV1)) return Source::DV2;
+    if (shows(Bus::Main, Source::DV2) || shows(Bus::Superimpose, Source::DV2)) return Source::DV1;
+    if (shows(Bus::Preview, Source::DV2)) return Source::DV1;
+    return Source::DV2;
+}
+
 // FREEZE.md 4 (FRAM handler 0x122364).
 bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
     if ((auto_ || tbar_ > 0) && !engaged_) {
         if (whyNot) *whyNot = "a transition is running: finish it first";
         return false;
     }
+    clearCgPage();  // another crouton selected
     // Step 1: ChromaFX off, live digital stripped from the buses.
     if (chromaEngaged()) {
         auto_ = false;
@@ -652,11 +738,7 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
         for (Source& s : sel_)
             if (isDv(s)) s = static_cast<Source>(dvInput_);
     // Step 2: the target DV.
-    auto shows = [&](Bus b, Source s) { return sel_[busIndex(b)] == s; };
-    Source target = Source::DV2;
-    if (shows(Bus::Main, Source::DV1) || shows(Bus::Superimpose, Source::DV1)) target = Source::DV2;
-    else if (shows(Bus::Main, Source::DV2) || shows(Bus::Superimpose, Source::DV2)) target = Source::DV1;
-    else if (shows(Bus::Preview, Source::DV2)) target = Source::DV1;
+    const Source target = dvTarget();
     // Steps 4 and 6: the still frozen in the target, shown on Preview. A pending grab is
     // cancelled (Ruling 5): it would overwrite DV1 and force it onto Main.
     grabPending_ = false;
@@ -682,6 +764,150 @@ std::shared_ptr<const Sound> Switcher::pendingSound() {
     const Sound* s = effect_->sound();
     if (!s) return nullptr;
     return std::shared_ptr<const Sound>(effect_, s);  // aliasing: owns the effect, points at its sound
+}
+
+// --- CG key pages (CGKEY.md; the 68000's word arithmetic as cgkey_ref.py models it) ---
+
+namespace {
+// 0x124108: the level of ramp position d; `on` (the off-dissolve) counts down from 0x10000.
+int cgLevelOf(uint32_t d, bool on) {
+    const uint32_t v = on ? (0x10000u - d) >> 8 : d >> 8;
+    return int(std::min<uint32_t>(v & 0xffffu, 0xffu));
+}
+}  // namespace
+
+std::vector<int> cgRamp(int speed, bool on, int tbar) {
+    const uint32_t n = (uint32_t(std::max(speed, 0)) & 0xffffu) >> 2;  // $1f0 is a word
+    const uint32_t p = uint32_t(std::clamp(tbar, 0, kTBarEnd));
+    const bool full = p == 0 || p == uint32_t(kTBarEnd);
+    const uint32_t steps = full ? n : (n * p / uint32_t(kTBarEnd)) & 0xffffu;
+    std::vector<int> out;
+    if (steps > 0) {  // else the original's divu traps: only the final write (design 2 D)
+        uint32_t d3, d4;
+        if (full) {
+            d3 = (0xff80u / n) & 0xffffu;
+            d4 = 0;
+        } else if (on) {  // 0x123eb4
+            d3 = ((p << 7) / steps) & 0xffffu;
+            d4 = (uint32_t(kTBarEnd) - p) << 7;
+        } else {  // 0x123f7a: the step count scales with p, not with the distance left (the original's bug)
+            d4 = p << 7;
+            d3 = ((0xff80u - d4) / steps) & 0xffffu;
+        }
+        for (uint32_t k = 0; k < steps; ++k, d4 += d3) out.push_back(cgLevelOf(d4, on));
+    }
+    out.push_back(cgLevelOf(0xffffu, on));
+    return out;
+}
+
+int cgMix(int alpha, int level, CgMixLaw law) {
+    alpha = std::clamp(alpha, 0, 3);
+    level = std::clamp(level, 0, 255);
+    if (law == CgMixLaw::Linear) return (alpha * level + 1) / 3;
+    if (alpha == 0) return 0;
+    return std::clamp(64 * (alpha + (level >> 6) - 3) + (level & 63), 0, 255);
+}
+
+bool Switcher::freezeKey(bool frozen, std::string* whyNot) {
+    if (cgPage_) {  // 0x123972: the page refuses message 0xf
+        if (whyNot) *whyNot = "f / l: a CG key page is loaded";
+        return false;
+    }
+    return setFrozen(frozen, whyNot);
+}
+
+// Message 2 (0x123932) and the loader 0x123b76.
+bool Switcher::loadCgPage(std::shared_ptr<const CgKeyPage> page, bool cutOn, std::string* whyNot) {
+    auto refuse = [&](const char* why) {
+        if (whyNot) *whyNot = why;
+        return false;
+    };
+    if (!page) return refuse("no page given");
+    if ((auto_ || tbar_ > 0) && !engaged_) return refuse("a transition is running: finish it first");
+    if (cgPage_ && cgPage_->path == page->path) {  // the loaded page again
+        if (cutOn) cgCutOn();                       // a double click's second half
+        else sel_[busIndex(Bus::Preview)] = cgDv_;  // 0x123aba
+        return true;
+    }
+    clearCgPage();  // the previous crouton is deselected (msg 3)
+    if (chromaEngaged()) {
+        auto_ = false;
+        tbar_ = 0;
+        disengage();
+    }
+    setEffect(makeDissolve());  // the page is the loaded crouton; the built-in Fade is what it leaves
+    if (!frozen_)
+        for (Source& s : sel_)
+            if (isDv(s)) s = static_cast<Source>(dvInput_);  // live digital stripped
+    cgDv_ = dvTarget();
+    grabPending_ = false;
+    writeStill(dvIndex(cgDv_), &page->fill);
+    frozen_ = true;
+    cgPage_ = std::move(page);
+    cgOn_ = cgShown_ = cgAuto_ = false;
+    cgMark_ = true;
+    cgLevel_ = cgTBar_ = 0;
+    speed_ = cgPage_->timing.defaultSpeed;
+    if (cutOn) cgCutOn();
+    return true;
+}
+
+// 0xb7d40: the bitmap leaves the display; with Superimpose showing something the page's Take cuts
+// (0xb7d8e: two swaps that cancel, then the generic cut); the Fade is loaded (it already is).
+void Switcher::clearCgPage() {
+    if (!cgPage_) return;
+    Source& sup = sel_[busIndex(Bus::Superimpose)];
+    if (sup != Source::None) {
+        if (sel_[busIndex(Bus::Preview)] == sel_[busIndex(Bus::Main)]) sel_[busIndex(Bus::Preview)] = sup;
+        sup = Source::None;
+    }
+    cgPage_.reset();
+    cgDv_ = Source::None;
+    cgOn_ = cgShown_ = cgMark_ = cgAuto_ = false;
+    cgLevel_ = cgTBar_ = 0;
+}
+
+CgPageState Switcher::cgPage() const {
+    if (!cgPage_) return {};
+    return {cgDv_, cgUp(), cgLevel_, cgMark_};
+}
+
+// 0x123d62 when no page bitmap is shown. After a drop the bitmap stays shown, so Superimpose is
+// not set again: an Auto then dissolves Main over Main (CGKEY.md section 3, the quirk).
+void Switcher::cgShow() {
+    if (cgShown_) return;
+    sel_[busIndex(Bus::Superimpose)] = cgDv_;
+    cgShown_ = true;
+}
+
+// 0x123ad6 then 0x124014.
+void Switcher::cgCutOn() {
+    sel_[busIndex(Bus::Superimpose)] = cgDv_;
+    cgShown_ = true;
+    cgAuto_ = false;
+    cgLevel_ = 255;
+    cgTBar_ = kTBarEnd;
+    cgOn_ = true;
+    keyOn_ = false;
+}
+
+void Switcher::cgDrop() {
+    keyOn_ = false;
+    cgOn_ = false;
+    cgAuto_ = false;
+    sel_[busIndex(Bus::Superimpose)] = Source::None;
+}
+
+void Switcher::cgFinish() {
+    cgAuto_ = false;
+    keyOn_ = false;
+    cgTBar_ = kTBarEnd;
+    if (!cgAutoOff_) {
+        cgOn_ = true;  // up: the next Auto takes it off
+        return;
+    }
+    cgLevel_ = 0;  // 0x124014, then 0xb7d40
+    clearCgPage();
 }
 
 }  // namespace vt
