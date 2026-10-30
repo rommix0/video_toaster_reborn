@@ -145,7 +145,8 @@ public:
     // The hand lets go of the T-bar (the drag ends). For a Positionable effect (positionRange()) whose
     // T-bar this drag moved (tools/re/POSITION.md 3): let go off 0 and 511 with the take open and no
     // Auto, positioning starts; let go at 0 or 511 (the take has ended), a kept offset is baked
-    // there (0xb7054). Otherwise nothing.
+    // there (0xb7054) at the end where its divu overflows (511, or 0 for a flags != 0 effect) and
+    // dropped at the other. Otherwise nothing.
     void releaseTBar();
 
     // --- positioning (the Positionable moves, POSITION.md) ---

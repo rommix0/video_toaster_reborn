@@ -253,9 +253,15 @@ void Switcher::setTBar(int pos) {
 
 // POSITION.md 3 step 3: the drag (0xb6eac's T-bar loop) ends.
 void Switcher::releaseTBar() {
-    if (!std::exchange(dragging_, false) || !effect_->positionRange()) return;
+    if (!std::exchange(dragging_, false)) return;
+    const auto r = effect_->positionRange();
+    if (!r) return;
     if (handTBar_ == 0 || handTBar_ == kTBarEnd) {
-        if (position_.h || position_.v) position_.bakedAt = handTBar_;  // 0xb7054 at the take's end
+        // 0xb7054 at the take's end. Only the end where its divu overflows (Shrink / WIPE IN at 511,
+        // Expand / WIPE OUT at 0) gives a path from the centre; at the other the size would stay and
+        // the picture slide off in later takes, so the position is dropped there instead.
+        if (handTBar_ != (r->flags ? 0 : kTBarEnd)) position_ = {};
+        else if (position_.h || position_.v) position_.bakedAt = handTBar_;
     } else if (tbar_ == handTBar_ && !auto_) {
         positioning_ = true;
     }

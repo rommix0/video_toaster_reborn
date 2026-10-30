@@ -2416,7 +2416,8 @@ TEST_CASE("a Positionable move let go mid-way enters positioning; at the ends it
 }
 
 TEST_CASE("positioning moves the effect's centre on Program at the T-bar position", "[switcher][position]") {
-    for (auto e : {shrink(), wipeIn()}) {
+    for (auto make : {shrink, wipeIn}) {
+        const auto e = make();
         Rig r;
         positionAt200(r, e);
         r.sw.movePosition(-20, -10);  // back to the centre
@@ -2427,12 +2428,12 @@ TEST_CASE("positioning moves the effect's centre on Program at the T-bar positio
         CHECK(r.sw.position().h != 0);
         CHECK(r.sw.position().v != 0);
         CHECK(centred.px != moved.px);
-        // What the effect gives at that position, in a take of its own.
+        // What a second instance of the effect gives at that position (the Switcher's keeps its VM).
         vt::RenderCtx ctx;
         ctx.take = 1000;
         ctx.position = r.sw.position();
         vt::Frame want;
-        e->render(200, r.in1, r.in2, want, ctx);
+        make()->render(200, r.in1, r.in2, want, ctx);
         if (e->digitalMove() == vt::DigitalMove::None) CHECK(moved.px == want.px);  // a wipe keeps no state
         r.sw.movePosition(-30, -12);
         CHECK(r.render().px == centred.px);
@@ -2505,6 +2506,39 @@ TEST_CASE("the right button goes back to a T-bar drag with the position kept", "
     CHECK(r.sw.position() == kept);
     r.sw.movePosition(4, 0);
     CHECK(r.sw.position().h > kept.h);
+}
+
+TEST_CASE("an offset kept into a drag that ends the take is baked only where 0xb7054 overflows", "[switcher][position]") {
+    // Shrink / WIPE IN at 511 and Expand / WIPE OUT at 0: the anchors become paths from the centre.
+    // At the other end the bake would keep the size and slide the picture: the position is dropped.
+    struct Case {
+        std::shared_ptr<const vt::Effect> (*make)();
+        int end;
+        bool kept;
+    };
+    auto expand = [] { return load("4.2/Effects/4000FX/Special/Positionable Expand"); };
+    const Case cases[] = {{shrink, 511, true}, {shrink, 0, false}, {expand, 0, true}, {expand, 511, false},
+                          {wipeIn, 0, false}};
+    for (const Case& c : cases) {
+        const auto e = c.make();
+        INFO(e->name() << " let go at " << c.end);
+        Rig r;
+        positionAt200(r, e);
+        const vt::EffectPosition offset = r.sw.position();
+        r.sw.endPositioning(vt::PositionEnd::BackToTBar);
+        r.sw.setTBar(c.end);
+        r.sw.releaseTBar();
+        CHECK_FALSE(r.sw.positioning());
+        CHECK_FALSE(r.sw.transitionActive());
+        if (c.kept) {
+            CHECK(r.sw.position().h == offset.h);
+            CHECK(r.sw.position().v == offset.v);
+            CHECK(r.sw.position().bakedAt == c.end);
+            CHECK(r.sw.position().stop == 0);
+        } else {
+            CHECK(r.sw.position() == vt::EffectPosition{});
+        }
+    }
 }
 
 TEST_CASE("a new T-bar grab resets the position and the stop", "[switcher][position]") {

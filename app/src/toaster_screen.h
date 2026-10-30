@@ -11,7 +11,8 @@
 // pointer is hidden and grabbed: its moves go to movePosition as mouse counts
 // (HardwareGuesses::positionCountsPerPixel per Toaster pixel), Space or Return keeps the position
 // (KeepAndStop), the left button finishes the take, the right button goes back to a T-bar drag.
-// The pointer then goes back to where it was.
+// The pointer then goes back to where it was. Losing the window's focus or hiding the screen lets a
+// held T-bar drag go and ends positioning as Space does.
 #include <QImage>
 #include <QList>
 #include <QRegion>
@@ -64,6 +65,7 @@ public:
     // the T-bar has fewer than 86 images.
     ToasterScreen(const vt::assets::PanelLayout&, const vt::assets::ColorFont& cgInterface14,
                   SwitcherActions&, QWidget* parent = nullptr);
+    ~ToasterScreen() override;  // positioning: the grab and the blank cursor go, the pointer comes back
 
     // Zoom = device pixels per Toaster pixel (whole numbers >= 1), so one Toaster pixel is exactly
     // zoom x zoom device pixels at any devicePixelRatio. The widget takes any size from 768x481
@@ -144,6 +146,7 @@ private:
     int tbarFor(double screenY) const;
     void startRightDrag(double screenY);
     void endDrag();                        // a T-bar drag let go: releaseTBar
+    void letGo();                          // focus lost or hidden: the drag let go, positioning ended
     void updateCapture();                  // capture_ follows the snapshot, the drags and ended_
     void openBkgPopup();
 

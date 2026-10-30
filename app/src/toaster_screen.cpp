@@ -218,17 +218,25 @@ void ToasterScreen::setState(const vt::media::SwitcherSnapshot& s) {
     refresh();
 }
 
+ToasterScreen::~ToasterScreen() {
+    if (capture_) {
+        releaseMouse();
+        QCursor::setPos(savedPos_);
+    }
+}
+
 // Positioning shows nothing but the program (POSITION.md 6): the pointer is hidden and held in the
-// middle of its display, so it never stops at an edge, and put back where it was afterwards.
+// middle of the screen (a grab only gets the moves over the app's own windows), so it never stops
+// at an edge, and put back where it was afterwards.
 void ToasterScreen::updateCapture() {
     const bool want = state_.positioning && !ended_ && dragTbar_ < 0 && !rightDrag_;
     if (want == capture_) return;
     capture_ = want;
     if (want) {
         savedPos_ = QCursor::pos();
-        centre_ = screen() ? screen()->geometry().center() : savedPos_;
+        centre_ = mapToGlobal(rect().center());
         QCursor::setPos(centre_);
-        lastGlobal_ = centre_;
+        lastGlobal_ = QCursor::pos();
         counts_ = {};
         setMouseTracking(true);  // moves with no button held
         grabMouse(Qt::BlankCursor);
@@ -465,6 +473,17 @@ void ToasterScreen::startRightDrag(double screenY) {
     pressY_ = screenY;
 }
 
+void ToasterScreen::letGo() {
+    if (dragTbar_ >= 0) {
+        dragTbar_ = -1;
+        rightDrag_ = false;
+        actions_.releaseTBar();
+    }
+    actions_.endPositioning(vt::PositionEnd::KeepAndStop);  // ignored unless positioning
+    ended_ = true;
+    updateCapture();
+}
+
 void ToasterScreen::endDrag() {
     dragTbar_ = -1;
     rightDrag_ = false;
@@ -522,15 +541,17 @@ void ToasterScreen::mouseMoveEvent(QMouseEvent* e) {
     if (capture_) {
         // Toaster pixels as mouse counts, the fractions kept for the next move (the guesses are the
         // defaults: the app sets none).
-        const QPointF g = e->globalPosition();
-        counts_ += (g - lastGlobal_) * (devicePixelRatioF() / zoom_ * vt::HardwareGuesses{}.positionCountsPerPixel);
+        // A jump further than kRecentre is a warp, not the hand: dropped.
+        const QPointF g = e->globalPosition(), d = g - lastGlobal_;
         lastGlobal_ = g;
+        if (d.manhattanLength() <= kRecentre)
+            counts_ += d * (devicePixelRatioF() / zoom_ * vt::HardwareGuesses{}.positionCountsPerPixel);
         const int dx = int(counts_.x()), dy = int(counts_.y());
         counts_ -= QPointF(dx, dy);
         if (dx || dy) actions_.movePosition(dx, dy);
         if ((g - QPointF(centre_)).manhattanLength() > kRecentre) {
             QCursor::setPos(centre_);
-            lastGlobal_ = centre_;
+            lastGlobal_ = QCursor::pos();
         }
         return;
     }
@@ -580,6 +601,7 @@ void ToasterScreen::wheelEvent(QWheelEvent* e) {
 }
 
 bool ToasterScreen::event(QEvent* e) {
+    if ((e->type() == QEvent::WindowDeactivate || e->type() == QEvent::Hide) && (capture_ || dragTbar_ >= 0)) letGo();
     if (e->type() == QEvent::DevicePixelRatioChange) {
         updateGeometry();
         snap();

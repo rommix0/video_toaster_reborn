@@ -396,13 +396,13 @@ void TestAppE2e::positionableShrinkFollowsTheMouse() {
     QCOMPARE(QWidget::mouseGrabber(), &w);
     const int tbar = c.loop().switcherState().tbar;
 
-    const QPoint to = w.screen()->geometry().center() + QPoint(40, 20) * w.zoom();  // 40, 20 Toaster pixels
+    const QPoint to = w.mapToGlobal(w.rect().center()) + QPoint(10, 5) * w.zoom();  // 10, 5 Toaster pixels
     QMouseEvent move(QEvent::MouseMove, w.mapFromGlobal(QPointF(to)), QPointF(to), Qt::NoButton, Qt::NoButton,
                      Qt::NoModifier);
     QApplication::sendEvent(&w, &move);
     const vt::EffectPosition p = position();
-    QCOMPARE(p.h, 20);  // kind 3: half a control cell per count
-    QCOMPARE(p.v, 10);
+    QCOMPARE(p.h, 5);  // kind 3: half a control cell per count, rounded away from 0
+    QCOMPARE(p.v, 3);
 
     QTest::keyClick(&w, Qt::Key_Space);
     c.runOffline(1);

@@ -171,18 +171,19 @@ std::unique_ptr<Effect> makeAlgoEffect(CroutonBasics b, const Crouton& c, std::s
     } catch (const std::exception& ex) {
         return fail(std::string("ALGO program not supported: ") + ex.what());
     }
-    // Kinds 3 / 4: the probe again at the four corners of the mouse range; a program that fails
-    // there plays unpositioned.
+    // Kinds 3 / 4: the probe again at the four corners of the mouse range, live and baked near
+    // both ends; a program that fails there plays unpositioned.
     std::optional<PositionRange> range = kind == 3 || kind == 4 ? algoPositionRange(it->second) : std::nullopt;
     if (range) {
         try {
             for (int h : {-range->halfH, range->halfH - 1})
-                for (int v : {-range->halfV, range->halfV - 1}) {
-                    std::vector<uint8_t> p = it->second;
-                    algoPositionProgram(p, h, v, -1);
-                    AlgoVm vm(std::move(p), kind, 0);
-                    for (int pos = 0; pos <= 511; ++pos) vm.step(algoTBarT(pos, flags));
-                }
+                for (int v : {-range->halfV, range->halfV - 1})
+                    for (int bakedAt : {-1, 1, 510}) {
+                        std::vector<uint8_t> p = it->second;
+                        algoPositionProgram(p, h, v, bakedAt);
+                        AlgoVm vm(std::move(p), kind, 0);
+                        for (int pos = 0; pos <= 511; ++pos) vm.step(algoTBarT(pos, flags));
+                    }
         } catch (const std::exception&) {
             range.reset();
         }

@@ -119,6 +119,7 @@ private slots:
     void tbarDragDuringAutoFollowsTheSnapshot();
     void rightButtonDragsTheTbarFromAnywhere();
     void positioningFollowsTheSnapshot();
+    void positioningEndsWhenTheScreenGoesAway();
     void framestoreButtons();
     void stabilizeIsNotImplemented();
     void keyButtonsAndKeys();
@@ -290,11 +291,15 @@ void TestToasterScreen::positioningFollowsTheSnapshot() {
     w.setState(s);
     QCOMPARE(QWidget::mouseGrabber(), &w);
     QVERIFY(QGuiApplication::overrideCursor() && QGuiApplication::overrideCursor()->shape() == Qt::BlankCursor);
-    const QPoint c = w.screen()->geometry().center();  // the pointer is held there
+    const QPoint c = w.mapToGlobal(w.rect().center());  // the pointer is held over the screen
+    QCOMPARE(QCursor::pos(), c);
     hover(w, c + QPoint(5, -3));
     hover(w, c + QPoint(5, -3));  // no move: nothing sent
     hover(w, c + QPoint(-2, 0));
-    QCOMPARE(fake.calls, (QStringList{"position 5 -3", "position -7 3"}));
+    hover(w, c + QPoint(150, 0));  // a jump (a warp's echo): dropped, and the pointer held again
+    QCOMPARE(QCursor::pos(), c);
+    hover(w, c + QPoint(1, 0));
+    QCOMPARE(fake.calls, (QStringList{"position 5 -3", "position -7 3", "position 1 0"}));
     fake.calls.clear();
     QTest::keyClick(&w, Qt::Key_Space);
     QCOMPARE(fake.calls, QStringList{"end KeepAndStop"});
@@ -672,6 +677,52 @@ void TestToasterScreen::staysAtZoom1BelowTheOneTimesSize() {
     const QImage shown = w->grab().toImage().convertToFormat(QImage::Format_RGB32);
     QString why;
     QVERIFY2(exactPanel(shown, w->renderRgbForTest().copy(0, 0, 700, 400), 1, {}, 0, &why), qPrintable(why));
+}
+
+// Positioning ends as Space does when the window loses the focus or the screen is hidden, and a held
+// T-bar drag is let go; the pointer comes back and the blank cursor goes, also when the screen is
+// destroyed while positioning.
+void TestToasterScreen::positioningEndsWhenTheScreenGoesAway() {
+    FakeActions fake;
+    auto* w = new ToasterScreen(layout(), font(), fake);
+    w->resize(w->sizeHint());
+    w->show();
+    QVERIFY(QTest::qWaitForWindowExposed(w));
+    const QPoint home = w->mapToGlobal(QPoint(5, 5));
+    QCursor::setPos(home);
+    SwitcherSnapshot s;
+    s.tbar = 256;
+    s.transition = s.positioning = true;
+    w->setState(s);
+    QCOMPARE(QWidget::mouseGrabber(), w);
+    QEvent deactivate(QEvent::WindowDeactivate);
+    QCoreApplication::sendEvent(w, &deactivate);
+    QCOMPARE(fake.calls, QStringList{"end KeepAndStop"});
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(QGuiApplication::overrideCursor(), nullptr);
+    QCOMPARE(QCursor::pos(), home);
+    fake.calls.clear();
+
+    s.positioning = false;
+    w->setState(s);
+    const vt::Rect r = layout().tbarRect;
+    QTest::mousePress(w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 10));
+    w->hide();
+    QTest::mouseRelease(w, Qt::LeftButton, {}, QPoint(r.x + r.w / 2, r.y + 10));  // already let go
+    QCOMPARE(fake.calls, (QStringList{QStringLiteral("tbar %1").arg(std::lround(10.0 * 511 / (r.h - 1))), "release",
+                                      "end KeepAndStop"}));
+
+    w->show();
+    QVERIFY(QTest::qWaitForWindowExposed(w));
+    s.positioning = false;
+    w->setState(s);
+    s.positioning = true;
+    w->setState(s);
+    QCOMPARE(QWidget::mouseGrabber(), w);
+    delete w;
+    QCOMPARE(QWidget::mouseGrabber(), nullptr);
+    QCOMPARE(QGuiApplication::overrideCursor(), nullptr);
+    QCOMPARE(QCursor::pos(), home);
 }
 
 std::unique_ptr<QObject> makeToasterScreenTests() { return std::make_unique<TestToasterScreen>(); }
