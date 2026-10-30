@@ -21,7 +21,9 @@ constexpr uint32_t kTagLace = 0x80000041;        // $2b bit 0: interlaced pictur
 constexpr int kChannel = 29;
 
 // BARS.md 5.1: the T-bar sets $30e = pos << 7 (0 gives 1, 511 gives 0xffff); Auto step k of N
-// sets min(k * floor(65536 / N), 0xffff). t = $30e (16.16).
+// sets min(k * floor(65536 / N), 0xffff). t = $30e (16.16). The original's Auto renders N + 1
+// fields ending at 0xffff; the engine's last Auto step is t = N * floor(65536 / N) (65520 for
+// N = 60), then the take ends on B.
 uint32_t barT(int tbar, int autoStep, int n) {
     if (autoStep >= 1) return std::min(uint32_t(autoStep) * (0x10000u / uint32_t(std::max(n, 1))), 0xffffu);
     tbar = clampTBar(tbar);
@@ -126,6 +128,10 @@ std::unique_ptr<Effect> makeBarEffect(CroutonBasics b, const Crouton& c, const F
 
     const auto tag = c.blobs.find(kTagSourceWords);
     const auto routes = sourceRoutes(tag != c.blobs.end() ? tag->second : std::vector<uint8_t>{}, 1 << shown);
+    // Without them the take would be palette art alone, never A or B
+    if (std::none_of(routes.begin(), routes.end(),
+                     [](PaletteRoute r) { return r == PaletteRoute::A || r == PaletteRoute::B; }))
+        return fail("Bar tag 0x1B has no A/B routes");
     std::array<BarEffect::Entry, 256> table{};
     for (size_t i = 0; i < table.size(); ++i) {
         if (!bm.cmap.empty()) {

@@ -830,27 +830,49 @@ TEST_CASE("tag 0x1B routes the palette indices of 2-plane wipes to A, B or the c
     REQUIRE(routed == 125);  // the distinct 2-plane wipes with a tag 0x1B (the golden list skips duplicates)
 }
 
-TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {
-    std::string why;
-    // a picture taller than the raster without a move program (a Bar crouton with its tag
-    // 0x1000001C renamed): no gradient, no Bar
-    {
-        auto bytes = readFile(golden::sourcePath("4.2/Effects/4000FX/Border/Bar Sword BR-TL !"));
-        const std::array<uint8_t, 4> id{0x10, 0x00, 0x00, 0x1C};
+namespace {
+
+// A temporary copy of a Bar crouton (4000FX/Border) with one CrUD tag renamed (id 0x100000nn ->
+// 0x100000nn | 0x60), so the crouton no longer has it. The file goes with the guard, also when a
+// REQUIRE fails.
+struct TempBar {
+    std::filesystem::path path;
+    TempBar(const char* name, uint32_t tag, const char* fileName)
+        : path(std::filesystem::temp_directory_path() / fileName) {
+        auto bytes = readFile(golden::sourcePath(std::string("4.2/Effects/4000FX/Border/") + name));
+        const std::array<uint8_t, 4> id{uint8_t(tag >> 24), uint8_t(tag >> 16), uint8_t(tag >> 8), uint8_t(tag)};
         const auto at = std::search(bytes.begin(), bytes.end(), id.begin(), id.end());
         REQUIRE(at != bytes.end());
-        at[3] = 0x7C;
-        const auto path = std::filesystem::temp_directory_path() / "vtoast_bar_without_program";
+        at[3] |= 0x60;
         {
             std::ofstream out(path, std::ios::binary | std::ios::trunc);
             out.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
         }
         const auto c = vt::loadCrouton(path);
         REQUIRE(c);
-        REQUIRE(c->blobs.count(0x1000001C) == 0);
-        REQUIRE(vt::loadEffect(path, &why) == nullptr);
+        REQUIRE(c->blobs.count(tag) == 0);
+    }
+    ~TempBar() {
+        std::error_code ec;
+        std::filesystem::remove(path, ec);
+    }
+    TempBar(const TempBar&) = delete;
+    TempBar& operator=(const TempBar&) = delete;
+};
+
+}  // namespace
+
+TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][factory]") {
+    std::string why;
+    // pictures taller than the raster / deeper than 8 planes without a move program (Bar croutons
+    // with their tag 0x1000001C renamed): no gradient, no Bar
+    {
+        const TempBar tall("Bar Sword BR-TL !", 0x1000001C, "vtoast_tall_bar_without_program");
+        REQUIRE(vt::loadEffect(tall.path, &why) == nullptr);
         REQUIRE(why == "bar picture taller than the raster without a move program (tag 0x1000001C)");
-        std::filesystem::remove(path);
+        const TempBar deep("Bar Craters L-R !", 0x1000001C, "vtoast_deep_bar_without_program");
+        REQUIRE(vt::loadEffect(deep.path, &why) == nullptr);
+        REQUIRE(why == "deep-colour bar picture without a move program (tag 0x1000001C)");
     }
     // a missing file and a non-crouton
     why.clear();
@@ -891,7 +913,11 @@ TEST_CASE("the 14 Bar ILBM croutons load as Variable-speed descriptor-22 moves",
         const vt::Timing t = e->timing();
         REQUIRE(t.defaultSpeed == vt::Speed::Variable);
         // BARS.md 7: the speed tags are Auto steps of one field; length (N + 1) / 2 frames
-        const bool tall = arr(r, "y").front() != 0;
+        const auto c = vt::loadCrouton(golden::sourcePath(str(r, "source")));
+        REQUIRE(c);
+        const auto f = gradientForm(*c);
+        REQUIRE(f);
+        const bool tall = vt::readBitmapHeader(c->bytes, *f).h > vt::kRasterH;
         const std::array<int, 4> steps = tall ? std::array{180, 100, 70, 60} : std::array{100, 60, 40, 60};
         for (size_t s = 0; s < 4; ++s) {
             REQUIRE(t.durationTicks[s] == steps[s]);
@@ -922,6 +948,26 @@ TEST_CASE("Bar croutons match bars_ref.py's frames (bars.jsonl)", "[effect][bar]
             if (tbars[i] > 0) REQUIRE(crc(renderAt(*e, 0, a, b, c)) == uint32_t(crcs[i]));
         }
     }
+}
+
+TEST_CASE("Bar croutons in Auto: step k of N is t = k * floor(65536 / N)", "[effect][bar]") {
+    const vt::Frame a = solid({0x1B, 0x2A, 0x80, 255}), b = solid({0xB5, 0x12, 0x2E, 255});
+    const auto e = load("4.2/Effects/4000FX/Border/Bar Craters L-R !");
+    REQUIRE(e);
+    // Variable: N = 60, floor(65536 / 60) = 1092; step 32 is t = 34944 = 273 << 7, the T-bar at 273
+    vt::RenderCtx c = ctxWith();
+    c.autoStep = 32;
+    c.autoSteps = 60;
+    const vt::Frame step = renderAt(*e, 0, a, b, c);
+    REQUIRE(step.px == renderAt(*e, 273, a, b).px);
+    REQUIRE(step.px != renderAt(*e, 272, a, b).px);
+}
+
+TEST_CASE("a Bar crouton whose tag 0x1B routes neither A nor B is refused", "[effect][bar]") {
+    const TempBar bar("Bar Craters L-R !", 0x1000001B, "vtoast_bar_without_routes");
+    std::string why;
+    REQUIRE(vt::loadEffect(bar.path, &why) == nullptr);
+    REQUIRE(why == "Bar tag 0x1B has no A/B routes");
 }
 
 TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {

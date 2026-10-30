@@ -1015,7 +1015,7 @@ TEST_CASE("Overlays-drawer effects are overlays, decided by the drawer (Rulings 
             const auto ext = ent.path().extension().string();
             if (ext == ".i" || ext == ".I") continue;  // icons
             auto e = vt::loadEffect(ent.path());
-            if (!e) continue;  // bar pictures and the like
+            if (!e) continue;  // the ones loadEffect refuses
             INFO(ent.path().string());
             REQUIRE(e->isOverlay());
             ++loaded;
