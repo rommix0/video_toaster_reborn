@@ -34,6 +34,8 @@ enum class Source { In1, In2, In3, In4, DV1, DV2, Bkg, None };
 // Auto's direction: Forward runs the T-bar to 511 (Space), Reverse back to 0 (Shift+Space,
 // manual PDF 185).
 enum class Direction { Forward, Reverse };
+// How positioning ends (tools/re/POSITION.md 3 step 5): Space or Return, a left click, the right button.
+enum class PositionEnd { KeepAndStop, Finish, BackToTBar };
 
 // The live pictures of the four inputs (null = no picture yet, shown as black). DV1, DV2 and BKG
 // are the Switcher's own.
@@ -136,8 +138,33 @@ public:
     // returning to 0 ends it.
     // Art Card Key: the T-bar is the clip control and never starts a transition: L = pos / 2,
     // the keyer on, an empty Superimpose restored; 511 does not swap. Auto does nothing.
+    // The first move of a drag (the first since releaseTBar) grabs the T-bar: a Positionable
+    // effect's position goes back to its centred defaults, without a stop, and positioning ends.
     void setTBar(int pos);
     int tbar() const { return tbar_; }
+    // The hand lets go of the T-bar (the drag ends). For a Positionable effect (positionRange()) whose
+    // T-bar this drag moved (tools/re/POSITION.md 3): let go off 0 and 511 with the take open and no
+    // Auto, positioning starts; let go at 0 or 511 (the take has ended), a kept offset is baked
+    // there (0xb7054). Otherwise nothing.
+    void releaseTBar();
+
+    // --- positioning (the Positionable moves, POSITION.md) ---
+    // While positioning, the mouse moves the effect's centre at the current T-bar position.
+    bool positioning() const { return positioning_; }
+    // The mouse moved dx, dy counts (right / down +): each anchor moves by algoMouseStep and is
+    // clamped to the effect's range (Y first, 0x5e2e8). Ignored unless positioning.
+    void movePosition(int dx, int dy);
+    // Ignored unless positioning. KeepAndStop (Space, Return) bakes the position at the T-bar
+    // (0xb7054), sets the stop and puts the T-bar there (stop >> 7, kept within 1..510); the take
+    // stays open. Finish (a left click) bakes and ends the take as at 511, for all four effects (the
+    // original may abort Expand and Wipe Out instead, POSITION.md 10). BackToTBar (the right
+    // button) makes the next T-bar moves part of the same drag, the offset kept.
+    // The position lasts with the loaded effect, across takes, until the next grab or setEffect. A
+    // forward Auto from T-bar 0 with a stop holds there: Auto ends with the T-bar at stop >> 7
+    // (kept within 1..510), the take open; the next Auto finishes it. take(), autoTransition() and
+    // setEffect() end positioning too.
+    void endPositioning(PositionEnd);
+    const EffectPosition& position() const { return position_; }
     // Sets the speed button to `speed` and runs the T-bar from where it is to 511 (Forward) or
     // to 0 (Reverse) at the constant rate of effect().timing().durationTicks[resolve(speed)]
     // ticks for the full 0..511 trip (the trip from 0 takes exactly that many tick()s; from
@@ -286,6 +313,10 @@ private:
     Direction autoDir_ = Direction::Forward;
     bool autoFrom0_ = false;  // this Auto runs forward from T-bar 0 (RenderCtx::autoStep); only while auto_
     uint64_t take_ = 0;       // RenderCtx::take: bumped when a transition starts from idle, setEffect
+    EffectPosition position_;  // RenderCtx::position: the Positionable effect's, reset by a grab or setEffect
+    bool positioning_ = false;
+    bool dragging_ = false;    // a drag has grabbed the T-bar (setTBar) and not let go (releaseTBar)
+    int handTBar_ = 0;         // the drag's last setTBar position
     Speed speed_ = Speed::Medium;
     HardwareGuesses guesses_;
     bool engaged_ = false;       // a ChromaFX or overlay is engaged

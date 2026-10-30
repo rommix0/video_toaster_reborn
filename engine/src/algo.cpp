@@ -852,6 +852,87 @@ bool algoSecondStep(int tbar, int autoStep, int n, uint32_t flags) {
     return uint32_t(std::clamp(autoStep, 1, n)) * autoDelta(n, flags) >= (flags & 8 ? 0x10000u : 0x8000u);
 }
 
+// ------------------------------------------------------------------ Positionable moves (POSITION.md)
+
+namespace {
+
+constexpr size_t kPositionHeader = 0x58;  // the 88-byte kind-3/4 header
+
+// 0xb7054's times for a drop at T-bar tbar: t0 (program t at the drop) and T (the stop before the
+// flags' reversal), POSITION.md 5.
+std::pair<int64_t, int64_t> bakeTimes(const PositionRange& r, int h, int v, int tbar) {
+    const int64_t pos = r.flags ? 0x1ff - tbar : tbar;  // tst.l $4(a2): any flag reverses
+    const int64_t t0 = (pos << 16) / 0x1ff;
+    auto ratio = [](int a, int d) { return std::min<int64_t>((int64_t(std::abs(a)) << 16) / d, 0xffff); };
+    return {t0, std::max({t0, ratio(h, r.halfH), ratio(v, r.halfV)})};
+}
+
+}  // namespace
+
+std::optional<PositionRange> algoPositionRange(std::span<const uint8_t> payload) {
+    if (payload.size() < kPositionHeader) return std::nullopt;
+    const Bytes p{payload.data(), payload.size()};
+    const PositionRange r{s16(p.W(0xa)), s16(p.W(0xc)), s16(p.W(0xe)), p.L(4)};
+    if (r.halfH <= 0 || r.halfV <= 0) return std::nullopt;
+    for (int o = 0x10; o < 0x30; o += 4)  // each points at an op-3 parameter long past the header
+        if (p.L(o) < kPositionHeader || uint64_t(p.L(o)) + 4 > payload.size()) return std::nullopt;
+    return r;
+}
+
+int algoMouseStep(int d, int accel) {
+    const int64_t x = d;
+    if (accel < 0 && accel != -0x8000) {  // d * -$a * 2 >> 16, rounded away from 0
+        const int64_t q = x * -accel * 2;
+        return int(q > 0 ? (q + 0xffff) >> 16 : q >> 16);
+    }
+    if (accel < 0) return d;
+    const int64_t a = ((x * x) & M16) * accel * 2 >> 16;
+    return int(x >= 0 ? x + a : x - a);
+}
+
+uint32_t algoBakeStop(const PositionRange& r, int h, int v, int tbar) {
+    const auto [t0, T] = bakeTimes(r, h, v, std::clamp(tbar, 0, 511));
+    if (t0 > 0xffff) return 0x10000;
+    return uint32_t(r.flags ? 0x10000 - T : T);
+}
+
+// position_ref.py reset / live / bake.
+void algoPositionProgram(std::span<uint8_t> payload, int h, int v, int bakedAt) {
+    const Bytes p{payload.data(), payload.size()};
+    auto put = [&](uint32_t o, int64_t x) {
+        for (int i = 0; i < 4; ++i) payload[o + uint32_t(i)] = uint8_t(uint32_t(x) >> (24 - 8 * i));
+    };
+    auto param = [&](int ptr, int64_t x) {  // the long, and its copy in the header cache $34..$50
+        put(p.L(ptr), x);
+        put(uint32_t(ptr + 0x24), x);
+    };
+    const PositionRange r{0, s16(p.W(0xc)), s16(p.W(0xe)), p.L(4)};
+    const int64_t c = r.halfH, e = r.halfV;
+    // 0xb6eac: anchors 0 + 0 t, sizes $c - $c t / $e - $e t, $30 = 0; 0xb71b2: the anchor words.
+    const int64_t defaults[8] = {int64_t(h) << 16, 0, c << 16, -c << 16, int64_t(v) << 16, 0, e << 16, -e << 16};
+    for (int i = 0; i < 8; ++i) param(0x10 + 4 * i, defaults[i]);
+    put(0x30, 0);
+    if (bakedAt < 0) return;
+    // 0xb7054: the anchors become straight paths through (h, v) at T, the sizes reach their drop
+    // value there.
+    const auto [t0, T] = bakeTimes(r, h, v, std::clamp(bakedAt, 0, 511));
+    if (t0 > 0xffff) {  // divu overflow (the drop at the end): slope = the old base
+        param(0x14, s32(p.L(p.L(0x10))));
+        param(0x10, 0);
+        param(0x24, s32(p.L(p.L(0x20))));
+        param(0x20, 0);
+        return;
+    }
+    if (T == 0) return;
+    auto slope = [&](int a) { return (a < 0 ? -1 : 1) * ((int64_t(std::abs(a)) << 16) / T) * 0x10000; };
+    param(0x14, slope(h));
+    param(0x10, 0);
+    param(0x24, slope(v));
+    param(0x20, 0);
+    param(0x1c, -(c * t0 / T) * 0x10000);
+    param(0x2c, -(e * t0 / T) * 0x10000);
+}
+
 DveControl algoControl(const AlgoStep& s) {
     DveControl c;
     std::copy_n(s.v.begin(), kDveLines, c.line.begin());

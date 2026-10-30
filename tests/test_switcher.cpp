@@ -10,6 +10,7 @@
 
 #include "catch_amalgamated.hpp"
 #include "golden.h"
+#include "vt/algo.h"
 #include "vt/anim.h"
 #include "vt/background.h"
 #include "vt/chromafx.h"
@@ -2357,4 +2358,184 @@ TEST_CASE("Art Card Key loaded again keeps the Superimpose source", "[switcher][
     REQUIRE(r.sw.setEffect(artCard()));  // the card holds the T-bar with no take: no return to 0
     CHECK(r.sw.selected(Bus::Superimpose) == Source::In4);
     CHECK(r.sw.keyMode() == vt::KeyMode::White);
+}
+
+// --- the Positionable moves (tools/re/POSITION.md) ---------------------------------------------
+
+namespace {
+
+std::shared_ptr<const vt::Effect> shrink() { return load("4.2/Effects/4000FX/Special/Positionable Shrink"); }
+std::shared_ptr<const vt::Effect> wipeIn() { return load("4.2/Effects/4000FX/Special/Positionable WIPE IN"); }
+
+// Ticks a running Auto (rendering each field, as the loop does) until it stops.
+void runAuto(Rig& r) {
+    for (int i = 0; i < 10000 && r.sw.autoRunning(); ++i) {
+        r.render();
+        r.sw.tick();
+    }
+    REQUIRE_FALSE(r.sw.autoRunning());
+}
+
+// Positioning at T-bar 200 after a drag there, the mouse moved 20, 10 counts.
+void positionAt200(Rig& r, std::shared_ptr<const vt::Effect> e) {
+    REQUIRE(r.sw.setEffect(std::move(e)));
+    r.sw.setTBar(100);
+    r.sw.setTBar(200);
+    r.sw.releaseTBar();
+    REQUIRE(r.sw.positioning());
+    r.sw.movePosition(20, 10);
+}
+
+}  // namespace
+
+TEST_CASE("a Positionable move let go mid-way enters positioning; at the ends it does not", "[switcher][position]") {
+    for (auto e : {shrink(), wipeIn()}) {
+        Rig r;
+        REQUIRE(r.sw.setEffect(e));
+        r.sw.setTBar(511);  // the take ends as before
+        r.sw.releaseTBar();
+        CHECK_FALSE(r.sw.positioning());
+        CHECK(r.sw.selected(Bus::Main) == Source::In2);
+        r.sw.setTBar(100);
+        r.sw.setTBar(0);
+        r.sw.releaseTBar();
+        CHECK_FALSE(r.sw.positioning());
+        CHECK_FALSE(r.sw.transitionActive());
+        r.sw.setTBar(300);
+        r.sw.releaseTBar();
+        CHECK(r.sw.positioning());
+        CHECK(r.sw.tbar() == 300);
+        CHECK(r.sw.transitionActive());
+    }
+    Rig r;  // a press that moves nothing is no grab
+    positionAt200(r, shrink());
+    r.sw.endPositioning(vt::PositionEnd::KeepAndStop);
+    r.sw.setTBar(r.sw.tbar());
+    r.sw.releaseTBar();
+    CHECK_FALSE(r.sw.positioning());
+}
+
+TEST_CASE("positioning moves the effect's centre on Program at the T-bar position", "[switcher][position]") {
+    for (auto e : {shrink(), wipeIn()}) {
+        Rig r;
+        positionAt200(r, e);
+        r.sw.movePosition(-20, -10);  // back to the centre
+        const vt::Frame centred = r.render();
+        r.sw.movePosition(30, 12);
+        const vt::Frame moved = r.render();
+        CHECK(r.sw.tbar() == 200);
+        CHECK(r.sw.position().h != 0);
+        CHECK(r.sw.position().v != 0);
+        CHECK(centred.px != moved.px);
+        // What the effect gives at that position, in a take of its own.
+        vt::RenderCtx ctx;
+        ctx.take = 1000;
+        ctx.position = r.sw.position();
+        vt::Frame want;
+        e->render(200, r.in1, r.in2, want, ctx);
+        if (e->digitalMove() == vt::DigitalMove::None) CHECK(moved.px == want.px);  // a wipe keeps no state
+        r.sw.movePosition(-30, -12);
+        CHECK(r.render().px == centred.px);
+    }
+}
+
+TEST_CASE("Space or Return keeps the position and the take, sets the stop; Auto finishes", "[switcher][position]") {
+    Rig r;
+    positionAt200(r, shrink());
+    const vt::EffectPosition kept = r.sw.position();
+    r.sw.endPositioning(vt::PositionEnd::KeepAndStop);
+    CHECK_FALSE(r.sw.positioning());
+    CHECK(r.sw.transitionActive());
+    CHECK(r.sw.position().h == kept.h);
+    CHECK(r.sw.position().v == kept.v);
+    CHECK(r.sw.position().bakedAt == 200);
+    const uint32_t stop = r.sw.position().stop;
+    CHECK(stop == vt::algoBakeStop(*shrink()->positionRange(), kept.h, kept.v, 200));
+    CHECK(r.sw.tbar() == int(stop >> 7));
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    r.sw.movePosition(5, 5);  // no longer positioning
+    CHECK(r.sw.position().h == kept.h);
+    r.sw.autoTransition(vt::Speed::Fast);
+    runAuto(r);
+    CHECK_FALSE(r.sw.transitionActive());
+    CHECK(r.sw.selected(Bus::Main) == Source::In2);
+    CHECK(r.sw.position().stop == stop);  // the position lasts with the effect
+
+    // From T-bar 0, Auto flies to the stop and holds there, the take open; the next Auto finishes.
+    r.sw.autoTransition(vt::Speed::Fast);
+    runAuto(r);
+    CHECK(r.sw.transitionActive());
+    CHECK(r.sw.tbar() == int(stop >> 7));
+    CHECK(r.sw.selected(Bus::Main) == Source::In2);
+    r.sw.autoTransition(vt::Speed::Fast);
+    runAuto(r);
+    CHECK_FALSE(r.sw.transitionActive());
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+}
+
+TEST_CASE("a left click keeps the position and finishes the take", "[switcher][position]") {
+    for (auto e : {shrink(), wipeIn()}) {
+        Rig r;
+        positionAt200(r, e);
+        const vt::EffectPosition kept = r.sw.position();
+        r.sw.endPositioning(vt::PositionEnd::Finish);
+        CHECK_FALSE(r.sw.positioning());
+        CHECK_FALSE(r.sw.transitionActive());
+        CHECK(r.sw.selected(Bus::Main) == Source::In2);
+        CHECK(r.sw.selected(Bus::Preview) == Source::In1);
+        CHECK(r.sw.position().h == kept.h);
+        CHECK(r.sw.position().bakedAt == 200);
+        CHECK(r.sw.position().stop == 0);
+        r.sw.autoTransition(vt::Speed::Fast);  // no stop: Auto runs through
+        runAuto(r);
+        CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    }
+}
+
+TEST_CASE("the right button goes back to a T-bar drag with the position kept", "[switcher][position]") {
+    Rig r;
+    positionAt200(r, wipeIn());
+    const vt::EffectPosition kept = r.sw.position();
+    r.sw.endPositioning(vt::PositionEnd::BackToTBar);
+    CHECK_FALSE(r.sw.positioning());
+    r.sw.setTBar(260);  // part of the same drag: no reset
+    CHECK(r.sw.position() == kept);
+    r.sw.releaseTBar();
+    CHECK(r.sw.positioning());
+    CHECK(r.sw.position() == kept);
+    r.sw.movePosition(4, 0);
+    CHECK(r.sw.position().h > kept.h);
+}
+
+TEST_CASE("a new T-bar grab resets the position and the stop", "[switcher][position]") {
+    Rig r;
+    positionAt200(r, shrink());
+    r.sw.endPositioning(vt::PositionEnd::KeepAndStop);
+    REQUIRE(r.sw.position().stop != 0);
+    r.sw.setTBar(r.sw.tbar() + 10);
+    CHECK(r.sw.position() == vt::EffectPosition{});
+    r.sw.releaseTBar();
+    CHECK(r.sw.positioning());
+    // setEffect drops it too, and ends positioning (a wipe: a DV-memory move is not replaced mid-take).
+    Rig w;
+    positionAt200(w, wipeIn());
+    REQUIRE(w.sw.setEffect(wipeIn()));
+    CHECK_FALSE(w.sw.positioning());
+    CHECK(w.sw.position() == vt::EffectPosition{});
+}
+
+TEST_CASE("effects that are not Positionable never enter positioning", "[switcher][position]") {
+    for (auto e : {dissolve(), load("4.2/Effects/4000FX/Wipes/Crop To Center"), dve()}) {
+        INFO(e->name());
+        CHECK_FALSE(e->positionRange());
+        Rig r;
+        REQUIRE(r.sw.setEffect(e));
+        r.sw.setTBar(200);
+        r.sw.releaseTBar();
+        CHECK_FALSE(r.sw.positioning());
+        r.sw.movePosition(10, 10);
+        r.sw.endPositioning(vt::PositionEnd::Finish);
+        CHECK(r.sw.tbar() == 200);
+        CHECK(r.sw.position() == vt::EffectPosition{});
+    }
 }

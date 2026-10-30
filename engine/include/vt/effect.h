@@ -17,6 +17,23 @@
 
 namespace vt {
 
+// A Positionable move's mouse range (ALGO kinds 3/4, tools/re/POSITION.md 4): its program header's
+// $a (the acceleration), $c / $e (H / V half range: anchors -$c..$c-1, -$e..$e-1) and flags long
+// (any flag set: the bake measures the drop from T-bar 511).
+struct PositionRange {
+    int accel = 0, halfH = 0, halfV = 0;
+    uint32_t flags = 0;
+};
+
+// Where the operator put a Positionable move (POSITION.md 4, 5). The Switcher keeps it with the
+// loaded effect and passes it on every render; the defaults are the shipped, centred program.
+struct EffectPosition {
+    int h = 0, v = 0;   // the anchor offset (kind 3: control cells / lines; kind 4: pixels / frame lines)
+    int bakedAt = -1;   // the T-bar position its path was baked at (0xb7054); -1: a constant offset
+    uint32_t stop = 0;  // $30: a forward Auto from T-bar 0 holds at this t (T-bar t space); 0 = none
+    bool operator==(const EffectPosition&) const = default;
+};
+
 struct RenderCtx {
     // The colour generator's colour while the effect runs, which an animated wipe's matte areas
     // show (its tag 0x1000001B colour entries, or a black palette). The Switcher passes its
@@ -62,6 +79,8 @@ struct RenderCtx {
     // ANIMs) draws its key-0 area in this colour instead of a bus or the matte, the "!" DVEs'
     // S = 1 routes show it, and an ALGO channel-23 level is not applied. Other effects ignore it.
     std::optional<Rgba8> keyFill;
+    // A Positionable move's position (Effect::positionRange). Other effects ignore it.
+    EffectPosition position;
 };
 
 // Which bus a digital move moves first (FREEZE.md 5): None for everything but the DVE moves
@@ -110,6 +129,9 @@ public:
     // True for the Art Card Key crouton (ALGO kind 5): the Switcher composes the card itself;
     // render only passes `a` through.
     virtual bool isArtCardKey() const { return false; }
+    // The Positionable moves (ALGO kinds 3/4): the range the Switcher positions them in with the
+    // mouse (tools/re/POSITION.md). nullopt for every other effect.
+    virtual std::optional<PositionRange> positionRange() const { return std::nullopt; }
 };
 
 // Cut: A below tbar 256, B from 256. Dissolve: per-channel linear mix

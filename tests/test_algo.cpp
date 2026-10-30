@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -17,6 +18,8 @@
 #include "vt/crc32.h"
 #include "vt/crouton.h"
 #include "vt/dve.h"
+#include "vt/effect.h"
+#include "vt/switcher.h"
 
 namespace {
 
@@ -290,5 +293,133 @@ TEST_CASE("algo digital library renders with no unknown codes", "[algo]") {
             INFO("tbar " << pos);
             REQUIRE(vt::renderDve(ctl, a, b, {}, out, {}) == 0);
         }
+    }
+}
+
+// --- the Positionable moves (tools/re/POSITION.md) ----------------------------------------------
+
+namespace {
+const char* const kPositionable[] = {"Positionable Expand", "Positionable Shrink", "Positionable WIPE IN",
+                                     "Positionable WIPE OUT"};
+std::vector<uint8_t> positionablePayload(const char* name) {
+    const auto c = vt::loadCrouton(dataRoot() / "4.2/Effects/4000FX/Special" / name);
+    REQUIRE(c);
+    return c->blobs.at(0x1000001C);
+}
+}  // namespace
+
+TEST_CASE("Positionable header and mouse steps (0x5e2e8)", "[algo][position]") {
+    for (const char* name : kPositionable) {
+        INFO(name);
+        const auto r = vt::algoPositionRange(positionablePayload(name));
+        REQUIRE(r);
+        const bool wipe = std::string(name).find("WIPE") != std::string::npos;
+        REQUIRE(r->accel == (wipe ? 4096 : -16384));
+        REQUIRE(r->halfH == (wipe ? 736 : 185));
+        REQUIRE(r->halfV == (wipe ? 481 : 237));
+        REQUIRE(r->flags == (std::string(name).find("Expand") != std::string::npos ||
+                                     std::string(name).find("OUT") != std::string::npos
+                                 ? 4u
+                                 : 0u));
+    }
+    REQUIRE_FALSE(vt::algoPositionRange(std::vector<uint8_t>(87)));  // no room for the header
+    auto bad = positionablePayload("Positionable Shrink");
+    bad[0x10] = 0x7f;  // a parameter pointer past the payload
+    REQUIRE_FALSE(vt::algoPositionRange(bad));
+    // position_ref.py check(): kind 3 half a unit per count, kind 4 accelerating
+    const std::pair<int, int> half[] = {{1, 1}, {2, 1}, {3, 2}, {8, 4}, {-1, -1}, {-3, -2}, {0, 0}};
+    for (auto [d, want] : half) REQUIRE(vt::algoMouseStep(d, -16384) == want);
+    const std::pair<int, int> accel[] = {{1, 1}, {2, 2}, {3, 4}, {4, 6}, {8, 16}, {16, 48}, {-3, -4}, {0, 0}};
+    for (auto [d, want] : accel) REQUIRE(vt::algoMouseStep(d, 4096) == want);
+    REQUIRE(vt::algoMouseStep(-7, -32768) == -7);
+}
+
+TEST_CASE("Positionable moves match position_ref.py (position.jsonl)", "[algo][position][golden]") {
+    const vt::Frame a = solidFrame({0x1B, 0x2A, 0x80, 255}), b = solidFrame({0xB5, 0x12, 0x2E, 255});
+    auto crc = [](const vt::Frame& f) {
+        return vt::crc32({reinterpret_cast<const uint8_t*>(f.px.data()), f.px.size() * sizeof(vt::Rgba8)});
+    };
+    const auto recs = golden::readLines("position.jsonl");
+    REQUIRE(recs.size() == 32);
+    uint64_t take = 0;
+    for (const auto& r : recs) {
+        const auto& moves = std::get<std::vector<int64_t>>(r.at("moves").v);
+        const int tbar = int(num(r, "tbar")), kind = int(num(r, "kind"));
+        const bool bake = num(r, "bake") != 0;
+        INFO(str(r, "source") << ", " << moves.size() / 2 << " moves, drop " << tbar << ", bake " << bake);
+        std::string why;
+        const std::shared_ptr<const vt::Effect> e = vt::loadEffect(golden::sourcePath(str(r, "source")), &why);
+        INFO(why);
+        REQUIRE(e);
+        REQUIRE(e->positionRange());
+        // The Switcher: a drag to the drop point, the mouse loop from the centre, Space.
+        vt::Switcher sw;
+        REQUIRE(sw.setEffect(e));
+        sw.setTBar(tbar);
+        sw.releaseTBar();
+        REQUIRE(sw.positioning());
+        for (size_t i = 0; i + 1 < moves.size(); i += 2) sw.movePosition(int(moves[i]), int(moves[i + 1]));
+        REQUIRE(sw.position().h == num(r, "h"));
+        REQUIRE(sw.position().v == num(r, "v"));
+        if (bake) {
+            sw.endPositioning(vt::PositionEnd::KeepAndStop);
+            REQUIRE(sw.position().bakedAt == tbar);
+            REQUIRE(sw.position().stop == uint32_t(num(r, "stop")));
+            REQUIRE(sw.tbar() == std::clamp(int(num(r, "ec")), 1, 510));  // a stop at an end stays in the take
+        }
+        auto payload = vt::loadCrouton(golden::sourcePath(str(r, "source")))->blobs.at(0x1000001C);
+        vt::algoPositionProgram(payload, sw.position().h, sw.position().v, sw.position().bakedAt);
+        REQUIRE(vt::crc32(payload) == uint32_t(num(r, "payload")));
+        for (const auto& f : std::get<std::vector<std::map<std::string, int64_t>>>(r.at("frames").v)) {
+            const int pos = int(f.at("tbar"));
+            INFO("T-bar " << pos);
+            vt::AlgoVm vm(payload, kind, 0);  // a fresh take, one step
+            const vt::AlgoStep& s = vm.step(vt::algoTBarT(pos, vm.flags()));
+            if (kind == 3) {
+                REQUIRE(vt::crc32(s.h) == uint32_t(f.at("h")));
+                REQUIRE(vt::crc32(s.v) == uint32_t(f.at("v")));
+                REQUIRE(s.cellLo == f.at("c0"));
+                REQUIRE(s.cellHi == f.at("c1"));
+                REQUIRE(s.lineLo == f.at("l0"));
+                REQUIRE(s.lineHi == f.at("l1"));
+            } else {
+                REQUIRE(spansCrc(s.spans) == uint32_t(f.at("s")));
+                REQUIRE(s.pixelLo == f.at("p0"));
+                REQUIRE(s.pixelHi == f.at("p1"));
+                REQUIRE(s.ink == f.at("ink"));
+                REQUIRE(s.bandLo == f.at("b0"));
+                REQUIRE(s.bandHi == f.at("b1"));
+                REQUIRE(s.bandInk == f.at("vink"));
+                // The frame the effect renders, positioned through RenderCtx.
+                vt::RenderCtx ctx;
+                ctx.take = ++take;
+                ctx.position = sw.position();
+                vt::Frame out;
+                e->render(pos, a, b, out, ctx);
+                REQUIRE(crc(out) == uint32_t(f.at("frame")));
+            }
+        }
+    }
+}
+
+TEST_CASE("Positionable programs step at any anchor, baked or not", "[algo][position]") {
+    for (const char* name : kPositionable) {
+        INFO(name);
+        const auto shipped = positionablePayload(name);
+        const auto r = vt::algoPositionRange(shipped);
+        REQUIRE(r);
+        const int kind = std::string(name).find("WIPE") != std::string::npos ? 4 : 3;
+        for (int h : {-r->halfH, -r->halfH / 2, 0, r->halfH / 3, r->halfH - 1})
+            for (int v : {-r->halfV, -1, r->halfV / 2, r->halfV - 1})
+                for (int bakedAt : {-1, 1, 200, 510}) {
+                    INFO(h << ", " << v << " baked at " << bakedAt);
+                    auto p = shipped;
+                    vt::algoPositionProgram(p, h, v, bakedAt);
+                    vt::AlgoVm vm(p, kind, 0);
+                    for (int pos = 0; pos <= 511; pos += 7) REQUIRE_NOTHROW(vm.step(vt::algoTBarT(pos, vm.flags())));
+                }
+        auto p = shipped;  // the centred defaults are the shipped program (POSITION.md 4)
+        vt::algoPositionProgram(p, 0, 0, -1);
+        REQUIRE(p == shipped);
     }
 }

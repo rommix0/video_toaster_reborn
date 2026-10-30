@@ -4,6 +4,8 @@
 #include <climits>
 #include <utility>
 
+#include "vt/algo.h"
+
 namespace vt {
 namespace {
 
@@ -142,6 +144,8 @@ bool Switcher::setEffect(std::shared_ptr<const Effect> e, std::string* whyNot) {
         sel_[busIndex(Bus::Superimpose)] = Source::None;
     }
     effect_ = std::move(e);
+    position_ = {};  // the position lasts with the effect
+    positioning_ = dragging_ = false;
     ++take_;  // the new effect starts a new take (ALGO.md 15.1: a crouton selected ends the take)
     effectColour_ = effect_->effectColour();
     speed_ = effect_->timing().defaultSpeed;
@@ -228,6 +232,9 @@ void Switcher::setTBar(int pos) {
     pos = std::clamp(pos, 0, kTBarEnd);
     if (pos == tbar_) return;  // also keeps a running Auto going if a UI echoes the T-bar back
     auto_ = false;             // the hand takes over
+    if (!std::exchange(dragging_, true)) position_ = {};  // a grab: 0xb6eac resets the program
+    positioning_ = false;
+    handTBar_ = pos;
     if (effect_->isArtCardKey()) {  // the clip control: the card is held, no transition starts
         keyOn_ = true;
         keyLevel_ = pos / 2;
@@ -244,8 +251,45 @@ void Switcher::setTBar(int pos) {
     else if (pos == kTBarEnd && !staysEngaged()) finishAt511();
 }
 
+// POSITION.md 3 step 3: the drag (0xb6eac's T-bar loop) ends.
+void Switcher::releaseTBar() {
+    if (!std::exchange(dragging_, false) || !effect_->positionRange()) return;
+    if (handTBar_ == 0 || handTBar_ == kTBarEnd) {
+        if (position_.h || position_.v) position_.bakedAt = handTBar_;  // 0xb7054 at the take's end
+    } else if (tbar_ == handTBar_ && !auto_) {
+        positioning_ = true;
+    }
+}
+
+void Switcher::movePosition(int dx, int dy) {
+    if (!positioning_) return;
+    const PositionRange r = *effect_->positionRange();
+    position_.v = std::clamp(position_.v + algoMouseStep(dy, r.accel), -r.halfV, r.halfV - 1);
+    position_.h = std::clamp(position_.h + algoMouseStep(dx, r.accel), -r.halfH, r.halfH - 1);
+}
+
+// 0xb71dc's exits. The T-bar keeps to 1..510 so the take stays open (stop >> 7 can be 0 or 511
+// for an offset near the edge of the range, POSITION.md 10.3).
+void Switcher::endPositioning(PositionEnd how) {
+    if (!std::exchange(positioning_, false)) return;
+    switch (how) {
+        case PositionEnd::KeepAndStop:
+            position_.bakedAt = tbar_;
+            position_.stop = algoBakeStop(*effect_->positionRange(), position_.h, position_.v, tbar_);
+            tbar_ = std::clamp(int(position_.stop >> 7), 1, kTBarEnd - 1);  // $1ec = stop >> 7
+            break;
+        case PositionEnd::Finish:  // 0xb78b4 for all four (POSITION.md 10.1: not 0xb78ce)
+            position_.bakedAt = tbar_;
+            tbar_ = kTBarEnd;
+            finishAt511();
+            break;
+        case PositionEnd::BackToTBar: dragging_ = true; break;
+    }
+}
+
 void Switcher::autoTransition(Speed speed, Direction dir) {
     if (effect_->isArtCardKey()) return;  // the card is held: Auto does nothing
+    positioning_ = false;
     speed_ = speed;
     const Timing t = effect_->timing();
     if (dir == Direction::Forward) {
@@ -277,6 +321,7 @@ void Switcher::take() {
     const bool overlay = overlayEngaged();
     const bool card = effect_->isArtCardKey();
     auto_ = false;
+    positioning_ = false;
     tbar_ = 0;
     disengage();
     soundPending_ = false;
@@ -308,6 +353,17 @@ void Switcher::tick() {
         frozen_ = true;
     }
     if (!auto_) return;
+    // ALGO.md 15.3: a forward Auto from 0 that has rendered a Positionable move's stop (t clamped
+    // to it) holds there, the take open.
+    if (position_.stop && autoFrom0_ && autoDir_ == Direction::Forward) {
+        const auto r = effect_->positionRange();
+        const int k = static_cast<int>(std::min<int64_t>(autoDur_, autoAcc_ / kTBarEnd + 1));  // the step rendered
+        if (r && algoAutoT(k, autoDur_, r->flags) >= position_.stop) {
+            auto_ = false;
+            tbar_ = std::clamp(int(position_.stop >> 7), 1, kTBarEnd - 1);
+            return;
+        }
+    }
     if (autoDir_ == Direction::Forward) {
         autoAcc_ += kTBarEnd;
         if (autoAcc_ >= static_cast<int64_t>(kTBarEnd) * autoDur_) {
@@ -452,6 +508,7 @@ void Switcher::render(const SourceFrames& in, Frame& program) const {
         ctx.speed = speed;
         ctx.guesses = guesses_;
         ctx.take = take_;
+        ctx.position = position_;
         ctx.colour = colour;
         ctx.digitalA = digitalOf(sel_[busIndex(Bus::Main)]);
         ctx.digitalB = digitalB;

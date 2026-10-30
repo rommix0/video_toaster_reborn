@@ -10,7 +10,8 @@
 //   kinds 0 / 3 (digital, ALGO.md 5)  the H cell row (channels 1..n), the V line table (channel 10);
 //   kinds 1 / 4 (wipes, ALGO.md 6)    one span per channel 13.., the band of channel 22;
 //   kind 2 (level fades, ALGO.md 8)   channel 23 only.
-// Kinds 3 / 4 play as 0 / 1 (interactive positioning is out of scope).
+// Kinds 3 / 4 play as 0 / 1; the Switcher positions them with the mouse (tools/re/POSITION.md) by
+// rewriting their header's parameters (algoPositionProgram).
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -20,6 +21,7 @@
 
 #include "vt/background.h"
 #include "vt/dve.h"
+#include "vt/effect.h"
 #include "vt/raster.h"
 
 namespace vt {
@@ -51,6 +53,9 @@ public:
     // t in 16.16, 0..0x10000 (larger values act as 0x10000); state carries over (ALGO.md 15.1).
     // Throws std::runtime_error if the program indexes past a table (no shipped one does).
     const AlgoStep& step(uint32_t t);
+    // The installed payload. The slots read their parameters from it at every step, so a rewrite in
+    // place (algoPositionProgram, as 0xb6eac does) takes effect at the next step.
+    std::span<uint8_t> program() { return payload_; }
 
 private:
     struct Slot {
@@ -84,6 +89,22 @@ uint32_t algoAutoT(int k, int n, uint32_t flags);  // auto_ts(n, flags)[k - 1]; 
 // The routing walker's step for these effects (ALGO.md 15.2): T-bar >= 256, or in Auto the
 // unfolded k * floor((flags & 8 ? 0x20000 : 0x10000) / n) >= (flags & 8 ? 0x10000 : 0x8000).
 bool algoSecondStep(int tbar, int autoStep, int n, uint32_t flags);
+
+// --- the Positionable moves (kinds 3/4, tools/re/POSITION.md) ---------------------------------
+
+// POSITION.md 4: the header of a kind-3/4 payload; nullopt unless the 88-byte header is there with
+// $c, $e > 0 and its eight parameter pointers ($10..$2c) inside the payload.
+std::optional<PositionRange> algoPositionRange(std::span<const uint8_t> payload);
+// 0x5e2e8: the anchor change for a delta of d mouse counts with the header's $a.
+int algoMouseStep(int d, int accel);
+// 0xb7054's return: the stop (T-bar t space, 16.16) for anchors h, v dropped at T-bar tbar
+// (0..511); 0x10000 when the drop is at the take's end (POSITION.md 5).
+uint32_t algoBakeStop(const PositionRange&, int h, int v, int tbar);
+// Rewrites a payload algoPositionRange accepts, in place, as the Switcher leaves it: the defaults
+// (0xb6eac: anchors 0, sizes $c - $c t / $e - $e t, $30 = 0, the cache $34..$50 with them), the
+// anchor words h, v (0xb71b2), then for bakedAt >= 0 the bake at that T-bar position (0xb7054,
+// which leaves $30 alone). Does not allocate.
+void algoPositionProgram(std::span<uint8_t> payload, int h, int v, int bakedAt);
 
 // --- pictures from steps ---------------------------------------------------------------------
 
