@@ -761,6 +761,29 @@ bool Switcher::loadStill(const Frame& still, std::string* whyNot) {
     return true;
 }
 
+// FREEZE.md 3: 0xaf498 (ChromaFX off, freeze if live), the DV by Main (0xaf098), 0x114500 / 0x114618.
+bool Switcher::stabilize(StabilizeFields fields, std::string* whyNot) {
+    if (grabPending_) {
+        if (whyNot) *whyNot = "wait for the grab to finish";
+        return false;
+    }
+    if (chromaEngaged()) {
+        auto_ = false;
+        tbar_ = 0;
+        disengage();
+    }
+    if (!setFrozen(true, whyNot)) return false;  // refuses a running transition; nothing changed yet
+    if (fields == StabilizeFields::Two) return true;  // a still is already one frame
+    Frame& s = stills_[sel_[busIndex(Bus::Main)] == Source::DV1 ? 0 : 1];
+    for (int y = 2; y <= 478; y += 2)
+        for (int x = 0; x < kRasterW; ++x) {
+            const Rgba8 a = s.at(x, y - 1), b = s.at(x, y + 1);
+            s.at(x, y) = {uint8_t((a.r + b.r) >> 1), uint8_t((a.g + b.g) >> 1), uint8_t((a.b + b.b) >> 1), 255};
+        }
+    std::fill_n(s.px.begin() + 480 * kRasterW, kRasterW, kBlack);
+    return true;
+}
+
 std::optional<Source> Switcher::saveSource(std::string* whyNot) const {
     if (!written_[0] && !written_[1]) {
         if (whyNot) *whyNot = "SAVE: no still in DV1/DV2";

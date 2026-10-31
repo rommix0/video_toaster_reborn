@@ -834,9 +834,6 @@ void TestAppE2e::logLinesFromOtherThreads() {
     c.poll();
     QVERIFY(c.logView()->toPlainText().contains(QStringLiteral("a warning from a worker thread")));
     QVERIFY(c.window().statusBar()->currentMessage().contains(QStringLiteral("worker thread")));
-
-    c.notImplemented(QStringLiteral("FREEZE"));
-    QCOMPARE(c.window().statusBar()->currentMessage(), QStringLiteral("FREEZE: not in version 1"));
 }
 
 // The audio output that does not start, or goes away (an unplugged headset), shows "No audio output"

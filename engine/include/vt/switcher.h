@@ -36,6 +36,8 @@ enum class Source { In1, In2, In3, In4, DV1, DV2, Bkg, None };
 // Auto's direction: Forward runs the T-bar to 511 (Space), Reverse back to 0 (Shift+Space,
 // manual PDF 185).
 enum class Direction { Forward, Reverse };
+// STABILIZE's pop-up choice (FREEZE.md 3).
+enum class StabilizeFields { One, Two };
 // How positioning ends (tools/re/POSITION.md 3 step 5): Space or Return, a left click, the right button.
 enum class PositionEnd { KeepAndStop, Finish, BackToTBar };
 
@@ -252,6 +254,13 @@ public:
     // either shows DV2, else DV1 if Preview shows DV2, else DV2; the still is written there, the
     // store frozen, the target selected on Preview.
     bool loadStill(const Frame& still, std::string* whyNot = nullptr);
+    // STABILIZE (FREEZE.md 3, stabilize_ref.py): an engaged ChromaFX disengages, a live store freezes
+    // (setFrozen), then the DV Main shows if DV1, else DV2, is worked on. One: odd raster lines kept,
+    // even lines 2..478 = the average of their neighbours, line 480 black, lines 0 / 481 kept. Two:
+    // the still is already one frame (2 fields), so the picture does not change. Refused as setFrozen
+    // ("finish the effect first", an engaged ChromaFX aside) and while a grab is pending ("wait for the
+    // grab to finish"). On a live store the freeze may fill the other DV (FREEZE.md 3: faithful).
+    bool stabilize(StabilizeFields fields, std::string* whyNot = nullptr);
     // SAVE's source: the DV on Preview, else on Main, else DV1. nullopt (and "SAVE: no still in
     // DV1/DV2") if neither still was ever written.
     std::optional<Source> saveSource(std::string* whyNot = nullptr) const;

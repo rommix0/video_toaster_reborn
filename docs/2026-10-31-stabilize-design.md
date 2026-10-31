@@ -12,14 +12,14 @@ Non-goals: the composite-level work that has no visible counterpart in a decoded
 ## 2. Behaviour
 
 ### A. The button
-- STABILIZE opens a pop-up list "1 Field" / "2 Fields" (the BKG pop-up's look; opens above the button). The button shows pressed while the list is open. Escape or a click outside closes it with nothing done.
+- STABILIZE opens a pop-up list "1 Field" / "2 Fields" (the BKG pop-up's look and behaviour; opens above the button, which does not stay pressed). Escape or a click outside closes it with nothing done.
 - **Alt+f** = "2 Fields" (proven, 0x96322).
 
 ### B. What both choices do first (FREEZE.md Â§3, proven)
 - An engaged ChromaFX disengages (as a framestore load does).
 - A live store freezes, as FREEZE does (the live picture goes into a still by the FREEZE rule).
 - No bus change. The CG key page, if any, stays loaded.
-- **The DV worked on**: DV1 if Main shows DV1, otherwise DV2 (proven; Main on an input or BKG gives DV2). The other DV is untouched.
+- **The DV worked on**: DV1 if Main shows DV1, otherwise DV2 (proven; Main on an input or BKG gives DV2). The other DV is untouched. On a live store the freeze may fill the other DV (FREEZE rule: DV2 if a bus shows DV2, else DV1); then nothing visible changes — faithful, since the original also picks by Main.
 - Refusals (my call, the shared-DV rule of the framestore design): refused with "finish the effect first" while a transition runs and nothing is engaged (as loadStill), and while a grab is waiting (the original's grab blocks, so a stabilize after it would apply to the grabbed picture). The original refuses nothing else.
 
 ### C. 1 Field (verified; raster y = DV line, kFramestoreY0 = 1 matches the FRAM loader)

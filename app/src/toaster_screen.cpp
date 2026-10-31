@@ -31,19 +31,13 @@ constexpr const char* kSourceSuffix[] = {"1", "2", "3", "4", "dv1", "dv2", "bkg"
 struct BusRow { const char* prefix; vt::Bus bus; };
 constexpr BusRow kBusRows[] = {{"main_", vt::Bus::Main}, {"prev_", vt::Bus::Preview}, {"sup_", vt::Bus::Superimpose}};
 
-// Drawn and pressable, but nothing behind them in v1.
-struct Stub { const char* id; const char* name; };
-constexpr Stub kStubs[] = {
-    {"fs_stabilize", "STABILIZE"},
-};
-
 constexpr int kEdge = 3;       // outline + 2-px bevel
 constexpr int kTextLeft = 6;   // as the BKG pop-up's own text: Move(x+6, ...)
 
 }  // namespace
 
-BkgPopup::BkgPopup(const vt::assets::ColorFont& font, const std::vector<std::string>& names, int minWidth,
-                   std::function<void(vt::BkgColour)> chosen, QWidget* parent)
+ListPopup::ListPopup(const vt::assets::ColorFont& font, const std::vector<std::string>& names, int minWidth,
+                     std::function<void(int)> chosen, QWidget* parent)
     : QWidget(parent, Qt::Popup), font_(font), count_(int(std::min<size_t>(names.size(), 9))), itemH_(font.ySize + 2),
       chosen_(std::move(chosen)) {
     std::vector<std::string> trimmed;
@@ -72,11 +66,11 @@ BkgPopup::BkgPopup(const vt::assets::ColorFont& font, const std::vector<std::str
     }
 }
 
-QRect BkgPopup::itemRect(int i) const { return {kEdge, kEdge + i * itemH_, art_.w - 2 * kEdge, itemH_}; }
+QRect ListPopup::itemRect(int i) const { return {kEdge, kEdge + i * itemH_, art_.w - 2 * kEdge, itemH_}; }
 
-QPoint BkgPopup::textPen(int i) const { return {kTextLeft, kEdge + i * itemH_ + 1 + font_.baseline}; }
+QPoint ListPopup::textPen(int i) const { return {kTextLeft, kEdge + i * itemH_ + 1 + font_.baseline}; }
 
-void BkgPopup::open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours) {
+void ListPopup::open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours) {
     zoom_ = zoom;
     scaled_ = QImage(art_.w * zoom, art_.h * zoom, QImage::Format_RGB32);
     replicate(QRect(0, 0, art_.w, art_.h), zoom,
@@ -87,26 +81,26 @@ void BkgPopup::open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& co
     show();
 }
 
-void BkgPopup::paintEvent(QPaintEvent*) {
+void ListPopup::paintEvent(QPaintEvent*) {
     QPainter p(this);
     scaled_.setDevicePixelRatio(devicePixelRatioF());  // device pixels, copied 1:1
     p.drawImage(QPointF(0, 0), scaled_);
 }
 
-void BkgPopup::mousePressEvent(QMouseEvent* e) {
+void ListPopup::mousePressEvent(QMouseEvent* e) {
     const QPointF pos = e->position() * devicePixelRatioF() / zoom_;
     const QPoint px(int(std::floor(pos.x())), int(std::floor(pos.y())));
     if (e->button() == Qt::LeftButton)
         for (int i = 0; i < count_; ++i)
             if (itemRect(i).contains(px)) {
                 close();
-                chosen_(vt::BkgColour(i + 1));
+                chosen_(i);
                 return;
             }
     QWidget::mousePressEvent(e);  // closes a popup when the click is outside it
 }
 
-void BkgPopup::keyPressEvent(QKeyEvent* e) {
+void ListPopup::keyPressEvent(QKeyEvent* e) {
     if (e->key() == Qt::Key_Escape) close();
     else QWidget::keyPressEvent(e);
 }
@@ -148,11 +142,11 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
     control("fs_live", {Control::Live, -1});
     for (int i = 0; i < 4; ++i) control(("fs_" + std::to_string(i + 1)).c_str(), {Control::Grab, -1, {}, {}, {}, i});
     control("fs_save", {Control::Save, -1});
-    control("key_off", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::Off});
-    control("key_black", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::Black});
-    control("key_white", {Control::Key, -1, {}, {}, {}, 0, {}, vt::KeyMode::White});
+    control("fs_stabilize", {Control::Stabilize, -1});
+    control("key_off", {Control::Key, -1, {}, {}, {}, 0, vt::KeyMode::Off});
+    control("key_black", {Control::Key, -1, {}, {}, {}, 0, vt::KeyMode::Black});
+    control("key_white", {Control::Key, -1, {}, {}, {}, 0, vt::KeyMode::White});
     control("key_level_popup", {Control::KeyLevel, -1});
-    for (const auto& s : kStubs) control(s.id, {Control::Stub, -1, {}, {}, {}, 0, QString::fromLatin1(s.name)});
 
     tbarNode_ = nodeIndex("tbar");
     if (!visible(tbarNode_)) tbarNode_ = -1;
@@ -183,9 +177,17 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
             check(fits(img, nodes[size_t(tbarNode_)].rect), "a T-bar image does not match the T-bar rect");
     }
 
-    if (bkgNode_ >= 0)
-        bkgPopup_ = new BkgPopup(font_, layout_.bkgNames, nodes[size_t(bkgNode_)].rect.w,
-                                 [this](vt::BkgColour c) { actions_.setBackground(c); }, this);
+    if (bkgNode_ >= 0) {
+        bkgPopup_ = new ListPopup(font_, layout_.bkgNames, nodes[size_t(bkgNode_)].rect.w,
+                                  [this](int i) { actions_.setBackground(vt::BkgColour(i + 1)); }, this);
+        bkgPopup_->setObjectName(QStringLiteral("bkgPopup"));
+    }
+    stabilizeNode_ = nodeIndex("fs_stabilize");
+    if (visible(stabilizeNode_)) {
+        stabilizePopup_ = new ListPopup(font_, {"1 Field", "2 Fields"}, nodes[size_t(stabilizeNode_)].rect.w,
+                                        [this](int i) { actions_.stabilize(vt::StabilizeFields(i)); }, this);
+        stabilizePopup_->setObjectName(QStringLiteral("stabilizePopup"));
+    }
 
     colours_ = colourTable(layout_.rgbMode);
     screen_ = {layout_.screenW, layout_.screenH, std::vector<uint8_t>(size_t(layout_.screenW) * size_t(layout_.screenH))};
@@ -406,7 +408,7 @@ void ToasterScreen::rescaleAll() {
 }
 
 void ToasterScreen::resizeEvent(QResizeEvent*) {
-    if (snap() && bkgPopup_ && bkgPopup_->isVisible()) openBkgPopup();
+    if (snap()) reopenPopups();
 }
 
 void ToasterScreen::paintEvent(QPaintEvent*) {
@@ -496,14 +498,14 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
         case Control::Take: pressed_ = c.node; refresh(); actions_.take(); break;
         case Control::Auto: pressed_ = c.node; refresh(); actions_.autoTransition(vt::Direction::Forward); break;
         case Control::Speed: actions_.setSpeed(c.speed); break;
-        case Control::Bkg: openBkgPopup(); break;
+        case Control::Bkg: openPopup(bkgPopup_, bkgNode_); break;
         case Control::Freeze: actions_.setFrozen(true); break;
         case Control::Live: actions_.setFrozen(false); break;
         case Control::Grab: pressed_ = c.node; refresh(); actions_.grab(c.input); break;
         case Control::Save: pressed_ = c.node; refresh(); actions_.saveFramestore(); break;
+        case Control::Stabilize: openPopup(stabilizePopup_, stabilizeNode_); break;
         case Control::Key: actions_.setKeyMode(c.keyMode); break;
         case Control::KeyLevel: dragLevel_ = levelAtPress_ = state_.keyLevel; pressX_ = pos.x(); break;
-        case Control::Stub: pressed_ = c.node; refresh(); actions_.notImplemented(c.name); break;
         }
         return;
     }
@@ -560,11 +562,19 @@ void ToasterScreen::wheelEvent(QWheelEvent* e) {
 
 bool ToasterScreen::event(QEvent* e) {
     if ((e->type() == QEvent::WindowDeactivate || e->type() == QEvent::Hide) && dragTbar_ >= 0) endDrag();
+    // Alt+f is the Switcher's (STABILIZE 2 Fields), not the File menu's mnemonic, while the screen has focus.
+    if (e->type() == QEvent::ShortcutOverride) {
+        const auto* k = static_cast<QKeyEvent*>(e);
+        if (k->key() == Qt::Key_F && k->modifiers() == Qt::AltModifier) {
+            e->accept();
+            return true;
+        }
+    }
     if (e->type() == QEvent::DevicePixelRatioChange) {
         updateGeometry();
         snap();
         update();
-        if (bkgPopup_ && bkgPopup_->isVisible()) openBkgPopup();
+        reopenPopups();
     }
     if (e->type() != QEvent::ToolTip) return QWidget::event(e);
     const auto* help = static_cast<QHelpEvent*>(e);
@@ -577,12 +587,17 @@ bool ToasterScreen::event(QEvent* e) {
     return true;
 }
 
-// The list opens above the pop-up (it sits near the bottom of the screen), left edges aligned.
-void ToasterScreen::openBkgPopup() {
-    const vt::Rect& r = layout_.nodes[size_t(bkgNode_)].rect;
-    const int top = std::max(0, r.y - bkgPopup_->art().h);
+// The list opens above its button (they sit near the bottom of the screen), left edges aligned.
+void ToasterScreen::openPopup(ListPopup* popup, int node) {
+    const vt::Rect& r = layout_.nodes[size_t(node)].rect;
+    const int top = std::max(0, r.y - popup->art().h);
     const QPointF at = (QPointF(r.x, top) * zoom_ + QPointF(offset_)) / devicePixelRatioF();
-    bkgPopup_->open(mapToGlobal(at.toPoint()), zoom_, colours_);
+    popup->open(mapToGlobal(at.toPoint()), zoom_, colours_);
+}
+
+void ToasterScreen::reopenPopups() {
+    if (bkgPopup_ && bkgPopup_->isVisible()) openPopup(bkgPopup_, bkgNode_);
+    if (stabilizePopup_ && stabilizePopup_->isVisible()) openPopup(stabilizePopup_, stabilizeNode_);
 }
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto (while positioning, Space
@@ -605,6 +620,8 @@ bool ToasterScreen::switcherKey(QKeyEvent* e) {
     } else if (k == Qt::Key_Comma || k == Qt::Key_Period || k == Qt::Key_Slash) {
         if (handled())
             actions_.setSpeed(k == Qt::Key_Comma ? vt::Speed::Slow : k == Qt::Key_Period ? vt::Speed::Medium : vt::Speed::Fast);
+    } else if (k == Qt::Key_F && e->modifiers() == Qt::AltModifier) {  // 0x96322: STABILIZE 2 Fields
+        if (handled()) actions_.stabilize(vt::StabilizeFields::Two);
     } else if (k == Qt::Key_F || k == Qt::Key_L) {
         if (handled()) actions_.freezeKey(k == Qt::Key_F);
     } else if (k == Qt::Key_O || k == Qt::Key_BracketLeft || k == Qt::Key_BracketRight) {

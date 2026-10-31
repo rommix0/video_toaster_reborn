@@ -101,7 +101,9 @@ public:
     void setKeyLevel(int l) override { calls << QStringLiteral("key level %1").arg(l); }
     void stopCgScroll() override { calls << QStringLiteral("stop scroll"); }
     void cgScrollIgnored() override { calls << QStringLiteral("scroll ignored"); }
-    void notImplemented(const QString& what) override { calls << QStringLiteral("notImplemented ") + what; }
+    void stabilize(vt::StabilizeFields f) override {
+        calls << (f == vt::StabilizeFields::One ? QStringLiteral("stabilize 1") : QStringLiteral("stabilize 2"));
+    }
 };
 
 }  // namespace apptest

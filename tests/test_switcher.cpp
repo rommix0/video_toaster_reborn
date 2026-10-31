@@ -1816,6 +1816,101 @@ TEST_CASE("saveSource order", "[switcher][dv]") {
     CHECK(r.sw.saveSource() == Source::DV1);
 }
 
+// --- STABILIZE (FREEZE.md 3, stabilize_ref.py) ---
+
+TEST_CASE("STABILIZE 1 Field keeps the odd lines and averages the even ones", "[switcher][dv][stabilize]") {
+    Rig r;
+    const vt::Frame pic = ramp(9);
+    REQUIRE(r.sw.loadStill(pic));  // DV2 (nothing shows a DV)
+    r.sw.select(Bus::Main, Source::In1);
+    REQUIRE(r.sw.stabilize(vt::StabilizeFields::One));
+    const vt::Frame& s = r.sw.still(Source::DV2);
+    for (int y : {0, 481})  // untouched
+        for (int x = 0; x < vt::kRasterW; ++x) REQUIRE(s.at(x, y) == pic.at(x, y));
+    for (int y = 1; y <= 479; y += 2)
+        for (int x = 0; x < vt::kRasterW; ++x) REQUIRE(s.at(x, y) == pic.at(x, y));
+    for (int y = 2; y <= 478; y += 2)
+        for (int x = 0; x < vt::kRasterW; ++x) {
+            const vt::Rgba8 a = pic.at(x, y - 1), b = pic.at(x, y + 1);
+            REQUIRE(s.at(x, y) == vt::Rgba8{uint8_t((a.r + b.r) >> 1), uint8_t((a.g + b.g) >> 1),
+                                            uint8_t((a.b + b.b) >> 1), 255});
+        }
+    for (int x = 0; x < vt::kRasterW; ++x) REQUIRE(s.at(x, 480) == vt::Rgba8{0, 0, 0, 255});
+    CHECK(r.sw.still(Source::DV1).px == blackFrame().px);  // the other DV untouched
+}
+
+TEST_CASE("STABILIZE works on DV1 only when Main shows DV1", "[switcher][dv][stabilize]") {
+    const vt::Frame pic = ramp(4);
+    {
+        Rig r;
+        REQUIRE(r.sw.loadStill(pic));  // DV2
+        r.sw.select(Bus::Main, Source::DV2);
+        REQUIRE(r.sw.loadStill(pic));  // Main shows DV2: DV1
+        r.sw.select(Bus::Main, Source::DV1);
+        REQUIRE(r.sw.stabilize(vt::StabilizeFields::One));
+        CHECK(r.sw.still(Source::DV1).px != pic.px);
+        CHECK(r.sw.still(Source::DV2).px == pic.px);
+    }
+    for (Source main : {Source::DV2, Source::In3, Source::Bkg}) {
+        Rig r;
+        REQUIRE(r.sw.loadStill(pic));  // DV2
+        r.sw.select(Bus::Main, Source::DV2);
+        REQUIRE(r.sw.loadStill(pic));  // DV1
+        r.sw.select(Bus::Main, main);
+        REQUIRE(r.sw.stabilize(vt::StabilizeFields::One));
+        CHECK(r.sw.still(Source::DV1).px == pic.px);
+        CHECK(r.sw.still(Source::DV2).px != pic.px);
+    }
+}
+
+TEST_CASE("STABILIZE 2 Fields leaves the still as it is", "[switcher][dv][stabilize]") {
+    Rig r;
+    const vt::Frame pic = ramp(3);
+    REQUIRE(r.sw.loadStill(pic));
+    REQUIRE(r.sw.stabilize(vt::StabilizeFields::Two));
+    CHECK(r.sw.still(Source::DV2).px == pic.px);
+    CHECK(r.sw.frozen());
+}
+
+TEST_CASE("STABILIZE freezes a live store and disengages ChromaFX, buses kept", "[switcher][dv][stabilize]") {
+    Rig r;
+    run(r, r.in1, 0, 6);
+    r.sw.select(Bus::Preview, Source::In4);
+    REQUIRE_FALSE(r.sw.frozen());
+    REQUIRE(r.sw.stabilize(vt::StabilizeFields::Two));
+    CHECK(r.sw.frozen());
+    CHECK(r.sw.still(Source::DV1).px == numbered(2).px);  // the FREEZE rule: DV1
+    CHECK(r.sw.selected(Bus::Main) == Source::In1);
+    CHECK(r.sw.selected(Bus::Preview) == Source::In4);
+
+    Rig c;
+    REQUIRE(c.sw.setEffect(fadeToNeg()));
+    c.sw.setTBar(511);
+    REQUIRE(c.sw.chromaEngaged());
+    REQUIRE(c.sw.stabilize(vt::StabilizeFields::One));
+    CHECK_FALSE(c.sw.chromaEngaged());
+    CHECK_FALSE(c.sw.transitionActive());
+    CHECK(c.sw.frozen());
+}
+
+TEST_CASE("STABILIZE is refused during a transition and a grab's wait", "[switcher][dv][stabilize]") {
+    Rig r;
+    REQUIRE(r.sw.loadStill(ramp(5)));
+    r.sw.setTBar(100);
+    std::string why;
+    REQUIRE_FALSE(r.sw.stabilize(vt::StabilizeFields::One, &why));
+    CHECK(why == "finish the effect first");
+    CHECK(r.sw.still(Source::DV2).px == ramp(5).px);
+
+    Rig g;
+    run(g, g.in1, 0, 6);
+    REQUIRE(g.sw.grab(2));
+    REQUIRE(g.sw.grabPending());
+    why.clear();
+    REQUIRE_FALSE(g.sw.stabilize(vt::StabilizeFields::One, &why));
+    CHECK(why == "wait for the grab to finish");
+}
+
 // --- digital moves through the DV store (design B, FREEZE.md 5) ---
 
 namespace {

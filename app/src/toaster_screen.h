@@ -29,17 +29,17 @@
 #include "vt/assets/panel.h"
 #include "vt/media/monitor.h"
 
-// The BKG colour list opened from the BKG pop-up. The original list's art and behaviour were not
-// found in switcher.main, so this look is a guess: the nine bkgNames (trimmed) in CGInterface 14,
-// JAM2 with background pen 0 like the pop-up's own text, on a box bevelled like the panel buttons
+// A pop-up's list: the BKG colours, and STABILIZE's "1 Field" / "2 Fields". The original BKG list's
+// art and behaviour were not found in switcher.main, so this look is a guess: the names (trimmed) in
+// CGInterface 14, JAM2 with background pen 0 like the pop-up's own text, on a box bevelled like the panel buttons
 // (colour-0 outline, 2-px colour-3 light top/left, 2-px colour-1 shadow bottom/right, colour-2 face),
 // shown at the screen's zoom with the same exact pixel replication. A click on a name chooses it;
-// a click outside or Esc closes the list.
-class BkgPopup : public QWidget {
+// a click outside or Esc closes the list. `chosen` gets the item's index from 0.
+class ListPopup : public QWidget {
     Q_OBJECT
 public:
-    BkgPopup(const vt::assets::ColorFont& cgInterface14, const std::vector<std::string>& names, int minWidth,
-             std::function<void(vt::BkgColour)> chosen, QWidget* parent);
+    ListPopup(const vt::assets::ColorFont& cgInterface14, const std::vector<std::string>& names, int minWidth,
+              std::function<void(int)> chosen, QWidget* parent);
     void open(const QPoint& globalTopLeft, int zoom, const QList<QRgb>& colours);
     int zoom() const { return zoom_; }
     const vt::assets::IndexedImage& art() const { return art_; }  // the list in Toaster pixels
@@ -54,7 +54,7 @@ protected:
 private:
     const vt::assets::ColorFont& font_;
     int count_ = 0, itemH_ = 0;
-    std::function<void(vt::BkgColour)> chosen_;
+    std::function<void(int)> chosen_;
     vt::assets::IndexedImage art_;
     int zoom_ = 1;
     QImage scaled_;
@@ -113,19 +113,18 @@ protected:
     void mouseReleaseEvent(QMouseEvent*) override;
     void mouseDoubleClickEvent(QMouseEvent*) override;
     void wheelEvent(QWheelEvent*) override;
-    bool event(QEvent*) override;  // tool tips: a crouton's name; DevicePixelRatioChange
+    bool event(QEvent*) override;  // tool tips: a crouton's name; DevicePixelRatioChange; Alt+f
     void keyPressEvent(QKeyEvent*) override;
 
 private:
     // A clickable node and what it does.
     struct Control {
-        enum Kind { Bus, Take, Auto, Speed, Bkg, Freeze, Live, Grab, Save, Key, KeyLevel, Stub } kind;
+        enum Kind { Bus, Take, Auto, Speed, Bkg, Freeze, Live, Grab, Save, Stabilize, Key, KeyLevel } kind;
         int node;
         vt::Bus bus = vt::Bus::Main;
         vt::Source source = vt::Source::In1;
         vt::Speed speed = vt::Speed::Medium;
         int input = 0;  // Grab: 0..3
-        QString name;  // for Stub: what notImplemented() reports
         vt::KeyMode keyMode = vt::KeyMode::Off;  // Key
     };
 
@@ -151,7 +150,8 @@ private:
     void grabTbar();                       // a T-bar press while positioning: BackToTBar first
     void startRightDrag(double screenY);
     void endDrag();                        // a T-bar drag let go: releaseTBar
-    void openBkgPopup();
+    void openPopup(ListPopup*, int node);  // above the node, left edges aligned
+    void reopenPopups();                   // the visible ones, after a zoom or DPR change
     bool playing() const { return state_.cgScroll.playing || state_.tick < scrollHoldUntil_; }  // a page plays
     bool scrollPlaying();                  // playing(): other input is ignored (cgScrollIgnored)
 
@@ -182,5 +182,7 @@ private:
     ProjectGrid project_;                            // drawn over screen_ in its own colours (Ruling 3)
     int wheelAngle_ = 0;                             // wheel turn not yet worth a row (1/8 degrees)
     QImage scaled_;                                  // the composed screen in device pixels, zoom_ x zoom_ each
-    BkgPopup* bkgPopup_ = nullptr;
+    ListPopup* bkgPopup_ = nullptr;
+    ListPopup* stabilizePopup_ = nullptr;
+    int stabilizeNode_ = -1;
 };

@@ -538,6 +538,17 @@ void AppController::grab(int input) {
     loop_->postChecked([input](vt::Switcher& sw, std::string& why) { return sw.grab(input, &why); });
 }
 
+void AppController::stabilize(vt::StabilizeFields fields) {
+    loop_->postChecked([this, fields](vt::Switcher& sw, std::string& why) {
+        if (!sw.stabilize(fields, &why)) return false;
+        if (fields == vt::StabilizeFields::Two)
+            QMetaObject::invokeMethod(
+                this, [this] { message(tr("STABILIZE 2 Fields: the still is already one frame")); },
+                Qt::QueuedConnection);
+        return true;
+    });
+}
+
 // The refusals saveFramestore(path) posts, checked first from the last snapshot so no dialog opens
 // for a save that cannot happen (the posted save checks again).
 void AppController::saveFramestore() {
@@ -575,8 +586,6 @@ bool AppController::saveFramestore(const QString& path) {
     });
     return true;
 }
-
-void AppController::notImplemented(const QString& what) { message(tr("%1: not in version 1").arg(what)); }
 
 // ---- the 30 Hz poll ----
 

@@ -119,7 +119,7 @@ private slots:
     void positioningKeysAndTheTbar();
     void aHeldTbarDragIsLetGoWhenTheScreenGoesAway();
     void framestoreButtons();
-    void stabilizeIsNotImplemented();
+    void stabilizePopupChoosesFields();
     void keyButtonsAndKeys();
     void keyButtonLooksFollowTheSnapshot();
     void cgMarkFollowsTheSnapshot();
@@ -363,14 +363,31 @@ void TestToasterScreen::framestoreButtons() {
     QVERIFY(shows(live, true) && shows(freeze, false));
 }
 
-void TestToasterScreen::stabilizeIsNotImplemented() {
+// STABILIZE opens "1 Field" / "2 Fields" above the button; each item posts its choice; Alt+f is 2 Fields.
+void TestToasterScreen::stabilizePopupChoosesFields() {
     FakeActions fake;
     ToasterScreen w(layout(), font(), fake);
     w.resize(w.sizeHint());
     w.show();
     QVERIFY(QTest::qWaitForWindowExposed(&w));
-    QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_stabilize").hitRect));
-    QCOMPARE(fake.calls, QStringList{"notImplemented STABILIZE"});
+    auto* popup = w.findChild<ListPopup*>(QStringLiteral("stabilizePopup"));
+    QVERIFY(popup);
+    QCOMPARE(popup->zoom(), 1);
+    for (int item : {0, 1}) {
+        expectPopupWarnings();
+        QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_stabilize").hitRect));
+        QVERIFY(popup->isVisible());
+        QVERIFY(QTest::qWaitForWindowExposed(popup));
+        QTest::mouseClick(popup, Qt::LeftButton, {}, popup->itemRect(item).center());
+        QVERIFY(!popup->isVisible());
+    }
+    QCOMPARE(fake.calls, (QStringList{"stabilize 1", "stabilize 2"}));
+    fake.calls.clear();
+    QKeyEvent over(QEvent::ShortcutOverride, Qt::Key_F, Qt::AltModifier);  // wins over the File menu's &F
+    QCoreApplication::sendEvent(&w, &over);
+    QVERIFY(over.isAccepted());
+    QTest::keyClick(&w, Qt::Key_F, Qt::AltModifier);
+    QCOMPARE(fake.calls, QStringList{"stabilize 2"});
 }
 
 void TestToasterScreen::keyButtonsAndKeys() {
@@ -558,7 +575,7 @@ void TestToasterScreen::bkgPopupInTheToasterLook() {
     const QPoint bkg = centre(node("bkg_popup").hitRect) * 2;
     expectPopupWarnings();
     QTest::mouseClick(&w, Qt::LeftButton, {}, bkg);
-    auto* popup = w.findChild<BkgPopup*>();
+    auto* popup = w.findChild<ListPopup*>(QStringLiteral("bkgPopup"));
     QVERIFY(popup && popup->isVisible());
     QVERIFY(QTest::qWaitForWindowExposed(popup));
     QCOMPARE(popup->zoom(), 2);
@@ -664,7 +681,7 @@ void TestToasterScreen::followsADevicePixelRatioChange() {
     QVERIFY(QTest::qWaitForWindowExposed(&holder));
     expectPopupWarnings();
     QTest::mouseClick(w, Qt::LeftButton, {}, centre(node("bkg_popup").hitRect) * 3);
-    auto* popup = w->findChild<BkgPopup*>();
+    auto* popup = w->findChild<ListPopup*>(QStringLiteral("bkgPopup"));
     QVERIFY(popup && popup->isVisible());
     QCOMPARE(popup->size(), QSize(popup->art().w * 3, popup->art().h * 3));
 
@@ -727,7 +744,7 @@ void TestToasterScreen::snapsToTheLargestZoomThatFits() {
     const vt::Rect r = node("bkg_popup").rect;
     expectPopupWarnings();
     QTest::mouseClick(&w, Qt::LeftButton, {}, offset + centre(node("bkg_popup").hitRect) * 2);
-    auto* popup = w.findChild<BkgPopup*>();
+    auto* popup = w.findChild<ListPopup*>(QStringLiteral("bkgPopup"));
     QVERIFY(popup && popup->isVisible());
     QCOMPARE(popup->zoom(), 2);
     // Where it was moved (framePosition: the offscreen platform draws a frame even round a popup).
