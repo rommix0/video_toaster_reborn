@@ -17,15 +17,6 @@ int dominant(const IndexImage& im) {
 
 bool usable(const Anim& a) { return a.bm.planes >= 1 && a.bm.planes <= 8 && !a.frames.empty(); }
 
-// np.unique(concat(f[::2, ::2]))
-std::array<bool, 256> usedIndices(const Anim& a) {
-    std::array<bool, 256> used{};
-    for (const auto& f : a.frames)
-        for (int y = 0; y < f.h; y += 2)
-            for (int x = 0; x < f.w; x += 2) used[f.px[size_t(y) * size_t(f.w) + size_t(x)]] = true;
-    return used;
-}
-
 bool isVideo(const AnimPlan& p, int i) {
     switch (p.kind) {
         case AnimKind::Roles: return i == p.a || i == p.b;
@@ -94,6 +85,15 @@ void applyRoutes(std::array<MixEntry, 256>& t, const AnimPlan& plan, int n, Rgba
 uint16_t be16(const std::vector<uint8_t>& b, size_t o) { return uint16_t(b[o] << 8 | b[o + 1]); }
 
 }  // namespace
+
+// np.unique(concat(f[::2, ::2]))
+std::array<bool, 256> usedIndices(const Anim& a) {
+    std::array<bool, 256> used{};
+    for (const auto& f : a.frames)
+        for (int y = 0; y < f.h; y += 2)
+            for (int x = 0; x < f.w; x += 2) used[f.px[size_t(y) * size_t(f.w) + size_t(x)]] = true;
+    return used;
+}
 
 std::vector<PaletteRoute> paletteRoutes(const std::vector<uint8_t>& tag1b, int planes) {
     return planes == 2 ? sourceRoutes(tag1b, 1 << planes) : std::vector<PaletteRoute>{};
@@ -164,6 +164,11 @@ AnimPlan planAnim(const Anim& an, std::optional<uint32_t> mode) {
 
 std::array<MixEntry, 256> mixTable(const Anim& an, const AnimPlan& plan, const std::vector<Rgb>& cmap,
                                    Rgba8 background) {
+    return mixTable(an, plan, cmap, background, usedIndices(an));
+}
+
+std::array<MixEntry, 256> mixTable(const Anim& an, const AnimPlan& plan, const std::vector<Rgb>& cmap,
+                                   Rgba8 background, const std::array<bool, 256>& used) {
     std::array<MixEntry, 256> t{};
     if (plan.kind == AnimKind::Unsupported || !usable(an)) return t;
     const int n = 1 << an.bm.planes, top = n - 1;
@@ -176,7 +181,6 @@ std::array<MixEntry, 256> mixTable(const Anim& an, const AnimPlan& plan, const s
         t[size_t(i)].src = v == 255 ? MixSrc::B : MixSrc::A;
     }
     if (plan.kind != AnimKind::Soft) {
-        const auto used = usedIndices(an);
         bool stoodIn = false;
         const auto rgba = overlayColours(an, plan, cmap, used, background, &stoodIn);
         if (anyOverlay(rgba, used))

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -1852,4 +1853,16 @@ TEST_CASE("keyFill: a fade-level move ignores its level in key mode", "[effect][
     const vt::Frame out = renderAt(*e, 256, solid(red), solid(green), c);
     CHECK(countColour(out, kWhite) > 0);
     CHECK(countColour(out, green) + countColour(out, kWhite) == int(out.px.size()));
+}
+
+// Effects-lag fix: the first render of a palette-cycling ANIM built its mix tables with a full scan
+// of every frame per palette (Atom ! took ~480 ms, a 29-tick freeze on air). The tables come from
+// indices used, found once at load, so the first render costs about what every other one does.
+TEST_CASE("a palette-cycling ANIM's first render fits in a few ticks", "[effect][anim]") {
+    const auto e = load("4.2/Effects/4000FX/Overlays/Atom !");
+    REQUIRE(e);
+    const vt::Frame a = solid(kA), b = solid(kB);
+    const auto t0 = std::chrono::steady_clock::now();
+    (void)renderAt(*e, 0, a, b, ctxWith(kBlack));  // not the white the load checked: tables built now
+    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::milliseconds(50));
 }

@@ -18,7 +18,7 @@ public:
 
     AnimEffect(CroutonBasics b, Anim an, AnimPlan plan, ControlMap map)
         : CroutonEffect(std::move(b)), an_(std::move(an)), plan_(std::move(plan)), map_(map),
-          peak_(flashPeak(an_, plan_)) {
+          peak_(flashPeak(an_, plan_)), used_(usedIndices(an_)) {
         // Palette segments: frame k uses the most recent non-empty cmaps[j] with 1 <= j <= k, else
         // bm.cmap (frame 0 is never a palette change). paletteFrame_[s] is that j (0 = bm.cmap).
         paletteFrame_.push_back(0);
@@ -105,7 +105,7 @@ private:
             n->background = bg;
             for (int j : paletteFrame_) {
                 const std::vector<Rgb>& cm = j == 0 ? an_.bm.cmap : *an_.cmaps[size_t(j)];
-                n->t.push_back(mixTable(an_, plan_, cm, bg));
+                n->t.push_back(mixTable(an_, plan_, cm, bg, used_));
             }
             cache_ = std::move(n);
         }
@@ -116,6 +116,7 @@ private:
     AnimPlan plan_;
     ControlMap map_;
     int peak_;
+    std::array<bool, 256> used_;     // usedIndices(an_): found once, at load, off the program loop
     std::vector<int> paletteFrame_;  // palette segment -> the frame whose CMAP it is (0 = bm.cmap)
     std::vector<int> segOf_;         // animation frame -> palette segment
     mutable std::mutex mutex_;

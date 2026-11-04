@@ -199,8 +199,14 @@ const char* stateName(const ProgramLoop& loop, int i, InputKind kind) {
 void printStatus(const ProgramLoop& loop, const std::array<InputConfig, 4>& inputs, const Recorder& rec, int seconds) {
     const LoopStats st = loop.stats();
     const RecorderStatus rs = rec.status();
+    static std::array<uint64_t, 4> lastDecoded{};   // per-input pictures per second since the last line
     std::printf("[%3ds]", seconds);
-    for (int i = 0; i < 4; ++i) std::printf(" in%d:%s", i + 1, stateName(loop, i, inputs[size_t(i)].kind));
+    for (int i = 0; i < 4; ++i) {
+        std::printf(" in%d:%s", i + 1, stateName(loop, i, inputs[size_t(i)].kind));
+        const uint64_t d = loop.inputStatus(i).framesDecoded;
+        if (inputs[size_t(i)].kind != InputKind::None) std::printf(" %llufps", (unsigned long long)(d - lastDecoded[size_t(i)]));
+        lastDecoded[size_t(i)] = d;
+    }
     std::printf(" | ticks %lld late %lld stalls %lld maxTick %.1fms | rec %lld frames %lld dropped\n",
                 (long long)st.ticks, (long long)st.lateTicks, (long long)st.stalls, st.maxTickMs,
                 (long long)rs.framesWritten, (long long)rs.framesDropped);

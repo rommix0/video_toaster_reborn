@@ -78,6 +78,12 @@ AnimPlan planAnim(const Anim&, std::optional<uint32_t> mode);
 // Generator -> `background`, opaque, marked `generator`.
 std::array<MixEntry, 256> mixTable(const Anim&, const AnimPlan&, const std::vector<Rgb>& cmap,
                                    Rgba8 background);
+// The same, with the palette indices the frames use (usedIndices) found once by the caller: that
+// scan of every frame is the costly part, and does not depend on the palette or background.
+std::array<MixEntry, 256> mixTable(const Anim&, const AnimPlan&, const std::vector<Rgb>& cmap,
+                                   Rgba8 background, const std::array<bool, 256>& used);
+// Which palette indices the frames use (sampled every other pixel and line, as the converter does).
+std::array<bool, 256> usedIndices(const Anim&);
 
 // Overlay-only effects (no matte) whose overlay covers >= 97 % of the frame at its peak are a
 // transition: the Toaster cuts from A to B under the peak. Returns that frame's index into
