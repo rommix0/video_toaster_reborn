@@ -97,7 +97,7 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
   - an 80×50 icon made from the still;
   - `CrUD` with `TYPE FRAM`, readable by the loader above.
 
-  It saves the DV shown on Preview, else on Main, else DV1. It goes to a user folder (default `Documents/vtoast/Framestore`, set in Settings) with a file dialog for the name. The original's "1 Field / 4 Fields" choice is not offered, since a still is one frame.
+  It saves the DV shown on Preview, else on Main, else DV1. It goes to a user folder (default `Documents/vtoast/Framestore`, set in Settings) with a file dialog for the name. The original's "1 Field / 4 Fields" choice is not offered, since a still is one frame. *Superseded 2026-11-04 by `2026-11-04-save-fields-design.md`: SAVE offers "1 Field" / "4 Fields" and writes 16-plane composite (PLTP lanes 6/7), as the original does.*
 
 ### D. The panel
 
@@ -124,7 +124,7 @@ The output is `mix(routed source S, DVE picture, L/3)`. L = 0 shows S alone and 
   - Here, stills survive LIVE, and a freeze replaces only one of them. This is kinder to your saved work.
   - Which frame a freeze keeps (the delayed DV picture) is a guess.
 - **One DV input:** one live digital input at a time, as on the original's single DV mux.
-- **Saved files:** structured like the original's (template 0x11ca4c: 24-plane ILBM, PLTP, icon, CrUD FRAM) and verified by round trip in vtoast. Whether the original Toaster opens them cannot be tested here.
+- **Saved files:** structured like the original's (template 0x11ca4c: 24-plane ILBM, PLTP, icon, CrUD FRAM) and verified by round trip in vtoast. Whether the original Toaster opens them cannot be tested here. *Superseded 2026-11-04 by `2026-11-04-save-fields-design.md`: SAVE offers "1 Field" / "4 Fields" and writes 16-plane composite (PLTP lanes 6/7), as the original does.*
 - **ChromaFX:** no lag on ChromaFX's DV2 path.
 - **SAVE source:** the DV on Preview, else Main, else DV1. The save folder is configurable.
 

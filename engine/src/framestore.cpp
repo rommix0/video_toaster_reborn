@@ -229,22 +229,55 @@ Bytes iconFile(const Frame& still, Rect r) {
     return out;
 }
 
-// The picture: 24-plane RGB, PLTP lanes 8/9/10 (R, G, B) LSB first (FREEZE.md §4), ByteRun1 rows.
+// SAVE "1 Field" (FREEZE.md §3, save_ref.py): file rows 1, 3 .. 477 kept, rows 2 .. 476 the floor mean
+// of their neighbours, rows 0 and the last two black.
+Frame oneField(const Frame& still, Rect r) {
+    Frame f = still;
+    for (int row = 0; row < r.h; ++row)
+        for (int x = r.x; x < r.x + r.w; ++x) {
+            const int y = r.y + row;
+            if (row == 0 || row >= r.h - 2) {
+                f.at(x, y) = Rgba8{0, 0, 0, 255};
+            } else if (row % 2 == 0) {
+                const Rgba8 a = still.at(x, y - 1), b = still.at(x, y + 1);
+                f.at(x, y) = {uint8_t((a.r + b.r) >> 1), uint8_t((a.g + b.g) >> 1), uint8_t((a.b + b.b) >> 1), 255};
+            }
+        }
+    return f;
+}
+
+// The picture as the original's SAVE writes it (switcher.main 0x11ba66 flags 3): 16-plane composite,
+// PLTP lane 6 then lane 7, MSB first, ByteRun1 rows. The exact inverse of decodeComposite: a pixel
+// pair's mean colour as one DvQuad, lane 6 at px = q[px & 3], lane 7 = q[(px + 2) & 3], the lanes
+// traded on the rows decodeComposite trades them. rgbToDvQuad is ChromaFX's encoder, not the
+// saver's own (0x11bfd0, not traced).
 Bytes pictureForm(const Frame& still, Rect r) {
     Bytes pltp;
-    for (int n = 0; n < 24; ++n) pltp.insert(pltp.end(), {uint8_t(8 + n / 8), uint8_t(n % 8)});
+    for (int n = 0; n < 16; ++n) pltp.insert(pltp.end(), {uint8_t(6 + n / 8), uint8_t(7 - n % 8)});
+    std::vector<uint8_t> l6(size_t(r.w)), l7(size_t(r.w));
     Bytes body;
-    for (int y = 0; y < r.h; ++y)
-        for (int n = 0; n < 24; ++n) {
-            const Bytes row = planeRow(r.w, [&](int x) {
-                const Rgba8 p = still.at(r.x + x, r.y + y);
-                return (n < 8 ? p.r : n < 16 ? p.g : p.b) >> (n % 8) & 1;
-            });
-            const Bytes packed = packByteRun1(row);
+    for (int y = 0; y < r.h; ++y) {
+        for (int x = 0; x < r.w; x += 2) {
+            const Rgba8 a = still.at(r.x + x, r.y + y), b = still.at(r.x + x + 1, r.y + y);
+            auto mean = [](int u, int v) { return uint8_t((u + v + 1) / 2); };
+            const DvQuad q = rgbToDvQuad(Rgb{mean(a.r, b.r), mean(a.g, b.g), mean(a.b, b.b)});
+            for (int px : {x, x + 1}) {
+                l6[size_t(px)] = q[size_t(px & 3)];
+                l7[size_t(px)] = q[size_t((px + 2) & 3)];
+            }
+        }
+        const bool swap = ((y + 1) >> 1) & 1;
+        const std::vector<uint8_t>& lane6 = swap ? l7 : l6;
+        const std::vector<uint8_t>& lane7 = swap ? l6 : l7;
+        for (int n = 0; n < 16; ++n) {
+            const std::vector<uint8_t>& lane = n < 8 ? lane6 : lane7;
+            const int bit = 7 - n % 8;
+            const Bytes packed = packByteRun1(planeRow(r.w, [&](int x) { return lane[size_t(x)] >> bit & 1; }));
             body.insert(body.end(), packed.begin(), packed.end());
         }
+    }
     Bytes c;
-    putChunk(c, "BMHD", bmhd(r.w, r.h, 24, 1, 10, 11));  // the Switcher's save template, switcher.main 0x11ca4c
+    putChunk(c, "BMHD", bmhd(r.w, r.h, 16, 1, 10, 11));  // as the shipped framestores (FREEZE.md §4)
     putChunk(c, "PLTP", pltp);
     putChunk(c, "BODY", body);
     return makeForm("ILBM", c);
@@ -315,7 +348,7 @@ std::optional<Frame> loadFramestore(const std::filesystem::path& path, std::stri
     }
 }
 
-bool saveFramestore(const std::filesystem::path& path, const Frame& still, std::string* whyNot) {
+bool saveFramestore(const std::filesystem::path& path, const Frame& still, SaveFields fields, std::string* whyNot) {
     namespace fs = std::filesystem;
     fs::path icons = path, tmp = path, tmpIcons;
     icons += ".I";
@@ -324,7 +357,8 @@ bool saveFramestore(const std::filesystem::path& path, const Frame& still, std::
     tmpIcons += ".tmp";
     try {
         const Rect r = framestoreRect();
-        const Bytes picture = pictureForm(still, r), tail = iconFile(still, r);
+        const Frame saved = fields == SaveFields::One ? oneField(still, r) : still;
+        const Bytes picture = pictureForm(saved, r), tail = iconFile(saved, r);
         if (path.has_parent_path()) fs::create_directories(path.parent_path());
         writeFile(tmp, picture, tail);
         writeFile(tmpIcons, tail);

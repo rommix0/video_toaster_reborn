@@ -42,4 +42,4 @@ Non-goals: the composite-level work that has no visible counterpart in a decoded
 - **Tests**: engine — target DV choice, freeze-if-live, ChromaFX off, refusals, 1 Field line law on a picture with distinct lines (incl. lines 0, 480, 481), 2 Fields unchanged; app — pop-up opens, each item posts its choice, Alt+f.
 
 ## 4. Follow-ups noted
-- SAVE "1 Field" / "4 Fields" (FREEZE.md §6, still open).
+- ~~SAVE "1 Field" / "4 Fields" (FREEZE.md §6, still open).~~ Done: `2026-11-04-save-fields-design.md`.

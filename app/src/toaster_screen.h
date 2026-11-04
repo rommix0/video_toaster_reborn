@@ -185,4 +185,6 @@ private:
     ListPopup* bkgPopup_ = nullptr;
     ListPopup* stabilizePopup_ = nullptr;
     int stabilizeNode_ = -1;
+    ListPopup* savePopup_ = nullptr;                 // SAVE's "1 Field" / "4 Fields"
+    int saveNode_ = -1;
 };

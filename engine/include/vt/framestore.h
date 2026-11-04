@@ -30,11 +30,16 @@ bool isFramestore(const std::filesystem::path& path, std::optional<Frame>* pictu
 // malformed file: nullopt and *whyNot. Sizes: w <= 768 and h <= 480, both even.
 std::optional<Frame> loadFramestore(const std::filesystem::path&, std::string* whyNot = nullptr);
 
+// SAVE's pop-up (FREEZE.md §3 "SAVE"): the whole still, or one field of it line-doubled.
+enum class SaveFields { One, Four };
+
 // Writes `path` (picture + icons + CrUD) and `path` + ".I" (icons + CrUD), creating the folder, in
-// the layout of FREEZE.md §4. The picture is `still` inside framestoreRect(), 24-plane RGB with the
-// Switcher's own BMHD (switcher.main 0x11ca4c). False and *whyNot on failure; no half-written file
-// is left behind.
-bool saveFramestore(const std::filesystem::path&, const Frame& still, std::string* whyNot = nullptr);
+// the layout of FREEZE.md §4. The picture is `still` inside framestoreRect(), written as the
+// original's SAVE writes it (switcher.main 0x11ba66 flags 3): 16-plane composite, PLTP lanes 6/7,
+// one DvQuad per pixel pair (docs/2026-11-04-save-fields-design.md). SaveFields::One first keeps
+// file rows 1, 3 .. 477, makes rows 2 .. 476 the mean of their neighbours and rows 0, 478, 479 black.
+// False and *whyNot on failure; no half-written file is left behind.
+bool saveFramestore(const std::filesystem::path&, const Frame& still, SaveFields, std::string* whyNot = nullptr);
 
 // A ToasterCG key page: a crouton of TYPE KEYF (4.2/CG/Keys; tools/re/CGKEY.md,
 // docs/2026-10-30-cg-keys-design.md 2 A). Its FORM ILBM holds PLTP lanes 6/7 (composite, as a

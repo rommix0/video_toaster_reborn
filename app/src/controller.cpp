@@ -551,29 +551,29 @@ void AppController::stabilize(vt::StabilizeFields fields) {
 
 // The refusals saveFramestore(path) posts, checked first from the last snapshot so no dialog opens
 // for a save that cannot happen (the posted save checks again).
-void AppController::saveFramestore() {
+void AppController::saveFramestore(vt::SaveFields fields) {
     const vt::media::SwitcherSnapshot s = loop_->switcherState();
     if (s.transition && !s.overlayEngaged) return message(tr("Refused: finish the effect first"));
     if (!s.hasStill) return message(tr("Refused: SAVE: no still in DV1/DV2"));
     QDir().mkpath(settings_.framestorePath);
     const QString file = QFileDialog::getSaveFileName(window_.get(), tr("Save framestore"), settings_.framestorePath);
-    if (!file.isEmpty()) saveFramestore(file);
+    if (!file.isEmpty()) saveFramestore(file, fields);
 }
 
 // The still is the one saveSource picks. The file is written on the loop thread; the status message
 // and the drawer rescan go back to the UI thread.
 // ponytail: writing on the loop thread, so a frame may drop on SAVE; move it to a worker if that shows.
-bool AppController::saveFramestore(const QString& path) {
+bool AppController::saveFramestore(const QString& path, vt::SaveFields fields) {
     if (path.isEmpty()) return false;
     const fs::path file = toPath(path);
-    loop_->postChecked([this, file](vt::Switcher& sw, std::string& why) {
+    loop_->postChecked([this, file, fields](vt::Switcher& sw, std::string& why) {
         if (sw.transitionActive() && !sw.overlayEngaged()) {
             why = "finish the effect first";
             return false;
         }
         const auto dv = sw.saveSource(&why);
         if (!dv) return false;
-        if (!vt::saveFramestore(file, sw.still(*dv), &why)) return false;
+        if (!vt::saveFramestore(file, sw.still(*dv), fields, &why)) return false;
         const QString name = QString::fromStdU16String(file.filename().generic_u16string());
         QMetaObject::invokeMethod(
             this,

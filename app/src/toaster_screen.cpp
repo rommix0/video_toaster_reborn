@@ -188,6 +188,12 @@ ToasterScreen::ToasterScreen(const vt::assets::PanelLayout& layout, const vt::as
                                         [this](int i) { actions_.stabilize(vt::StabilizeFields(i)); }, this);
         stabilizePopup_->setObjectName(QStringLiteral("stabilizePopup"));
     }
+    saveNode_ = nodeIndex("fs_save");
+    if (visible(saveNode_)) {
+        savePopup_ = new ListPopup(font_, {"1 Field", "4 Fields"}, nodes[size_t(saveNode_)].rect.w,
+                                   [this](int i) { actions_.saveFramestore(i == 0 ? vt::SaveFields::One : vt::SaveFields::Four); }, this);
+        savePopup_->setObjectName(QStringLiteral("savePopup"));
+    }
 
     colours_ = colourTable(layout_.rgbMode);
     screen_ = {layout_.screenW, layout_.screenH, std::vector<uint8_t>(size_t(layout_.screenW) * size_t(layout_.screenH))};
@@ -502,7 +508,7 @@ void ToasterScreen::mousePressEvent(QMouseEvent* e) {
         case Control::Freeze: actions_.setFrozen(true); break;
         case Control::Live: actions_.setFrozen(false); break;
         case Control::Grab: pressed_ = c.node; refresh(); actions_.grab(c.input); break;
-        case Control::Save: pressed_ = c.node; refresh(); actions_.saveFramestore(); break;
+        case Control::Save: openPopup(savePopup_, saveNode_); break;
         case Control::Stabilize: openPopup(stabilizePopup_, stabilizeNode_); break;
         case Control::Key: actions_.setKeyMode(c.keyMode); break;
         case Control::KeyLevel: dragLevel_ = levelAtPress_ = state_.keyLevel; pressX_ = pos.x(); break;
@@ -598,6 +604,7 @@ void ToasterScreen::openPopup(ListPopup* popup, int node) {
 void ToasterScreen::reopenPopups() {
     if (bkgPopup_ && bkgPopup_->isVisible()) openPopup(bkgPopup_, bkgNode_);
     if (stabilizePopup_ && stabilizePopup_->isVisible()) openPopup(stabilizePopup_, stabilizeNode_);
+    if (savePopup_ && savePopup_->isVisible()) openPopup(savePopup_, saveNode_);
 }
 
 // Global Constraints: Return = Take, Space = Auto, Shift+Space = reverse Auto (while positioning, Space

@@ -16,6 +16,7 @@
 #include "settings.h"
 #include "vt/background.h"
 #include "vt/media/program_loop.h"
+#include "vt/framestore.h"
 #include "vt/switcher.h"
 #include "vt/timing.h"
 
@@ -35,7 +36,7 @@ public:
     virtual void setFrozen(bool frozen) = 0;             // FREEZE / LIVE buttons
     virtual void freezeKey(bool frozen) = 0;             // keys f / l (refused while a CG key page is loaded)
     virtual void grab(int input) = 0;                    // grab buttons 1-4: 0..3
-    virtual void saveFramestore() = 0;                   // SAVE
+    virtual void saveFramestore(vt::SaveFields) = 0;     // SAVE's pop-up
     virtual void stabilize(vt::StabilizeFields) = 0;     // STABILIZE's pop-up, Alt+f = 2 Fields
     virtual void setKeyMode(vt::KeyMode) = 0;            // OFF / Black key / White key, keys o [ ]
     virtual void setKeyLevel(int level) = 0;             // the level box drag: 0..257
@@ -171,13 +172,13 @@ public:
     void setFrozen(bool frozen) override;
     void freezeKey(bool frozen) override;
     void grab(int input) override;
-    void saveFramestore() override;               // asks for a file
+    void saveFramestore(vt::SaveFields) override;  // asks for a file
     void stabilize(vt::StabilizeFields) override;  // 2 Fields says why the picture stays
     void setKeyMode(vt::KeyMode) override;
     void setKeyLevel(int level) override;
     void stopCgScroll() override;
     void cgScrollIgnored() override;
-    bool saveFramestore(const QString& path);     // posts the save to `path`; false: no path
+    bool saveFramestore(const QString& path, vt::SaveFields);  // posts the save to `path`; false: no path
 
     // The main window's DevicePixelRatioChange, and the key presses of the whole application (see
     // forwardKey).

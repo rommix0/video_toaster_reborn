@@ -120,6 +120,7 @@ private slots:
     void aHeldTbarDragIsLetGoWhenTheScreenGoesAway();
     void framestoreButtons();
     void stabilizePopupChoosesFields();
+    void savePopupChoosesFields();
     void keyButtonsAndKeys();
     void keyButtonLooksFollowTheSnapshot();
     void cgMarkFollowsTheSnapshot();
@@ -337,10 +338,10 @@ void TestToasterScreen::framestoreButtons() {
     w.resize(w.sizeHint());
     w.show();
     QVERIFY(QTest::qWaitForWindowExposed(&w));
-    for (const char* id : {"fs_freeze", "fs_live", "fs_3", "fs_save"}) QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node(id).hitRect));
-    QCOMPARE(fake.calls, (QStringList{"frozen 1", "frozen 0", "grab 2", "save"}));
+    for (const char* id : {"fs_freeze", "fs_live", "fs_3"}) QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node(id).hitRect));
+    QCOMPARE(fake.calls, (QStringList{"frozen 1", "frozen 0", "grab 2"}));
 
-    // Grab and SAVE are momentary: drawn pressed while held. FREEZE / LIVE show the engine's state.
+    // Grab is momentary: drawn pressed while held. FREEZE / LIVE show the engine's state.
     const auto& grab = node("fs_1");
     QTest::mousePress(&w, Qt::LeftButton, {}, centre(grab.hitRect));
     QVERIFY(region(w.renderIndexedForTest(), grab.rect).px == vt::assets::selectedLook(grab, 0).px);
@@ -388,6 +389,34 @@ void TestToasterScreen::stabilizePopupChoosesFields() {
     QVERIFY(over.isAccepted());
     QTest::keyClick(&w, Qt::Key_F, Qt::AltModifier);
     QCOMPARE(fake.calls, QStringList{"stabilize 2"});
+}
+
+// SAVE opens "1 Field" / "4 Fields" above the button (FREEZE.md §3 SAVE); each item asks for the file
+// with its choice; Escape closes it with nothing asked.
+void TestToasterScreen::savePopupChoosesFields() {
+    FakeActions fake;
+    ToasterScreen w(layout(), font(), fake);
+    w.resize(w.sizeHint());
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    auto* popup = w.findChild<ListPopup*>(QStringLiteral("savePopup"));
+    QVERIFY(popup);
+    for (int item : {0, 1}) {
+        expectPopupWarnings();
+        QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_save").hitRect));
+        QVERIFY(popup->isVisible());
+        QVERIFY(QTest::qWaitForWindowExposed(popup));
+        QTest::mouseClick(popup, Qt::LeftButton, {}, popup->itemRect(item).center());
+        QVERIFY(!popup->isVisible());
+    }
+    QCOMPARE(fake.calls, (QStringList{"save 1", "save 4"}));
+    fake.calls.clear();
+    expectPopupWarnings();
+    QTest::mouseClick(&w, Qt::LeftButton, {}, centre(node("fs_save").hitRect));
+    QVERIFY(QTest::qWaitForWindowExposed(popup));
+    QTest::keyClick(popup, Qt::Key_Escape);
+    QVERIFY(!popup->isVisible());
+    QVERIFY(fake.calls.isEmpty());
 }
 
 void TestToasterScreen::keyButtonsAndKeys() {

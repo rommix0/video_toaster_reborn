@@ -94,7 +94,9 @@ public:
     void setFrozen(bool f) override { calls << QStringLiteral("frozen %1").arg(f); }
     void freezeKey(bool f) override { calls << QStringLiteral("freeze key %1").arg(f); }
     void grab(int input) override { calls << QStringLiteral("grab %1").arg(input); }
-    void saveFramestore() override { calls << QStringLiteral("save"); }
+    void saveFramestore(vt::SaveFields f) override {
+        calls << (f == vt::SaveFields::One ? QStringLiteral("save 1") : QStringLiteral("save 4"));
+    }
     void setKeyMode(vt::KeyMode m) override {
         calls << QStringLiteral("key %1").arg(m == vt::KeyMode::Off ? "Off" : m == vt::KeyMode::Black ? "Black" : "White");
     }

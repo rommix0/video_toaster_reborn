@@ -588,14 +588,14 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
             }
         });
         bar->clearMessage();
-        c.saveFramestore();
+        c.saveFramestore(vt::SaveFields::Four);
         QVERIFY(!*dialog);
         QVERIFY2(bar->currentMessage().contains(why), qPrintable(bar->currentMessage()));
     };
     c.runOffline(1);
     saveRefusedWithoutDialog(QStringLiteral("SAVE: no still in DV1/DV2"));
 
-    QVERIFY(c.saveFramestore(test1));
+    QVERIFY(c.saveFramestore(test1, vt::SaveFields::Four));
     c.runOffline(1);
     QCoreApplication::processEvents();
     QVERIFY2(bar->currentMessage().contains(QStringLiteral("SAVE: no still in DV1/DV2")), qPrintable(bar->currentMessage()));
@@ -609,7 +609,7 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
     c.runOffline(1);
     saveRefusedWithoutDialog(QStringLiteral("finish the effect first"));
     bar->clearMessage();
-    QVERIFY(c.saveFramestore(test1));
+    QVERIFY(c.saveFramestore(test1, vt::SaveFields::Four));
     c.runOffline(1);
     QCoreApplication::processEvents();
     QVERIFY2(bar->currentMessage().contains(QStringLiteral("finish the effect first")), qPrintable(bar->currentMessage()));
@@ -617,12 +617,20 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
 
     c.setTBar(0);
     c.runOffline(1);
-    QVERIFY(c.saveFramestore(test1));
+    QVERIFY(c.saveFramestore(test1, vt::SaveFields::Four));
     c.runOffline(1);
     QCoreApplication::processEvents();
     QVERIFY(QFileInfo(test1).isFile());
     QVERIFY(QFileInfo(test1 + QStringLiteral(".I")).isFile());
     QCOMPARE(bar->currentMessage(), QStringLiteral("Saved Test1"));
+    // 1 Field writes the same composite format: it loads back as a framestore (design 2 C, E).
+    const QString test2 = dir.filePath(QStringLiteral("Saved/Test2"));
+    QVERIFY(c.saveFramestore(test2, vt::SaveFields::One));
+    c.runOffline(1);
+    QCoreApplication::processEvents();
+    QCOMPARE(bar->currentMessage(), QStringLiteral("Saved Test2"));
+    QVERIFY(vt::loadFramestore(std::filesystem::path(test2.toStdU16String())));
+    QVERIFY(QFile::remove(test2) && QFile::remove(test2 + QStringLiteral(".I")));  // the drawer below lists Test1 alone
 
     QComboBox* picker = c.projectView()->drawerPicker();
     picker->setCurrentIndex(picker->findText(QStringLiteral("Saved framestores")));
