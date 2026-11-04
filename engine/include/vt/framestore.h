@@ -15,7 +15,8 @@ namespace vt {
 inline constexpr int kFramestoreW = 752, kFramestoreH = 480;
 inline constexpr int kFramestoreY0 = 1;  // HARDWARE GUESS: raster line of file row 0
 
-// Where a w x h still sits in the raster: x0 = (kRasterW - w) / 2, y0 = kFramestoreY0.
+// Where a w x h still sits in the raster: x0 = (kRasterW - w) / 2, y0 = kFramestoreY0. Centred,
+// not at x = 0 as CGKEY.md hints: approved by the owner by eye (2026-11-04).
 Rect framestoreRect(int w = kFramestoreW, int h = kFramestoreH);
 
 // Ruling 9: `path` is a framestore when its own CrUD says FRAM; or it has no CrUD and its sibling

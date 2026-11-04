@@ -53,5 +53,5 @@ Non-goals (later projects): scroll and crawl pages (glyph strip + `MVPG`, still 
 Black outside the page rows; the CG mark's pixels; how the speed buttons resolve a page's speed (match ALGO croutons); test names.
 
 ## 5. Follow-ups noted, not in this project
-- CGKEY.md suggests 752-wide framestores start at x = 0, not centred at x = 8 as `framestoreRect` guesses. Owner to judge by eye later.
+- CGKEY.md suggests 752-wide framestores start at x = 0, not centred at x = 8 as `framestoreRect` guesses. Owner approved the centred placement by eye (2026-11-04): kept.
 - Scroll and crawl pages; then the ToasterCG editor.
