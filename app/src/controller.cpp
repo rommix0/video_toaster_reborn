@@ -560,9 +560,9 @@ void AppController::saveFramestore(vt::SaveFields fields) {
     if (!file.isEmpty()) saveFramestore(file, fields);
 }
 
-// The still is the one saveSource picks. The file is written on the loop thread; the status message
-// and the drawer rescan go back to the UI thread.
-// ponytail: writing on the loop thread, so a frame may drop on SAVE; move it to a worker if that shows.
+// The still is the one saveSource picks, copied on the loop thread. Encoding and writing it take
+// about 20 ms, more than a tick, so they run on a worker; the status message and the drawer rescan go
+// back to the UI thread. shutdown() waits for a save still writing.
 bool AppController::saveFramestore(const QString& path, vt::SaveFields fields) {
     if (path.isEmpty()) return false;
     const fs::path file = toPath(path);
@@ -573,15 +573,22 @@ bool AppController::saveFramestore(const QString& path, vt::SaveFields fields) {
         }
         const auto dv = sw.saveSource(&why);
         if (!dv) return false;
-        if (!vt::saveFramestore(file, sw.still(*dv), fields, &why)) return false;
-        const QString name = QString::fromStdU16String(file.filename().generic_u16string());
-        QMetaObject::invokeMethod(
-            this,
-            [this, name] {
-                if (view_) view_->rescan();
-                message(tr("Saved %1").arg(name));
-            },
-            Qt::QueuedConnection);
+        auto still = std::make_shared<const vt::Frame>(sw.still(*dv));
+        const std::lock_guard l(savesMu_);
+        std::erase_if(saves_, [](const std::future<void>& f) { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; });
+        saves_.push_back(std::async(std::launch::async, [this, file, fields, still] {
+            std::string failed;
+            const bool ok = vt::saveFramestore(file, *still, fields, &failed);
+            const QString name = QString::fromStdU16String(file.filename().generic_u16string());
+            QMetaObject::invokeMethod(
+                this,
+                [this, name, ok, failed = QString::fromStdString(failed)] {
+                    if (!ok) return message(tr("SAVE failed: %1").arg(failed));
+                    if (view_) view_->rescan();
+                    message(tr("Saved %1").arg(name));
+                },
+                Qt::QueuedConnection);
+        }));
         return true;
     });
     return true;
@@ -791,6 +798,12 @@ void AppController::shutdown() {
     }
     // 4. The loop.
     loop_->stop();
+    // 5. A save still writing (no new one can start: the loop that starts them has stopped).
+    {
+        const std::lock_guard l(savesMu_);
+        for (auto& f : saves_) f.wait();
+        saves_.clear();
+    }
     updateRecordAction();
     settings_.windowGeometry = window_->saveGeometry();
     settings_.save();

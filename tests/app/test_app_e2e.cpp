@@ -619,16 +619,14 @@ void TestAppE2e::saveWritesTheStillAndListsIt() {
     c.runOffline(1);
     QVERIFY(c.saveFramestore(test1, vt::SaveFields::Four));
     c.runOffline(1);
-    QCoreApplication::processEvents();
+    QTRY_COMPARE(bar->currentMessage(), QStringLiteral("Saved Test1"));  // written on a worker, then reported
     QVERIFY(QFileInfo(test1).isFile());
     QVERIFY(QFileInfo(test1 + QStringLiteral(".I")).isFile());
-    QCOMPARE(bar->currentMessage(), QStringLiteral("Saved Test1"));
     // 1 Field writes the same composite format: it loads back as a framestore (design 2 C, E).
     const QString test2 = dir.filePath(QStringLiteral("Saved/Test2"));
     QVERIFY(c.saveFramestore(test2, vt::SaveFields::One));
     c.runOffline(1);
-    QCoreApplication::processEvents();
-    QCOMPARE(bar->currentMessage(), QStringLiteral("Saved Test2"));
+    QTRY_COMPARE(bar->currentMessage(), QStringLiteral("Saved Test2"));
     QVERIFY(vt::loadFramestore(std::filesystem::path(test2.toStdU16String())));
     QVERIFY(QFile::remove(test2) && QFile::remove(test2 + QStringLiteral(".I")));  // the drawer below lists Test1 alone
 

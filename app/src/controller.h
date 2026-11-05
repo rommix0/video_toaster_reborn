@@ -236,5 +236,7 @@ private:
     bool recording_ = false;
     QString recordingFile_;
     std::future<void> stopping_;   // Recorder::stop() running on another thread
+    std::mutex savesMu_;           // saves_: started on the loop thread, awaited by shutdown()
+    std::vector<std::future<void>> saves_;  // SAVEs encoding and writing on their own threads
     bool shutDown_ = false;
 };

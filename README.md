@@ -11,7 +11,7 @@ Working now:
 - **Switcher panel**: the original screen, Main / Preview / Superimpose buses, four inputs, DV1 / DV2, BKG colours, T-bar, Auto, Take, speed buttons.
 - **Effects library**: the croutons in `Effects/` play, including ALGO wipes and digital moves, ANIM effects, ChromaFX, DVE moves, the Bar croutons, and control croutons. The four Positionable effects are placed with an on-screen trackball.
 - **Keyer**: luma key (OFF / Black / White, clip level) and the Art Card Key.
-- **Framestores**: FREEZE / LIVE, instant grab 1-4, STABILIZE, SAVE, and loading stills from the Framestore drawers.
+- **Framestores**: FREEZE / LIVE, instant grab 1-4, STABILIZE, SAVE (1 Field / 4 Fields, written in the original's 16-plane composite format), and loading stills from the Framestore drawers.
 - **ToasterCG pages**: framestore pages, key pages (dissolve on and off over Main), and scroll and crawl pages.
 - **Inputs and output**: video files, capture devices or the screen as inputs; Program recorded to a file; an audio mixer.
 
