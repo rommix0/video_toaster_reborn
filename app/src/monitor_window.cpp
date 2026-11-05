@@ -10,9 +10,14 @@
 #include "pixel_replicate.h"
 
 void MonitorWindow::Mailbox::onPictures(int64_t, const vt::Frame& program, const vt::Frame& preview) {
-    const std::lock_guard lock(mu_);
-    latest_ = program_ ? program : preview;  // same size: no allocation after the first copy
-    fresh_ = true;
+    bool wake = false;
+    {
+        const std::lock_guard lock(mu_);
+        latest_ = program_ ? program : preview;  // same size: no allocation after the first copy
+        wake = !fresh_;                          // a poll is already queued otherwise
+        fresh_ = true;
+    }
+    if (wake) QMetaObject::invokeMethod(owner_, &MonitorWindow::poll, Qt::QueuedConnection);
 }
 
 bool MonitorWindow::Mailbox::take(vt::Frame& into) {
@@ -24,7 +29,7 @@ bool MonitorWindow::Mailbox::take(vt::Frame& into) {
 }
 
 MonitorWindow::MonitorWindow(Kind kind, QWidget* parent)
-    : QWidget(parent, Qt::Window), mailbox_(kind == Kind::Program) {
+    : QWidget(parent, Qt::Window), mailbox_(kind == Kind::Program, this) {
     setWindowTitle(kind == Kind::Program ? QStringLiteral("Program") : QStringLiteral("Preview"));
     setAttribute(Qt::WA_OpaquePaintEvent);
 
@@ -48,9 +53,6 @@ MonitorWindow::MonitorWindow(Kind kind, QWidget* parent)
 
     rebuild();
     resize(sizeHint());
-
-    connect(&timer_, &QTimer::timeout, this, &MonitorWindow::poll);
-    timer_.start(1000 / 60);
 }
 
 vt::Rect MonitorWindow::shownArea() const {

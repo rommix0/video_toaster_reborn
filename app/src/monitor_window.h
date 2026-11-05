@@ -5,13 +5,14 @@
 // (zoom 1-4, the same replicate() as the Switcher screen).
 //
 // Pictures come from the loop thread through sink(): onPictures only copies the frame this
-// window shows under a short mutex and returns (the loop holds its own lock across the call).
-// A 60 Hz timer on the UI thread picks up the latest frame and repaints when there is a new one.
+// window shows under a short mutex and returns (the loop holds its own lock across the call). A
+// frame that finds the mailbox empty queues one poll() on the UI thread, so every frame is shown as
+// it arrives (a timer beside the 59.94 Hz loop dropped some); frames that come while the UI is busy
+// replace each other, and the newest is shown.
 // The context menu has the zoom and underscan choices. When the window's device pixel ratio changes
 // (moved to a display with another scaling) it resizes to its new sizeHint(), so the picture stays
 // exactly zoom x zoom device pixels per picture pixel and fills the window.
 #include <QImage>
-#include <QTimer>
 #include <QWidget>
 #include <mutex>
 
@@ -36,7 +37,7 @@ public:
     bool underscan() const { return underscan_; }
     vt::Rect shownArea() const;  // kVisibleArea, or the whole raster with underscan
 
-    // Takes the newest frame, if a new one arrived since the last call, and repaints. The timer calls it.
+    // Takes the newest frame, if a new one arrived since the last call, and repaints. Queued by the sink.
     void poll();
 
     QSize sizeHint() const override;
@@ -53,11 +54,12 @@ private:
     // The one frame the loop thread leaves for the UI thread.
     class Mailbox : public vt::media::MonitorSink {
     public:
-        explicit Mailbox(bool program) : program_(program) {}
+        Mailbox(bool program, MonitorWindow* owner) : program_(program), owner_(owner) {}
         void onPictures(int64_t tick, const vt::Frame& program, const vt::Frame& preview) override;
         bool take(vt::Frame& into);  // swaps the newest frame into `into`; false if none is new
     private:
         const bool program_;
+        MonitorWindow* const owner_;  // gets the queued poll(); removeMonitor before it goes
         std::mutex mu_;
         vt::Frame latest_;
         bool fresh_ = false;
@@ -66,7 +68,6 @@ private:
     void rebuild();  // image_ from frame_ at the current zoom and area, then repaint
 
     Mailbox mailbox_;
-    QTimer timer_;
     vt::Frame frame_;      // what image_ shows (black until the first picture)
     QImage image_;         // device pixels, zoom_ x zoom_ per picture pixel
     int zoom_ = 1;

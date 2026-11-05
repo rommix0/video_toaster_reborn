@@ -50,6 +50,7 @@ private slots:
     void visibleAreaAndUnderscan();
     void previewWindowShowsThePreviewPicture();
     void keepsOnlyTheLatestPicture();
+    void showsEachPictureAsItArrives();
     void contextMenuChoices();
     void resizesOnADevicePixelRatioChange();
 };
@@ -126,6 +127,19 @@ void TestMonitor::keepsOnlyTheLatestPicture() {
     w.sink().onPictures(1, flat(kB), flat(kB));
     w.poll();
     QCOMPARE(w.grab().toImage().pixel(10, 10) & 0xffffff, kB & 0xffffffu);
+}
+
+// Each picture is shown when it arrives, not when a timer next looks: a 60 Hz timer beside the 59.94 Hz
+// loop dropped about one picture every two seconds. sendPostedEvents delivers queued calls, no timers.
+void TestMonitor::showsEachPictureAsItArrives() {
+    MonitorWindow w(MonitorWindow::Kind::Program);
+    w.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&w));
+    for (QRgb c : {kA, kB, qRgb(1, 2, 3)}) {
+        w.sink().onPictures(0, flat(c), flat(c));
+        QCoreApplication::sendPostedEvents();
+        QCOMPARE(w.grab().toImage().pixel(10, 10) & 0xffffff, c & 0xffffffu);
+    }
 }
 
 // The context menu is the window's actions: Zoom 1x..4x and Underscan.
