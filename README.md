@@ -41,6 +41,8 @@ tools\build.bat
 
 This configures, builds (Release, Ninja) and runs the tests. Extra arguments go to `ctest`, for example `tools\build.bat -R vt_tests`. The app is `build\msvc\app\vtoast.exe`.
 
+`tools\dist.bat` does the same, then packages the app with everything it needs to run (Qt, FFmpeg and the MSVC runtime) as `build\dist\vtoast-reborn-alpha-<commit>\` and a `.zip` of it.
+
 ## Layout
 
 | Folder | What it holds |
