@@ -1,3 +1,5 @@
+![](vtoast_preview_small.jpg)
+
 # Video Toaster Reborn
 
 > **Work in progress.** This project is under active development. Features are incomplete, behaviour may change, and some parts are missing entirely.
@@ -45,16 +47,16 @@ This configures, builds (Release, Ninja) and runs the tests. Extra arguments go 
 
 ## Layout
 
-| Folder | What it holds |
-|---|---|
-| `engine/` | The Switcher model and every effect renderer (no Qt) |
-| `media/` | Inputs, decoding, the program loop, audio and recording (FFmpeg) |
-| `assets/` | The Switcher panel and crouton icons, read from the original files |
-| `app/` | The Qt application |
-| `cli/` | `vt_render` (renders one effect to frames) and `vt_show` (runs a scripted show and records it) |
-| `tests/` | Engine, media and app tests, with golden data from reference models |
-| `tools/` | Build script, golden generators and contact-sheet scripts |
-| `docs/` | Design documents and implementation plans |
+| Folder    | What it holds                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `engine/` | The Switcher model and every effect renderer (no Qt)                                           |
+| `media/`  | Inputs, decoding, the program loop, audio and recording (FFmpeg)                               |
+| `assets/` | The Switcher panel and crouton icons, read from the original files                             |
+| `app/`    | The Qt application                                                                             |
+| `cli/`    | `vt_render` (renders one effect to frames) and `vt_show` (runs a scripted show and records it) |
+| `tests/`  | Engine, media and app tests, with golden data from reference models                            |
+| `tools/`  | Build script, golden generators and contact-sheet scripts                                      |
+| `docs/`   | Design documents and implementation plans                                                      |
 
 ## Disclaimer
 
