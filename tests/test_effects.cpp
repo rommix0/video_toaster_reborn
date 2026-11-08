@@ -208,7 +208,7 @@ TEST_CASE("dissolve is exactly A at 0 and exactly B at 511", "[effect][dissolve]
 
 TEST_CASE("gray LUT matches the converter for every gradient ILBM", "[effect][golden]") {
     const auto recs = golden::readLines("ilbm.jsonl");
-    REQUIRE(recs.size() == 113);
+    REQUIRE(recs.size() == 107);
     for (const auto& r : recs) {
         INFO(str(r, "source"));
         auto c = vt::loadCrouton(golden::sourcePath(str(r, "source")));
@@ -1234,7 +1234,7 @@ TEST_CASE("algo repeated render does not step", "[algo]") {
 TEST_CASE("every corpus animated and gradient wipe loads and renders", "[effect][corpus]") {
     int loaded = 0, sounds = 0;
     std::set<std::string> reasons;
-    // 3.1 and 4.2 animated wipes (the mixtables list is every non-DVE ANIM file)
+    // 4.2 animated wipes (the mixtables list is every non-DVE ANIM file)
     for (const auto& src : mixRecords().order) {
         INFO(src);
         std::string why;

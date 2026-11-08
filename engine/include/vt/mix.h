@@ -65,7 +65,7 @@ struct AnimPlan {
     std::vector<PaletteRoute> routes;
 };
 
-// `mode` is crouton tag 0x80000022 when present (3.1 hunk files have none).
+// `mode` is crouton tag 0x80000022 when present.
 AnimPlan planAnim(const Anim&, std::optional<uint32_t> mode);
 
 // The table for palette `cmap` (pass a.bm.cmap, or rebuild with a frame's new CMAP; an empty or

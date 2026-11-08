@@ -20,8 +20,7 @@ const std::vector<int64_t>& arr(const golden::Record& r, const char* key) {
     return std::get<std::vector<int64_t>>(r.at(key).v);
 }
 
-// Same choice as tools/make_golden.py: hunk files via unwrapHunk (loadCrouton does that),
-// otherwise the first FORM ANIM.
+// The first FORM ANIM, the same choice as tools/make_golden.py.
 struct Loaded {
     vt::Crouton c;
     vt::Form form;
@@ -163,39 +162,14 @@ std::vector<uint8_t> dlta5(const std::vector<uint8_t>& stream) {
 
 TEST_CASE("every golden ANIM and DVE effect decodes to its frame and plane CRCs") {
     auto recs = golden::readLines("anims.jsonl");
-    REQUIRE(recs.size() == 354);
-    size_t checked = 0, withDrops = 0;
+    REQUIRE(recs.size() == 345);
+    size_t checked = 0;
     for (auto& r : recs) {
         checkRecord(r);
         ++checked;
-        if (num(r, "dropped") > 0) ++withDrops;
     }
-    REQUIRE(checked == 354);
-    REQUIRE(withDrops >= 1);
-    WARN("ANIM golden records checked: " << checked << " (" << withDrops << " with dropped frames)");
-}
-
-TEST_CASE("Tennis loads its good frames and reports the damaged end as dropped") {
-    auto recs = golden::readLines("anims.jsonl");
-    const auto& tennis = findRecord(recs, "3.1/ToasterAll/EFFECTS/Tennis");
-    REQUIRE(num(tennis, "dropped") == 1);
-    auto [c, form] = openAnim("3.1/ToasterAll/EFFECTS/Tennis");
-    vt::Anim a = vt::readAnim(c.bytes, form);
-    REQUIRE(a.dropped == 1);
-    REQUIRE(!a.frames.empty());
-    REQUIRE(a.frames.size() == arr(tennis, "frame_crcs").size());
-    REQUIRE(a.planes.size() == a.frames.size());
-}
-
-TEST_CASE("a 3.1 hunk-wrapped effect decodes like an IFF one (FlyIn)") {
-    auto recs = golden::readLines("anims.jsonl");
-    const auto& fly = findRecord(recs, "3.1/ToasterAll/EFFECTS/FlyIn");
-    auto [c, form] = openAnim("3.1/ToasterAll/EFFECTS/FlyIn");
-    REQUIRE(c.type == vt::CroutonType::None);  // hunk file: forms came from unwrapHunk
-    vt::Anim a = vt::readAnim(c.bytes, form);
-    REQUIRE(a.frames.size() == arr(fly, "frame_crcs").size());
-    REQUIRE(a.dropped == num(fly, "dropped"));
-    checkRecord(fly);
+    REQUIRE(checked == 345);
+    WARN("ANIM golden records checked: " << checked);
 }
 
 TEST_CASE("Warp To Globe ! (9 planes) keeps complete planes and no byte frames") {

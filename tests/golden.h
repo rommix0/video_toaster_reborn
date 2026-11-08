@@ -31,7 +31,7 @@ using Record = std::map<std::string, Value>;
 
 }  // namespace golden
 
-// The Toaster data tree (the folder holding 4.2/, 3.1/, converted/).
+// The Toaster data tree (the folder holding 4.2/).
 inline std::filesystem::path dataRoot() { return std::filesystem::path(VT_DATA_ROOT).lexically_normal(); }
 
 inline std::vector<uint8_t> readFile(const std::filesystem::path& p) {

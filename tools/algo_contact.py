@@ -10,7 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parent.parent
-FX = REPO.parent / "4.2" / "Effects" / "4000FX"
+FX = REPO / "data" / "4.2" / "Effects" / "4000FX"
 ap = argparse.ArgumentParser()
 ap.add_argument("exe", nargs="?", default=REPO / "build" / "msvc" / "cli" / "vt_render.exe")
 ap.add_argument("--set", choices=["bang"], help="render this named set instead of the default list")

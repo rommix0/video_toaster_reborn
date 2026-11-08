@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parent.parent
-DATA = REPO.parent / "4.2"
+DATA = REPO / "data" / "4.2"
 EXE = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "build" / "msvc" / "cli" / "vt_render.exe"
 OUT = REPO / "build" / "framestore_sheets"
 COLS, W, H = 4, 160, 108  # a 640x432 still at 1/4 size

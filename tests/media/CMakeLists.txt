@@ -15,7 +15,7 @@ target_link_libraries(vt_media_tests PRIVATE vt_media_testable catch2_amalgamate
 # live_clock.h is internal to vt_media; its unit test reaches into media/src.
 target_include_directories(vt_media_tests PRIVATE ${CMAKE_SOURCE_DIR}/media/src)
 target_compile_definitions(vt_media_tests PRIVATE
-    VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."
+    VT_DATA_ROOT="${VT_DATA_ROOT}"
     VT_MEDIA_FIXTURES="${CMAKE_BINARY_DIR}/media_fixtures")
 if(MSVC)
     target_compile_options(vt_media_tests PRIVATE /W4)
@@ -40,7 +40,7 @@ set_tests_properties(vt_media_live PROPERTIES LABELS live)
 add_test(NAME vt_show_cli COMMAND ${CMAKE_COMMAND}
     -DVT_SHOW=$<TARGET_FILE:vt_show>
     -DFFPROBE=${VT_FFMPEG_DIR}/bin/ffprobe.exe
-    -DVT_DATA_ROOT=${CMAKE_SOURCE_DIR}/..
+    -DVT_DATA_ROOT=${VT_DATA_ROOT}
     -DFIXTURES=${CMAKE_BINARY_DIR}/media_fixtures
     -DWORK_DIR=${CMAKE_BINARY_DIR}/vt_show_cli_work
     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_vt_show.cmake)

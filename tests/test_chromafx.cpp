@@ -125,7 +125,7 @@ TEST_CASE("parseLut tables match the golden CRCs for croutons and banks", "[chro
         for (size_t k = 0; k < 3; ++k) REQUIRE(tableCrc(lut.tables[k]) == uint32_t(arr(r, "tables_crc")[k]));
     }
     REQUIRE(croutons == 96);
-    REQUIRE(bankRecs == 396);
+    REQUIRE(bankRecs == 198);
     for (const auto& [name, list] : banks) {
         INFO(name);
         REQUIRE(list.size() == 99);

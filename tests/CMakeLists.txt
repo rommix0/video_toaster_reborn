@@ -24,7 +24,7 @@ add_executable(vt_tests
 target_link_libraries(vt_tests PRIVATE vt_engine vt_assets catch2_amalgamated)
 target_include_directories(vt_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(vt_tests PRIVATE
-    VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."
+    VT_DATA_ROOT="${VT_DATA_ROOT}"
     VT_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/tests/golden")
 if(MSVC)
     target_compile_options(vt_tests PRIVATE /W4)
@@ -34,7 +34,7 @@ add_test(NAME vt_tests COMMAND vt_tests)
 # vt_render: a CTest script test (the CLI renders Page Peel ! at fast speed; 60 frames).
 add_test(NAME vt_render_cli COMMAND ${CMAKE_COMMAND}
     -DVT_RENDER=$<TARGET_FILE:vt_render>
-    -DVT_DATA_ROOT=${CMAKE_SOURCE_DIR}/..
+    -DVT_DATA_ROOT=${VT_DATA_ROOT}
     -DWORK_DIR=${CMAKE_BINARY_DIR}/vt_render_cli_work
     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_cli.cmake)
 

@@ -106,10 +106,6 @@ std::optional<Crouton> loadCrouton(const std::filesystem::path& p) {
     c.bytes.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
     std::span<const uint8_t> d(c.bytes);
 
-    if (d.size() >= 4 && d[0] == 0 && d[1] == 0 && d[2] == 0x03 && d[3] == 0xf3) {
-        c.forms = unwrapHunk(d);  // 3.x hunk files carry no CrUD: type stays None
-        return c;
-    }
     c.forms = iffForms(d);
     for (const Form& fm : c.forms) {
         if (std::string_view(fm.type.data(), 4) != "CrUD") continue;

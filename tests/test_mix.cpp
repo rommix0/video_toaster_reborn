@@ -137,7 +137,7 @@ TEST_CASE("mix tables match the Python converter", "[mix][golden]") {
     CHECK(overlay > 0);
     INFO("soft " << soft << " roles " << roles << " overlay " << overlay << " flashes " << flashes
                  << " background stand-ins " << stood_in);
-    CHECK(flashes == 7);
+    CHECK(flashes == 4);
     CHECK(stood_in > 0);
 }
 

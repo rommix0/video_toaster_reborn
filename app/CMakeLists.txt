@@ -13,7 +13,7 @@ add_library(vt_app_lib STATIC
 )
 target_include_directories(vt_app_lib PUBLIC src)
 # The default Toaster data root (settings.cpp).
-target_compile_definitions(vt_app_lib PRIVATE VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/..")
+target_compile_definitions(vt_app_lib PRIVATE VT_DATA_ROOT="${VT_DATA_ROOT}")
 target_link_libraries(vt_app_lib PUBLIC Qt6::Widgets vt_media vt_assets)
 if(MSVC)
     target_compile_options(vt_app_lib PRIVATE /W4 /utf-8)

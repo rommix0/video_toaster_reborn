@@ -118,17 +118,6 @@ TEST_CASE("resolve prefers the default, then Fast, Medium, Slow, Variable") {
     REQUIRE(t.resolve(vt::Speed::Fast) == vt::Speed::Medium);  // Fast unavailable too: Medium
 }
 
-TEST_CASE("3.1 hunk effect gets the ANIM defaults") {
-    auto c = vt::loadCrouton(dataRoot() / "3.1/ToasterAll/EFFECTS/FlyIn");
-    REQUIRE(c);
-    REQUIRE(c->tags.empty());
-    auto t = vt::animTiming(*c, 30);
-    REQUIRE(t.fieldsPerFrame == std::array{3, 2, 1, 0});
-    REQUIRE(t.durationFrames == std::array{45, 30, 15, 0});
-    REQUIRE(t.durationTicks == std::array{90, 60, 30, 0});
-    REQUIRE(t.defaultSpeed == vt::Speed::Fast);
-}
-
 TEST_CASE("T-bar maps to frames") {
     REQUIRE(vt::animFrameForTBar(0, 60) == 0);
     REQUIRE(vt::animFrameForTBar(511, 60) == 59);

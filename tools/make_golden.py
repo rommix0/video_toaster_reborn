@@ -303,7 +303,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel', 'fonts', 'algo')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
-            if r['status'] == 'converted']
+            if r['status'] == 'converted' and not r['source'].startswith('3.1/')]
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
         rows = []
     man = {}
@@ -374,7 +374,7 @@ def main():
                 files['chromafx_rows'].append(dict(
                     source=f'{c}/{f}', interp=CR.interp_index(rec),
                     row_crcs=[crc(CR.row_bytes(r)) for r in CR.rows(rec)]))
-    for bank in X.BANKS:
+    for bank in (b for b in X.BANKS if not b.startswith('3.1/')):
         if os.path.exists(os.path.join(ROOT, bank)):
             for name, t in X.from_bank(os.path.join(ROOT, bank)):
                 chroma(f'{bank} [{name}]', name, t, {})

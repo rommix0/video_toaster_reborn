@@ -1,5 +1,5 @@
 #pragma once
-// IFF walking and Toaster 3.x hunk unwrapping (port of tools/toaster_iff.py).
+// IFF walking (port of tools/toaster_iff.py).
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -25,8 +25,5 @@ std::vector<Form> iffForms(std::span<const uint8_t> d, size_t begin = 0, size_t 
 
 // Chunks directly inside one FORM (after the 4-byte form type).
 std::vector<Chunk> formChunks(std::span<const uint8_t> d, const Form& f);
-
-// FORM ANIM / FORM ILBM found inside a 3.x Amiga hunk file; empty if not a hunk file.
-std::vector<Form> unwrapHunk(std::span<const uint8_t> d);
 
 }  // namespace vt

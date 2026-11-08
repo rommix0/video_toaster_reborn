@@ -16,12 +16,12 @@ const std::vector<int64_t>& arr(const golden::Record& r, const char* key) {
 }  // namespace
 
 TEST_CASE("golden files have the expected record counts") {
-    REQUIRE(golden::readLines("ilbm.jsonl").size() == 113);
-    REQUIRE(golden::readLines("anims.jsonl").size() == 354);
-    REQUIRE(golden::readLines("mixtables.jsonl").size() == 290);
-    REQUIRE(golden::readLines("dve.jsonl").size() == 64);
-    REQUIRE(golden::readLines("timing.jsonl").size() == 467);
-    REQUIRE(golden::readLines("chromafx.jsonl").size() == 96 + 396);
+    REQUIRE(golden::readLines("ilbm.jsonl").size() == 107);
+    REQUIRE(golden::readLines("anims.jsonl").size() == 345);
+    REQUIRE(golden::readLines("mixtables.jsonl").size() == 283);
+    REQUIRE(golden::readLines("dve.jsonl").size() == 62);
+    REQUIRE(golden::readLines("timing.jsonl").size() == 452);
+    REQUIRE(golden::readLines("chromafx.jsonl").size() == 96 + 198);
     REQUIRE(golden::readLines("algo.jsonl").size() == 114);
     REQUIRE(golden::readLines("bars.jsonl").size() == 14);
     REQUIRE(golden::readLines("cgkeys.jsonl").size() == 6 + 16);

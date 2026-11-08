@@ -14,8 +14,6 @@ std::array<char, 4> tag4(std::span<const uint8_t> d, size_t o) {
 }
 
 constexpr std::array<char, 4> kForm{'F', 'O', 'R', 'M'};
-constexpr std::array<char, 4> kAnim{'A', 'N', 'I', 'M'};
-constexpr std::array<char, 4> kIlbm{'I', 'L', 'B', 'M'};
 
 // Visit each chunk (id, header offset, size) in [o, end); chunks are padded to even length.
 template <class Fn>
@@ -28,13 +26,6 @@ void walk(std::span<const uint8_t> d, size_t o, size_t end, Fn fn) {
         if (step > end - o) break;
         o += step;
     }
-}
-
-size_t findForm(std::span<const uint8_t> d, size_t from) {
-    static const uint8_t pat[4] = {'F', 'O', 'R', 'M'};
-    if (from >= d.size()) return SIZE_MAX;
-    auto it = std::search(d.begin() + from, d.end(), pat, pat + 4);
-    return it == d.end() ? SIZE_MAX : size_t(it - d.begin());
 }
 
 }  // namespace
@@ -55,23 +46,6 @@ std::vector<Chunk> formChunks(std::span<const uint8_t> d, const Form& f) {
         out.push_back({id, o + 8, std::min(sz, end - (o + 8))});
     });
     return out;
-}
-
-std::vector<Form> unwrapHunk(std::span<const uint8_t> d) {
-    std::vector<Form> found;
-    if (d.size() < 4 || d[0] != 0 || d[1] != 0 || d[2] != 0x03 || d[3] != 0xf3) return found;
-    size_t i = findForm(d, 0);
-    while (i != SIZE_MAX && i + 12 <= d.size()) {
-        size_t sz = be32(d, i + 4);
-        auto ft = tag4(d, i + 8);
-        if ((ft == kAnim || ft == kIlbm) && i + 8 + sz <= d.size() + 1) {
-            found.push_back({ft, i, sz});
-            i = findForm(d, i + 8 + sz);
-        } else {
-            i = findForm(d, i + 4);
-        }
-    }
-    return found;
 }
 
 }  // namespace vt

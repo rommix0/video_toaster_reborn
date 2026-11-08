@@ -15,7 +15,7 @@ enum class CroutonType { Algo, Ilbm, Anim, Crfx, Main, Ctrl, Fram, Keyf, Scro, C
 struct Crouton {
     CroutonType type = CroutonType::None;
     std::vector<uint8_t> bytes;
-    std::vector<Form> forms;  // all FORMs: top level, or those from unwrapHunk for hunk files
+    std::vector<Form> forms;  // all top-level FORMs
     std::map<uint32_t, uint32_t> tags;
     std::map<uint32_t, std::vector<uint8_t>> blobs;  // tags with bit 0x10000000 (byte blobs)
 

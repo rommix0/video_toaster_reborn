@@ -127,7 +127,7 @@ TEST_CASE("DVE control decoding matches toaster_dve.decode (unfilled) for every 
         }
         ++effects;
     }
-    REQUIRE(effects == 64);
+    REQUIRE(effects == 62);
     REQUIRE(frames > 1000);
 }
 
@@ -550,7 +550,6 @@ TEST_CASE("DVE roles match the converter's write_dve", "[dve][golden]") {
         // raw coverage would give 31 (stale margin cells); the converter's filled rule gives 30
         {"4.2/Effects/4000FX/Space/Infinite Video Space !", vt::DveRole::Flip, 30},
         {"4.2/Effects/4000FX/Digital/Warp To Globe !", vt::DveRole::MovingA, -1},
-        {"3.1/ToasterAll/EFFECTS/FlyInTop", vt::DveRole::MovingB, -1},
     };
     for (const auto& w : wants) {
         INFO(w.source);
@@ -559,11 +558,11 @@ TEST_CASE("DVE roles match the converter's write_dve", "[dve][golden]") {
         REQUIRE(i.role == w.role);
         REQUIRE(i.switchFrame == w.switchFrame);
     }
-    // the whole corpus: 35 MovingA, 25 MovingB, 2 Flip, 2 DistortA (converter run, Task 9 report)
+    // the whole corpus: 34 MovingA, 24 MovingB, 2 Flip, 2 DistortA (converter run, Task 9 report)
     std::map<vt::DveRole, int> n;
     for (const auto& r : golden::readLines("dve.jsonl")) ++n[vt::dveInfo(openDve(str(r, "source")).anim).role];
-    REQUIRE(n[vt::DveRole::MovingA] == 35);
-    REQUIRE(n[vt::DveRole::MovingB] == 25);
+    REQUIRE(n[vt::DveRole::MovingA] == 34);
+    REQUIRE(n[vt::DveRole::MovingB] == 24);
     REQUIRE(n[vt::DveRole::Flip] == 2);
     REQUIRE(n[vt::DveRole::DistortA] == 2);
 }
@@ -628,7 +627,7 @@ TEST_CASE("every DVE loads as an effect and renders its role", "[dve][effect]") 
             REQUIRE(got.px == want.px);
         }
     }
-    REQUIRE(loaded == 64);
+    REQUIRE(loaded == 62);
     INFO("DVEs with sound: " << sounds);
 }
 

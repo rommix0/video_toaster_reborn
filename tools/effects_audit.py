@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parent.parent
-FX = REPO.parent / "4.2" / "Effects"
+FX = REPO / "data" / "4.2" / "Effects"
 EXE = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "build" / "msvc" / "cli" / "vt_render.exe"
 OUT = REPO / "build" / "effects_audit"
 W, H = 320, 216

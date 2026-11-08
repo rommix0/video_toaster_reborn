@@ -13,7 +13,7 @@ add_executable(vt_app_tests
 )
 target_link_libraries(vt_app_tests PRIVATE vt_app_lib Qt6::Test)
 target_compile_definitions(vt_app_tests PRIVATE
-    VT_DATA_ROOT="${CMAKE_SOURCE_DIR}/.."
+    VT_DATA_ROOT="${VT_DATA_ROOT}"
     VT_MEDIA_FIXTURES="${CMAKE_BINARY_DIR}/media_fixtures")
 if(MSVC)
     target_compile_options(vt_app_tests PRIVATE /W4)

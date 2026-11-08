@@ -4,7 +4,7 @@
 
 > **Work in progress.** This project is under active development. Features are incomplete, behaviour may change, and some parts are missing entirely.
 
-A recreation of the NewTek Video Toaster 4000 (software version 4.2) for modern Windows, written in C++20 and Qt 6. It starts with the **Switcher**: the original's panel, buses, effects library and keyer, rebuilt from reverse engineering of `switcher.main` and the original data files, so the original croutons (effects, framestores, CG pages) play as they did.
+A recreation of the NewTek Video Toaster 4000 (software from the v4.3 CD) for modern Windows, written in C++20 and Qt 6. It starts with the **Switcher**: the original's panel, buses, effects library and keyer, rebuilt from reverse engineering of `switcher.main` and the original data files, so the original croutons (effects, framestores, CG pages) play as they did.
 
 ## Status
 
@@ -27,13 +27,30 @@ Where the original program doesn't say how the hardware behaves (for example how
 ## Requirements
 
 - Windows 10 or later.
-- **The original Video Toaster 4.2 data files** (not included). Point the app at the folder that contains `4.2/Programs/switcher.main` in **Settings > Toaster data**.
+- **Your own Video Toaster v4.3 CD image** (not included). See [Toaster data](#toaster-data).
 - To build:
   - Visual Studio 2022 Build Tools (MSVC, x64), CMake 3.25 or later, and Ninja.
   - Qt 6.8.3 (`msvc2022_64`).
   - FFmpeg 9.0.2 (full, shared build).
+  - [7-Zip](https://www.7-zip.org/), to extract the Toaster data.
 
 By default the build looks for Qt in `../Qt/6.8.3/msvc2022_64` and FFmpeg in `../ffmpeg-9.0.2-full_build-shared`, next to the repository. Set the CMake cache variables `VT_QT_DIR` and `VT_FFMPEG_DIR` to use other locations.
+
+## Toaster data
+
+The Toaster's software and data are copyrighted, so they are not in this repository. Before building, extract them from your own image of the Video Toaster v4.3 CD. With [7-Zip](https://www.7-zip.org/) installed, run this from the repository root:
+
+```bat
+tools\extract_disc.bat "path\to\Video Toaster v4.3.iso"
+```
+
+The path can be absolute or relative to the folder you run the command from, for example `"..\discs\Video Toaster v4.3.iso"`. Keep the quotes if it contains spaces.
+
+The script unpacks the disc's `4.2\` folder into `data\`, which git ignores, then checks `switcher.main` to confirm it is the right disc. Running it again overwrites the same files.
+
+It has to be the v4.3 CD: the v4.2 CD is laid out differently and has a different `switcher.main`, so the script refuses it.
+
+Builds find `data\` on their own. Set the CMake cache variable `VT_DATA_ROOT` to use another folder. A packaged app has to be told where the data is: in **Settings > Toaster data**, choose the folder that contains `4.2\Programs\switcher.main` (the `data\` folder).
 
 ## Building
 

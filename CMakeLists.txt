@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
+set(VT_DATA_ROOT "${CMAKE_SOURCE_DIR}/data" CACHE PATH "Folder holding the extracted Toaster 3.1 and 4.2 folders")
+if(NOT EXISTS "${VT_DATA_ROOT}/4.2/Programs/switcher.main")
+    message(WARNING "Toaster data not found in ${VT_DATA_ROOT}: the tests will fail. "
+        "Run tools\\extract_disc.bat with your Video Toaster v4.3 CD image.")
+endif()
 include(cmake/VtFFmpeg.cmake)
 add_subdirectory(engine)
 add_subdirectory(media)

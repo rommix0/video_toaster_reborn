@@ -9,7 +9,6 @@
 #include <chrono>
 #include <cmath>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <map>
 #include <memory>
@@ -95,41 +94,6 @@ std::vector<float> fileAudio(const std::string& path, int64_t first, int64_t las
 int fastTicks(const vt::Effect& e) {
     const vt::Timing t = e.timing();
     return t.durationTicks[static_cast<size_t>(t.resolve(vt::Speed::Fast))];
-}
-
-// One CSV line split into fields ("" quotes, no line breaks inside fields).
-std::vector<std::string> csvFields(const std::string& line) {
-    std::vector<std::string> out(1);
-    bool quoted = false;
-    for (size_t i = 0; i < line.size(); ++i) {
-        const char c = line[i];
-        if (quoted && c == '"' && i + 1 < line.size() && line[i + 1] == '"') out.back() += line[++i];
-        else if (c == '"') quoted = !quoted;
-        else if (c == ',' && !quoted) out.emplace_back();
-        else out.back() += c;
-    }
-    return out;
-}
-
-// The first converted/manifest.csv row with a non-empty `sound` column (Plan 1 Ruling 4): the
-// source path under the data root.
-fs::path firstEffectWithSound() {
-    const fs::path root = fs::path(VT_DATA_ROOT).lexically_normal();
-    std::ifstream f(root / "converted" / "manifest.csv");
-    REQUIRE(f);
-    std::string line;
-    std::getline(f, line);
-    const auto head = csvFields(line);
-    const auto col = [&](const char* name) { return size_t(std::find(head.begin(), head.end(), name) - head.begin()); };
-    const size_t source = col("source"), sound = col("sound");
-    REQUIRE(sound < head.size());
-    while (std::getline(f, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        const auto row = csvFields(line);
-        if (row.size() > sound && !row[sound].empty()) return root / fs::path(row[source]);
-    }
-    FAIL("no manifest row has a sound");
-    return {};
 }
 
 // Captures warnings (the missing file's complaint) so test output stays clean.
@@ -338,7 +302,7 @@ TEST_CASE("setInput replaces an input at the next tick, starting from its first 
 
 TEST_CASE("effect sound reaches the sinks") {
     std::string why;
-    std::shared_ptr<const vt::Effect> e = vt::loadEffect(firstEffectWithSound(), &why);
+    std::shared_ptr<const vt::Effect> e = vt::loadEffect(fs::path(VT_DATA_ROOT).lexically_normal() / "4.2/Effects/2000FX/Animals/Falling Sheep", &why);
     INFO(why);
     REQUIRE(e);
     REQUIRE(e->sound());

@@ -450,18 +450,3 @@
 {"source":"4.2/Effects/4000FX/Wipes/Wipe Twisting Neon Band !","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
 {"source":"4.2/Effects/4000FX/Wipes/Wipe Vertical Slats !","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
 {"source":"4.2/3rdparty/vgem/effects/VGems_FX4K/Spiral","frames":1,"speed_default":"variable","fields":[],"duration":[80,40,20,40]}
-{"source":"3.1/Toaster4k/effects/20Off.aa","frames":91,"speed_default":"fast","fields":[3,2,1,0],"duration":[137,91,46,0]}
-{"source":"3.1/Toaster4k/effects/CircleOut.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/Toaster4k/effects/HSplit.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/Toaster4k/effects/HSplitIn.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/Toaster4k/effects/VSplit.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/Toaster4k/effects/VSplitIn.aa","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/Toaster2k/effects/PeelWhtBkg.3.0","frames":56,"speed_default":"fast","fields":[3,2,1,0],"duration":[84,56,28,0]}
-{"source":"3.1/Toaster2k/effects/Plasma_A.3.0","frames":1,"speed_default":"medium","fields":[],"duration":[90,60,30,60]}
-{"source":"3.1/ToasterAll/EFFECTS/BrimStone","frames":67,"speed_default":"fast","fields":[3,2,1,0],"duration":[101,67,34,0]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyIn","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyInTop","frames":51,"speed_default":"fast","fields":[3,2,1,0],"duration":[77,51,26,0]}
-{"source":"3.1/ToasterAll/EFFECTS/FlyOut","frames":66,"speed_default":"fast","fields":[3,2,1,0],"duration":[99,66,33,0]}
-{"source":"3.1/ToasterAll/EFFECTS/MatteSine","frames":49,"speed_default":"fast","fields":[3,2,1,0],"duration":[74,49,25,0]}
-{"source":"3.1/ToasterAll/EFFECTS/SpinExplode","frames":211,"speed_default":"fast","fields":[3,2,1,0],"duration":[317,211,106,0]}
-{"source":"3.1/ToasterAll/EFFECTS/Tennis","frames":32,"speed_default":"fast","fields":[3,2,1,0],"duration":[48,32,16,0]}
