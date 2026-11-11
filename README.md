@@ -75,6 +75,12 @@ This configures, builds (Release, Ninja) and runs the tests. Extra arguments go 
 | `tools/`  | Build script, golden generators and contact-sheet scripts                                      |
 | `docs/`   | Design documents and implementation plans                                                      |
 
+## License
+
+vtoast_reborn is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
+
+Third-party parts keep their own licenses: FFmpeg (the GPLv3 build vtoast links), Qt 6 (LGPLv3) and Catch2 (Boost Software License 1.0, `third_party/catch2`, tests only). The Video Toaster software and data you extract from the CD are not covered by this license.
+
 ## Disclaimer
 
 This is an unofficial fan project. It is not affiliated with or endorsed by NewTek. Video Toaster is a trademark of its owner. No original Video Toaster software or data is included in this repository.
