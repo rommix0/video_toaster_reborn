@@ -94,7 +94,7 @@ TEST_CASE("ColorBars decodes to the 75 % bars") {
 
 TEST_CASE("every shipped framestore loads") {
     int count = 0, bad = 0;
-    for (const char* dir : {"4.2/Framestore", "4.2/CG/Frames", "4.2/Programs/Switcher_Support/StartupFrames", "4.2/3rdparty"}) {
+    for (const char* dir : {"4.2/Framestore", "4.2/CG/Frames", "4.2/Programs/Switcher_Support/StartupFrames"}) {
         std::error_code ec;
         for (std::filesystem::recursive_directory_iterator it(framestore(dir), ec), end; it != end; it.increment(ec)) {
             if (!it->is_regular_file()) continue;
@@ -111,7 +111,7 @@ TEST_CASE("every shipped framestore loads") {
     }
     CAPTURE(count, bad);
     CHECK(bad == 0);
-    CHECK(count == 75);  // FREEZE.md §4: 63 with CrUD FRAM, 12 LightWaveDemo pictures without (Ruling 9)
+    CHECK(count == 74);  // FREEZE.md §4: 75 = 63 with CrUD FRAM + 12 LightWaveDemo without (Ruling 9), less 1 in 3rdparty (not in the repository)
 }
 
 TEST_CASE("framestores without a CrUD of their own load (Ruling 9)") {

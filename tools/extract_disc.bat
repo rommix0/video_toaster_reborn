@@ -1,5 +1,5 @@
 @echo off
-rem Extract 4.2\ from your own Video Toaster v4.3 CD image into data\ (git-ignored). Needs 7-Zip.
+rem Extract 4.2\ from your own Video Toaster v4.3 CD image into data\ (the files not in the repository stay git-ignored). Needs 7-Zip.
 rem Usage: tools\extract_disc.bat "path\to\Video Toaster v4.3.iso"
 setlocal
 if "%~1"=="" (

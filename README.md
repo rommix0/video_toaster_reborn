@@ -29,28 +29,24 @@ Where the original program doesn't say how the hardware behaves (for example how
 ## Requirements
 
 - Windows 10 or later.
-- **Your own Video Toaster v4.3 CD image** (not included). See [Toaster data](#toaster-data).
 - To build:
   - Visual Studio 2022 Build Tools (MSVC, x64), CMake 3.25 or later, and Ninja.
   - Qt 6.8.3 (`msvc2022_64`).
   - FFmpeg 9.0.2 (full, shared build).
-  - [7-Zip](https://www.7-zip.org/), to extract the Toaster data.
 
 By default the build looks for Qt in `../Qt/6.8.3/msvc2022_64` and FFmpeg in `../ffmpeg-9.0.2-full_build-shared`, next to the repository. Set the CMake cache variables `VT_QT_DIR` and `VT_FFMPEG_DIR` to use other locations.
 
 ## Toaster data
 
-The Toaster's software and data are copyrighted, so they are not in this repository. Before building, extract them from your own image of the Video Toaster v4.3 CD. With [7-Zip](https://www.7-zip.org/) installed, run this from the repository root:
+`data\4.2\` holds the parts of the Video Toaster v4.3 CD that vtoast reads: `Effects\`, `Framestore\`, `CG\`, and from `Programs\` the files `switcher.main` and `edit` and the folders `Switcher_Support\`, `ChromaFX_Support\` and `System_Support\Fonts\`. Nothing else is needed to build, test or run.
+
+The rest of the CD is not in the repository: other companies' content (`3rdparty\`, `PSFonts\`), LightWave 3D, AmigaOS files, and sample pictures nothing here reads. To add it from your own image of the v4.3 CD, install [7-Zip](https://www.7-zip.org/) and run this from the repository root:
 
 ```bat
 tools\extract_disc.bat "path\to\Video Toaster v4.3.iso"
 ```
 
-The path can be absolute or relative to the folder you run the command from, for example `"..\discs\Video Toaster v4.3.iso"`. Keep the quotes if it contains spaces.
-
-The script unpacks the disc's `4.2\` folder into `data\`, which git ignores, then checks `switcher.main` to confirm it is the right disc. Running it again overwrites the same files.
-
-It has to be the v4.3 CD: the v4.2 CD is laid out differently and has a different `switcher.main`, so the script refuses it.
+The path can be absolute or relative to the folder you run the command from, for example `"..\discs\toaster.iso"`. Keep the quotes if it contains spaces. The script unpacks the disc's `4.2\` folder into `data\` (git keeps ignoring the extra files), then checks `switcher.main` to confirm it is the right disc. It has to be the v4.3 CD: the v4.2 CD is laid out differently and has a different `switcher.main`, so the script refuses it.
 
 Builds find `data\` on their own. Set the CMake cache variable `VT_DATA_ROOT` to use another folder. A packaged app has to be told where the data is: in **Settings > Toaster data**, choose the folder that contains `4.2\Programs\switcher.main` (the `data\` folder).
 
@@ -81,8 +77,8 @@ This configures, builds (Release, Ninja) and runs the tests. Extra arguments go 
 
 vtoast_reborn is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
 
-Third-party parts keep their own licenses: FFmpeg (the GPLv3 build vtoast links), Qt 6 (LGPLv3) and Catch2 (Boost Software License 1.0, `third_party/catch2`, tests only). The Video Toaster software and data you extract from the CD are not covered by this license.
+Third-party parts keep their own licenses: FFmpeg (the GPLv3 build vtoast links), Qt 6 (LGPLv3) and Catch2 (Boost Software License 1.0, `third_party/catch2`, tests only). The Video Toaster files in `data\` are NewTek's, from the v4.3 CD. NewTek released the Video Toaster as open source (to the Toaster Flyer Open Source project, 2000); the files keep NewTek's copyright and are not covered by this project's license.
 
 ## Disclaimer
 
-This is an unofficial fan project. It is not affiliated with or endorsed by NewTek. Video Toaster is a trademark of its owner. No original Video Toaster software or data is included in this repository.
+This is an unofficial fan project. It is not affiliated with or endorsed by NewTek. Video Toaster is a trademark of its owner.

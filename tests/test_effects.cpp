@@ -208,7 +208,7 @@ TEST_CASE("dissolve is exactly A at 0 and exactly B at 511", "[effect][dissolve]
 
 TEST_CASE("gray LUT matches the converter for every gradient ILBM", "[effect][golden]") {
     const auto recs = golden::readLines("ilbm.jsonl");
-    REQUIRE(recs.size() == 107);
+    REQUIRE(recs.size() == 106);
     for (const auto& r : recs) {
         INFO(str(r, "source"));
         auto c = vt::loadCrouton(golden::sourcePath(str(r, "source")));
@@ -885,10 +885,12 @@ TEST_CASE("loadEffect refuses what it cannot play, with a reason", "[effect][fac
 namespace {
 
 // Every crouton of one TYPE under 4.2/Effects, or another folder of the data tree (icons skipped).
+// 4.2/3rdparty is skipped: it is not in the repository, only in a full extract of the CD.
 std::vector<std::filesystem::path> croutonsOfType(vt::CroutonType type, const char* folder = "4.2/Effects") {
     std::vector<std::filesystem::path> out;
     for (auto& ent : std::filesystem::recursive_directory_iterator(dataRoot() / folder)) {
         if (!ent.is_regular_file()) continue;
+        if (std::ranges::find(ent.path(), std::filesystem::path("3rdparty")) != ent.path().end()) continue;
         auto ext = ent.path().extension().string();
         if (ext == ".i" || ext == ".I") continue;
         auto c = vt::loadCrouton(ent.path());
@@ -989,7 +991,8 @@ TEST_CASE("MAIN and CTRL croutons are Switcher moves", "[effect][factory]") {
 }
 
 // ALGO.md 3 counts 462 ALGO files in 4.2: 230 croutons and their 232 icons (the .i files carry
-// the tags too). Of the croutons, 2 are Art Card Key (4 with the icons); all 230 load.
+// the tags too). Of the croutons, 2 are Art Card Key (4 with the icons); all 230 load. 6 of them
+// are in 3rdparty (not in the repository), so 224 are checked.
 TEST_CASE("every ALGO crouton loads", "[effect][factory][algo]") {
     int loaded = 0, artCardKey = 0;
     for (const auto& p : croutonsOfType(vt::CroutonType::Algo, "4.2")) {
@@ -1004,7 +1007,7 @@ TEST_CASE("every ALGO crouton loads", "[effect][factory][algo]") {
         ++loaded;
     }
     REQUIRE(artCardKey == 2);
-    REQUIRE(loaded == 230);
+    REQUIRE(loaded == 224);
 }
 
 namespace {

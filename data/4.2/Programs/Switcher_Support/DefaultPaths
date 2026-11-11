@@ -1,0 +1,93 @@
+; Toaster Paths Text file NewTek, inc.
+; Default paths for all toaster files
+; NOTE: All paths without volume names are evaluated
+; relative to the location of this file.
+
+ANIM    ;ANIM FX, Animation
+        "Toaster:Effects"
+#
+
+ILBM    ;ILBM FX (may loop)
+        "Toaster:Effects"
+#
+
+ALGO    ;Algorithmic FX
+        "Toaster:Effects"
+#
+
+CRFX    ;ChromaFX effect
+        "Toaster:Effects"
+#
+
+CLIP    ;Video Clip
+        "FLY0:"
+        "FLY1:"
+        "FLY2:"
+#
+
+ AUD    ;Audio Clip
+        "FLY0:"
+        "FLY1:"
+        "FLY2:"
+#
+
+CTRL    ;Sequence Control crouton
+        "Toaster:Effects"
+#
+
+PROJ    ;Project File
+        "Toaster:Projects"
+#
+
+FRAM    ;Frame store (must NOT include alpha)
+        "Toaster:FrameStore"
+#
+
+KEYF    ;Frame store (must include alpha)
+        "Toaster:CG/Keys"
+#
+
+SCRO    ;CG Scroll
+        "Toaster:CG/Scrolls"
+#
+
+CRAW    ;CG Crawl
+        "Toaster:CG/Crawls"
+#
+
+BOOK    ;CG Book
+        "Toaster:CG/Books"
+#
+
+RGBA    ;upto 24 bit RGB with 8 bits alpha
+        "Toaster:Images"
+#
+
+LWSC    ;Scene file
+        "Toaster:LW/Scenes"
+#
+
+LWOB    ;3D object
+        "Toaster:LW/Objects"
+#
+
+SURF    ;3D surface
+        "Toaster:LW/Surfaces"
+#
+
+FONT    ;Postscript font
+        "Toaster:PSFonts"
+#
+
+EPSF    ;Encapsulated Postscript file
+        "Toaster:PSFonts"
+#
+
+REXX    ;ARexx script * Miscellaneous
+	"Toaster:ARexx"
+        "REXX:"
+#
+
+TEXT    ;Simple ASCII Text file (docs)
+        "Toaster:"
+#

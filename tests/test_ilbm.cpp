@@ -65,7 +65,7 @@ bool isIcon(const std::vector<uint8_t>& bytes, const vt::Form& f) {
 
 TEST_CASE("every gradient ILBM decodes to the golden index CRC") {
     auto recs = golden::readLines("ilbm.jsonl");
-    REQUIRE(recs.size() == 107);
+    REQUIRE(recs.size() == 106);
     for (auto& r : recs) {
         INFO(str(r, "source"));
         auto c = vt::loadCrouton(golden::sourcePath(str(r, "source")));

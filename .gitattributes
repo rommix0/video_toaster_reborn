@@ -1,0 +1,2 @@
+# The Toaster data must stay byte-exact (tests pin hashes): never convert line endings.
+data/** -text -diff

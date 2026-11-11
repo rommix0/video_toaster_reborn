@@ -8,7 +8,7 @@ Notes for AI coding agents working in this repository. See `README.md` for what 
 - `tools\dist.bat` runs `tools\build.bat`, then packages the app as `build\dist\vtoast-reborn-alpha-<commit>\` and `.zip`.
 - `tools\live.bat` runs only the tests that need devices or a desktop (CTest label `live`).
 - A change is done when the full `tools\build.bat` passes (all suites green).
-- The tests read the original Toaster data from `data/` (`VT_DATA_ROOT`), which `tools\extract_disc.bat "<v4.3 CD image>"` fills. It is git-ignored and must not be added.
+- The tests read the original Toaster data from `data/` (`VT_DATA_ROOT`). Only the parts vtoast reads are tracked (see `.gitignore`); `tools\extract_disc.bat "<v4.3 CD image>"` adds the rest of the CD, which must stay untracked (third-party content, LightWave, AmigaOS files). Tests must pass with the tracked files alone. `data/**` is `-text` in `.gitattributes`: keep it byte-exact.
 
 ## Where things are
 

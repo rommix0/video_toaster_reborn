@@ -1,4 +1,24 @@
 build/
-data/
 .superpowers/
 __pycache__/
+
+# data/: the Video Toaster v4.3 CD data. Only what vtoast reads is in the repository;
+# tools\extract_disc.bat fills in the rest from your own CD image.
+data/*
+!data/4.2/
+data/4.2/*
+!data/4.2/Effects/
+!data/4.2/Effects.I
+!data/4.2/Framestore/
+!data/4.2/Framestore.I
+!data/4.2/CG/
+!data/4.2/CG.I
+!data/4.2/Programs/
+data/4.2/Programs/*
+!data/4.2/Programs/switcher.main
+!data/4.2/Programs/edit
+!data/4.2/Programs/Switcher_Support/
+!data/4.2/Programs/ChromaFX_Support/
+!data/4.2/Programs/System_Support/
+data/4.2/Programs/System_Support/*
+!data/4.2/Programs/System_Support/Fonts/

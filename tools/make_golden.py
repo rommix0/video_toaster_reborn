@@ -271,10 +271,12 @@ def algo_frame(a, kind, seg, t):
 
 
 def algo_records():
-    """One record per distinct (kind, descriptor, program) of the ALGO croutons under 4.2 (incl. 3rdparty)."""
+    """One record per distinct (kind, descriptor, program) of the ALGO croutons under 4.2 (not 3rdparty: not in the repo)."""
     AR.set_root(ROOT)
     found = []
     for p, t in AS.algos(os.path.join(ROOT, '4.2')):
+        if '3rdparty' in os.path.relpath(p, ROOT).split(os.sep):
+            continue
         if t.get(0x80000063, 0) != 5:                      # Art Card Key has no program
             found.append((os.path.relpath(p, ROOT).replace(os.sep, '/'), t))
     progs = {}
@@ -303,7 +305,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     files = {n: [] for n in ('ilbm', 'anims', 'mixtables', 'dve', 'timing', 'chromafx', 'chromafx_rows', 'hunk', 'panel', 'fonts', 'algo')}
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, 'converted', 'manifest.csv'), encoding='utf-8'))
-            if r['status'] == 'converted' and not r['source'].startswith('3.1/')]
+            if r['status'] == 'converted' and not r['source'].startswith(('3.1/', '4.2/3rdparty/'))]  # 3rdparty: not in the repo
     if only is not None and not only & {'ilbm', 'anims', 'mixtables', 'dve', 'timing'}:
         rows = []
     man = {}

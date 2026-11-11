@@ -41,7 +41,7 @@ uint32_t spansCrc(const std::vector<std::pair<int, int>>& spans) {
 
 TEST_CASE("algo VM matches the reference", "[algo][golden]") {
     const auto recs = golden::readLines("algo.jsonl");
-    REQUIRE(recs.size() == 114);
+    REQUIRE(recs.size() == 111);  // 3rdparty (VGems) programs are not in the repository
     for (const auto& r : recs) {
         const std::string& path = str(r, "path");
         INFO(path);
