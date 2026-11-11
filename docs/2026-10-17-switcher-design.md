@@ -15,13 +15,13 @@ There is no Toaster card or Amiga any more. vtoast_reborn replaces the hardware 
 software: the Amiga drew control pictures, and the Toaster hardware used them to mix
 and move video. We do both steps in code.
 
-The program will grow to include ToasterPaint, LightWave 3D (Modeler + renderer) and
-the Flyer editor as tabs in the same window. Each of those gets its own design later.
+The program will grow to include ToasterPaint and the Flyer editor as tabs in the same
+window. (LightWave 3D was dropped on 2026-11-11: it is still a commercial product.) Each of those gets its own design later.
 This document covers the shared foundation and the Switcher only.
 
 ## 2. Decisions made by the owner
 
-* One desktop application; modules are tabs (Switcher first; Paint, LightWave, Flyer later).
+* One desktop application; modules are tabs (Switcher first; Paint, Flyer later).
 * **Qt** for the interface; **C/C++**, **CMake**; **FFmpeg** libraries for capture,
   decoding, encoding and recording. **No libobs** and no OBS code copied. OBS
   (`C:\Users\abart\Desktop\obs-studio-master`) is a reference for how a modern switcher
@@ -76,12 +76,12 @@ Must work in version 1:
 Later, one at a time, in roughly this order: Switcher moves (ALGO croutons, needs
 reverse-engineering in Ghidra), DV1/DV2 freeze and framestore load/save, keys (luminance
 key / Overlay), the full original interface, streaming and virtual camera. Then
-ToasterPaint, LightWave, Flyer (separate designs).
+ToasterPaint, Flyer (separate designs).
 
 ## 4. Non-goals and anti-goals
 
 Non-goals for version 1: ALGO Switcher moves (they may appear as clearly labelled
-placeholders, or be absent), CG, LightWave, Paint, Flyer, streaming, virtual camera,
+placeholders, or be absent), CG, Paint, Flyer, streaming, virtual camera,
 HD/upscaled internal processing, interlaced output, NTSC/analog signal simulation
 (including the DV path's 1/15 s delay and stutter), macOS/Linux builds.
 
@@ -264,7 +264,7 @@ My calls, which the owner can override:
   `libavformat`/`libavcodec` for files and recording, `libswscale` only on the way in).
   Inputs are converted once to the internal raster and field timing; nothing is scaled
   after that.
-* **Qt application** with a tab bar (Switcher; Paint, LightWave, Flyer as disabled
+* **Qt application** with a tab bar (Switcher; Paint, Flyer as disabled
   placeholder tabs), Program/Preview monitors drawn at native size or integer zoom, and
   an OBS-style settings dialog for inputs and recording.
 * **Asset extraction** tooling (offline, run at build time or once) that turns the

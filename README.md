@@ -20,7 +20,9 @@ Working now:
 Not yet:
 
 - The project Sequencer (and the Blank / Stop croutons), and project files.
-- The ToasterCG editor (typing and laying out new pages), ToasterPaint, LightWave, and the Flyer.
+- The ToasterCG editor (typing and laying out new pages), ToasterPaint, and the Flyer.
+
+LightWave 3D is out of scope: it is still developed and sold as its own product, so this project does not recreate it. Reading LightWave object (LWO) and scene (LWS) files, such as those on the CD, is allowed.
 
 Where the original program doesn't say how the hardware behaves (for example how a key or CG page blends), the choice is marked as a guess in the code (`HardwareGuesses`) so it can be adjusted by eye.
 

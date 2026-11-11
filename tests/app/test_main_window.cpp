@@ -15,11 +15,11 @@ void TestMainWindow::tabs() {
     MainWindow w;
     auto* tabs = w.findChild<QTabWidget*>();
     QVERIFY(tabs);
-    QCOMPARE(tabs->count(), 4);
-    QStringList names; for (int i = 0; i < 4; ++i) names << tabs->tabText(i);
-    QCOMPARE(names, (QStringList{"Switcher", "Paint", "LightWave", "Flyer"}));
+    QCOMPARE(tabs->count(), 3);
+    QStringList names; for (int i = 0; i < 3; ++i) names << tabs->tabText(i);
+    QCOMPARE(names, (QStringList{"Switcher", "Paint", "Flyer"}));
     QVERIFY(tabs->isTabEnabled(0));
-    for (int i = 1; i < 4; ++i) QVERIFY(!tabs->isTabEnabled(i));
+    for (int i = 1; i < 3; ++i) QVERIFY(!tabs->isTabEnabled(i));
 }
 
 void TestMainWindow::title() {

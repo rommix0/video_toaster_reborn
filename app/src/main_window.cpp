@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     placeholder->setAlignment(Qt::AlignCenter);
     setSwitcherWidget(placeholder);
     tabs_->addTab(page, QStringLiteral("Switcher"));
-    for (const char* name : {"Paint", "LightWave", "Flyer"})
+    for (const char* name : {"Paint", "Flyer"})
         tabs_->setTabEnabled(tabs_->addTab(new QWidget(tabs_), QString::fromLatin1(name)), false);
     setCentralWidget(tabs_);
 
